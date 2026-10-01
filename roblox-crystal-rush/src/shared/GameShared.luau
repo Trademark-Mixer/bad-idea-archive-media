@@ -40,6 +40,21 @@ Shared.Settings = {
 	DimensionGemGrowth = 2, -- ...and x2 for every dimension after that
 	MaxOpenDimensions = 8, -- how many dimension islands can exist at the same time
 	DimensionCloseTime = 30, -- seconds an empty dimension stays before it disappears
+	ShinyEvery = 5, -- every 5th dimension is a SHINY dimension (glowing, and 2x gems)
+
+	-- Golden crystals (rare and worth a lot)
+	GoldenChance = 0.02, -- 2% of crystals grow back golden
+	GoldenGems = 10, -- golden crystals give 10x gems...
+	GoldenXP = 5, -- ...and 5x XP
+
+	-- Sky obby
+	ObbyRewardCrystals = 80, -- the obby pays as much as mining this many crystals
+	ObbyCooldown = 240, -- seconds before the obby pays out again
+
+	-- Background music. Paste song IDs from the Toolbox (Audio tab) here, like
+	-- MusicIds = { 1234567890, 9876543210 }. With none, a little music box plays.
+	MusicIds = {},
+	MusicVolume = 0.35,
 	RebirthBoost = 0.5, -- every rebirth gives +50% coins when selling
 	RebirthBaseCost = 75000, -- coins needed for your first rebirth
 	RebirthCostGrowth = 2.5, -- each rebirth costs this many times more
@@ -64,6 +79,28 @@ Shared.Layout = {
 --   Gems   = how many gems a crystal gives
 --   Mood   = how the sky and colors look while you are in the zone
 --------------------------------------------------------------------------------
+local function zoneMood(clockTime: number, brightness: number, outdoor: Color3, atmosphere: Color3, decay: Color3, density: number, haze: number, extra: { [string]: any }?)
+	local m = {
+		ClockTime = clockTime,
+		Brightness = brightness,
+		Ambient = Color3.fromRGB(70, 72, 80),
+		OutdoorAmbient = outdoor,
+		Exposure = 0,
+		Density = density,
+		Haze = haze,
+		Glare = 0.15,
+		AtmosphereColor = atmosphere,
+		Decay = decay,
+		Tint = Color3.fromRGB(255, 252, 246),
+		Saturation = 0.04,
+		Contrast = 0.08,
+	}
+	for key, value in pairs(extra or {}) do
+		m[key] = value
+	end
+	return m
+end
+
 Shared.Zones = {
 	{
 		Name = "Sunny Meadow",
@@ -71,30 +108,13 @@ Shared.Zones = {
 		Price = 0,
 		Health = 4,
 		Gems = 3,
-		CrystalColors = {
-			Color3.fromRGB(80, 255, 150),
-			Color3.fromRGB(255, 225, 80),
-			Color3.fromRGB(110, 200, 255),
-		},
+		-- emerald, citrine, aquamarine
+		CrystalColors = { Color3.fromRGB(30, 150, 80), Color3.fromRGB(215, 160, 40), Color3.fromRGB(70, 170, 195) },
 		Ground = Enum.Material.Grass,
-		Hills = Enum.Material.LeafyGrass,
-		RockColor = Color3.fromRGB(125, 125, 135),
-		Accent = Color3.fromRGB(110, 230, 120),
-		Mood = {
-			ClockTime = 14.5,
-			Brightness = 3,
-			Ambient = Color3.fromRGB(70, 70, 80),
-			OutdoorAmbient = Color3.fromRGB(150, 150, 160),
-			Exposure = 0,
-			Density = 0.28,
-			Haze = 1.2,
-			Glare = 0.25,
-			AtmosphereColor = Color3.fromRGB(200, 220, 255),
-			Decay = Color3.fromRGB(110, 130, 165),
-			Tint = Color3.fromRGB(255, 251, 242),
-			Saturation = 0.15,
-			Contrast = 0.08,
-		},
+		Hills = Enum.Material.Grass,
+		RockColor = Color3.fromRGB(110, 105, 100),
+		Accent = Color3.fromRGB(150, 210, 120),
+		Mood = zoneMood(14.2, 2.6, Color3.fromRGB(128, 128, 132), Color3.fromRGB(199, 215, 235), Color3.fromRGB(106, 112, 125), 0.3, 1.4),
 	},
 	{
 		Name = "Crystal Caves",
@@ -102,30 +122,16 @@ Shared.Zones = {
 		Price = 2000,
 		Health = 40,
 		Gems = 30,
-		CrystalColors = {
-			Color3.fromRGB(190, 100, 255),
-			Color3.fromRGB(255, 110, 220),
-			Color3.fromRGB(90, 230, 255),
-		},
+		-- amethyst, rose quartz, sapphire
+		CrystalColors = { Color3.fromRGB(120, 60, 180), Color3.fromRGB(205, 120, 160), Color3.fromRGB(45, 80, 190) },
 		Ground = Enum.Material.Slate,
 		Hills = Enum.Material.Rock,
-		RockColor = Color3.fromRGB(80, 70, 100),
-		Accent = Color3.fromRGB(190, 110, 255),
-		Mood = {
-			ClockTime = 14.5,
-			Brightness = 2.4,
-			Ambient = Color3.fromRGB(80, 65, 115),
-			OutdoorAmbient = Color3.fromRGB(110, 95, 150),
-			Exposure = 0.15,
-			Density = 0.42,
-			Haze = 2.2,
-			Glare = 0,
-			AtmosphereColor = Color3.fromRGB(175, 130, 255),
-			Decay = Color3.fromRGB(70, 40, 120),
-			Tint = Color3.fromRGB(240, 230, 255),
-			Saturation = 0.25,
-			Contrast = 0.12,
-		},
+		RockColor = Color3.fromRGB(78, 74, 80),
+		Accent = Color3.fromRGB(175, 135, 220),
+		Mood = zoneMood(14.2, 2, Color3.fromRGB(90, 85, 100), Color3.fromRGB(150, 140, 170), Color3.fromRGB(60, 55, 75), 0.42, 2, {
+			Ambient = Color3.fromRGB(62, 58, 72),
+			Exposure = 0.2,
+		}),
 	},
 	{
 		Name = "Lava Volcano",
@@ -133,30 +139,16 @@ Shared.Zones = {
 		Price = 40000,
 		Health = 400,
 		Gems = 300,
-		CrystalColors = {
-			Color3.fromRGB(255, 140, 40),
-			Color3.fromRGB(255, 60, 50),
-			Color3.fromRGB(255, 210, 60),
-		},
+		-- ruby, fire opal, garnet
+		CrystalColors = { Color3.fromRGB(175, 20, 40), Color3.fromRGB(220, 90, 30), Color3.fromRGB(120, 18, 35) },
 		Ground = Enum.Material.Basalt,
 		Hills = Enum.Material.Basalt,
-		RockColor = Color3.fromRGB(50, 40, 40),
-		Accent = Color3.fromRGB(255, 120, 40),
-		Mood = {
-			ClockTime = 17.6,
-			Brightness = 2.6,
-			Ambient = Color3.fromRGB(90, 60, 50),
-			OutdoorAmbient = Color3.fromRGB(150, 105, 90),
-			Exposure = 0.1,
-			Density = 0.45,
-			Haze = 2.6,
-			Glare = 0.6,
-			AtmosphereColor = Color3.fromRGB(255, 150, 90),
-			Decay = Color3.fromRGB(130, 50, 25),
-			Tint = Color3.fromRGB(255, 238, 225),
-			Saturation = 0.2,
-			Contrast = 0.12,
-		},
+		RockColor = Color3.fromRGB(52, 46, 44),
+		Accent = Color3.fromRGB(235, 120, 60),
+		Mood = zoneMood(17.4, 2.3, Color3.fromRGB(125, 105, 95), Color3.fromRGB(190, 150, 125), Color3.fromRGB(110, 70, 50), 0.45, 2.4, {
+			Glare = 0.4,
+			Tint = Color3.fromRGB(255, 244, 232),
+		}),
 	},
 	{
 		Name = "Frozen Peaks",
@@ -164,30 +156,15 @@ Shared.Zones = {
 		Price = 750000,
 		Health = 4000,
 		Gems = 3000,
-		CrystalColors = {
-			Color3.fromRGB(150, 230, 255),
-			Color3.fromRGB(215, 240, 255),
-			Color3.fromRGB(80, 140, 255),
-		},
+		-- diamond, ice, sapphire
+		CrystalColors = { Color3.fromRGB(215, 232, 245), Color3.fromRGB(125, 185, 225), Color3.fromRGB(55, 100, 200) },
 		Ground = Enum.Material.Snow,
 		Hills = Enum.Material.Glacier,
-		RockColor = Color3.fromRGB(150, 170, 195),
-		Accent = Color3.fromRGB(150, 220, 255),
-		Mood = {
-			ClockTime = 11.5,
-			Brightness = 3.4,
-			Ambient = Color3.fromRGB(85, 95, 115),
-			OutdoorAmbient = Color3.fromRGB(170, 185, 210),
-			Exposure = -0.1,
-			Density = 0.36,
-			Haze = 1.8,
-			Glare = 0.2,
-			AtmosphereColor = Color3.fromRGB(225, 240, 255),
-			Decay = Color3.fromRGB(160, 195, 235),
-			Tint = Color3.fromRGB(238, 246, 255),
-			Saturation = 0.02,
-			Contrast = 0.1,
-		},
+		RockColor = Color3.fromRGB(120, 125, 135),
+		Accent = Color3.fromRGB(170, 215, 245),
+		Mood = zoneMood(11.8, 3, Color3.fromRGB(150, 158, 175), Color3.fromRGB(215, 228, 245), Color3.fromRGB(150, 170, 200), 0.38, 1.8, {
+			Tint = Color3.fromRGB(244, 248, 255),
+		}),
 	},
 	{
 		Name = "Galaxy Isles",
@@ -195,30 +172,16 @@ Shared.Zones = {
 		Price = 15000000,
 		Health = 40000,
 		Gems = 30000,
-		CrystalColors = {
-			Color3.fromRGB(170, 90, 255),
-			Color3.fromRGB(255, 80, 230),
-			Color3.fromRGB(120, 255, 240),
-		},
+		-- alexandrite, tanzanite, opal
+		CrystalColors = { Color3.fromRGB(105, 55, 160), Color3.fromRGB(70, 65, 190), Color3.fromRGB(185, 215, 230) },
 		Ground = Enum.Material.Asphalt,
 		Hills = Enum.Material.Salt,
-		RockColor = Color3.fromRGB(45, 35, 75),
-		Accent = Color3.fromRGB(200, 120, 255),
-		Mood = {
-			ClockTime = 23.8,
-			Brightness = 1.5,
-			Ambient = Color3.fromRGB(70, 55, 120),
-			OutdoorAmbient = Color3.fromRGB(120, 95, 190),
-			Exposure = 0.35,
-			Density = 0.3,
-			Haze = 1,
-			Glare = 0,
-			AtmosphereColor = Color3.fromRGB(130, 90, 220),
-			Decay = Color3.fromRGB(45, 25, 100),
-			Tint = Color3.fromRGB(235, 225, 255),
-			Saturation = 0.3,
-			Contrast = 0.15,
-		},
+		RockColor = Color3.fromRGB(48, 44, 58),
+		Accent = Color3.fromRGB(170, 150, 235),
+		Mood = zoneMood(23.6, 1.4, Color3.fromRGB(95, 92, 125), Color3.fromRGB(95, 90, 140), Color3.fromRGB(40, 35, 70), 0.3, 1, {
+			Exposure = 0.4,
+			Ambient = Color3.fromRGB(60, 58, 80),
+		}),
 	},
 }
 
@@ -404,23 +367,55 @@ function Shared.GetDimension(d: number)
 	local theme = themes[(d - 1) % #themes + 1]
 	local cycle = math.floor((d - 1) / #themes)
 	local hue = (cycle * 0.17) % 1
+	local settings = Shared.Settings
+	local shiny = d % settings.ShinyEvery == 0
 	local colors = {}
 	for i, color in ipairs(theme.Crystals) do
-		colors[i] = shiftHue(color, hue)
+		local c = shiftHue(color, hue)
+		if not shiny then
+			-- normal dimensions have deeper, more natural gem colors
+			local h, sat, v = c:ToHSV()
+			c = Color3.fromHSV(h, sat * 0.8, v * 0.78)
+		end
+		colors[i] = c
 	end
-	local settings = Shared.Settings
+	local name = theme.Name .. (ROMAN[cycle + 1] or (" " .. (cycle + 1)))
+
+	-- normal dimensions get softer, more natural colors and light.
+	-- shiny ones keep the bright colors and get extra glow.
+	local function soften(c: Color3): Color3
+		if shiny then
+			return c
+		end
+		local h, sat, v = c:ToHSV()
+		return Color3.fromHSV(h, sat * 0.6, v * 0.85)
+	end
+	local skyMood = table.clone(theme.Mood)
+	if shiny then
+		skyMood.Saturation = theme.Mood.Saturation + 0.15
+		skyMood.Exposure = theme.Mood.Exposure + 0.15
+		skyMood.Glare = 0.6
+	else
+		skyMood.Saturation = theme.Mood.Saturation * 0.35 - 0.04
+		skyMood.Glare = theme.Mood.Glare * 0.5
+		skyMood.AtmosphereColor = theme.Mood.AtmosphereColor:Lerp(Color3.fromRGB(200, 205, 215), 0.45)
+		skyMood.Tint = theme.Mood.Tint:Lerp(Color3.fromRGB(255, 253, 248), 0.6)
+	end
 	return {
 		Number = d,
-		Name = theme.Name .. (ROMAN[cycle + 1] or (" " .. (cycle + 1))),
+		Shiny = shiny,
+		Name = if shiny then "Shiny " .. name else name,
 		Emoji = theme.Emoji,
 		Theme = theme,
 		Level = math.ceil(d / settings.DimensionsPerLevel), -- level you need
 		Health = math.floor(settings.DimensionHealth * settings.DimensionHealthGrowth ^ (d - 1)),
-		Gems = math.floor(settings.DimensionGems * settings.DimensionGemGrowth ^ (d - 1)),
+		Gems = math.floor(settings.DimensionGems * settings.DimensionGemGrowth ^ (d - 1)) * (if shiny then 2 else 1),
 		XP = d,
 		CrystalColors = colors,
 		Accent = shiftHue(theme.Accent, hue),
-		Mood = theme.Mood,
+		Ground = soften(theme.Ground),
+		Rock = soften(theme.Rock),
+		Mood = skyMood,
 	}
 end
 
@@ -693,6 +688,93 @@ end
 function Shared.GetRarity(index: number, count: number)
 	local r = math.clamp(math.ceil(index / count * 6), 1, 6)
 	return Shared.Rarities[r]
+end
+
+--------------------------------------------------------------------------------
+-- FREE GIFTS, DAILY REWARDS AND QUESTS
+--   Rewards are counted in "crystals": 10 means as many coins as mining
+--   10 crystals in the best place you can mine. So they are always worth it!
+--------------------------------------------------------------------------------
+-- Free gifts you get for playing (Minutes = how long you have to play)
+Shared.Gifts = {
+	{ Minutes = 1, Crystals = 10 },
+	{ Minutes = 3, Crystals = 15 },
+	{ Minutes = 5, Egg = true },
+	{ Minutes = 8, Crystals = 25 },
+	{ Minutes = 12, Crystals = 35 },
+	{ Minutes = 16, Egg = true },
+	{ Minutes = 20, Crystals = 50 },
+	{ Minutes = 30, Crystals = 75 },
+	{ Minutes = 45, Egg = true },
+	{ Minutes = 60, Crystals = 150 },
+}
+
+-- Daily rewards: come back every day to keep your streak!
+Shared.DailyRewards = {
+	{ Crystals = 30 },
+	{ Crystals = 50 },
+	{ Crystals = 80 },
+	{ Crystals = 120, Egg = true },
+	{ Crystals = 170 },
+	{ Crystals = 230 },
+	{ Crystals = 400, Egg = true },
+}
+
+-- The kinds of quests. Target = how many, based on how many quests you finished.
+Shared.QuestKinds = {
+	mine = { Text = "Mine %s crystals", Emoji = "⛏️", Target = function(done: number)
+		return 20 + math.min(done, 30) * 5
+	end },
+	sell = { Text = "Sell your gems %s times", Emoji = "💰", Target = function(done: number)
+		return 2 + math.min(math.floor(done / 4), 6)
+	end },
+	hatch = { Text = "Hatch %s eggs", Emoji = "🥚", Target = function(done: number)
+		return 2 + math.min(math.floor(done / 3), 10)
+	end },
+	golden = { Text = "Mine %s golden crystal", Emoji = "✨", Target = function()
+		return 1
+	end },
+	obby = { Text = "Finish the sky obby", Emoji = "🏃", Target = function()
+		return 1
+	end },
+	giant = { Text = "Mine %s giant crystals", Emoji = "💎", Target = function(done: number)
+		return 3 + math.min(math.floor(done / 3), 7)
+	end },
+}
+Shared.QuestOrder = { "mine", "sell", "hatch", "giant", "obby", "golden" }
+
+-- Coins you get for mining one crystal in the best place you can mine.
+-- state needs Zone, Level, Rebirths and Pets (how many of each pet you own)
+function Shared.CoinsPerCrystal(state): number
+	local best = Shared.Zones[math.clamp(state.Zone, 1, #Shared.Zones)].Gems
+	local dims = Shared.DimensionsUnlocked(state.Level)
+	if dims > 2 then
+		best = math.max(best, Shared.GetDimension(dims - 2).Gems)
+	end
+	return best * Shared.GemMultiplier(state.Pets) * Shared.CoinMultiplier(state.Rebirths)
+end
+
+function Shared.RewardCoins(state, crystals: number): number
+	return math.max(25, math.floor(Shared.CoinsPerCrystal(state) * crystals))
+end
+
+function Shared.ObbyReward(state): number
+	return math.max(300, Shared.RewardCoins(state, Shared.Settings.ObbyRewardCrystals))
+end
+
+function Shared.QuestText(quest): string
+	local kind = Shared.QuestKinds[quest.Kind]
+	return kind.Emoji .. " " .. string.format(kind.Text, Shared.Format(quest.Target))
+end
+
+function Shared.QuestReward(state, done: number): (number, number)
+	local coins = Shared.RewardCoins(state, 40 * (1 + math.min(done, 50) * 0.02))
+	local xp = math.max(5, math.floor(Shared.XPNeeded(state.Level) * 0.15))
+	return coins, xp
+end
+
+function Shared.Today(): number
+	return math.floor(os.time() / 86400)
 end
 
 --------------------------------------------------------------------------------

@@ -27,8 +27,8 @@
       "$className": "Lighting",
       "$properties": {
         "Technology": "Future",
-        "ClockTime": 14.5,
-        "Brightness": 3,
+        "ClockTime": 14.2,
+        "Brightness": 2.6,
         "GlobalShadows": true
       }
     },
@@ -36,6 +36,13 @@
       "$className": "Workspace",
       "$properties": {
         "StreamingEnabled": false
+      },
+      "Terrain": {
+        "$className": "Terrain",
+        "$properties": {
+          "Decoration": true,
+          "GrassLength": 0.6
+        }
       }
     }
   }

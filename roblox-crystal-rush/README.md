@@ -1,12 +1,24 @@
 # 💎 Crystal Rush Simulator
 
-A Roblox mining simulator. You mine glowing crystals, fill your backpack with gems,
+A Roblox mining simulator. You mine gem crystals, fill your backpack with gems,
 sell them for coins, and spend the coins in the shop.
 
 ## What's in the game
 
-- **5 zones**, each with its own look and sky color:
+- **5 zones** with natural-looking ground, hills, trees, rocks, lakes and their own sky:
   🌻 Sunny Meadow → 💜 Crystal Caves → 🌋 Lava Volcano → ❄️ Frozen Peaks → 🌌 Galaxy Isles
+- **Realistic gems**: see-through crystals with pointy tips, growing out of rock. When you mine one,
+  it breaks into dust, rock chips and glass shards, the gems fly into you, and a new crystal grows
+  back out of the ground.
+- **✨ Golden crystals**: 2% of crystals are made of gold and sparkle. They give 10x gems and 5x XP.
+- **🏃 Sky obby** above the spawn: 3 checkpoints, lava, beams and pillars. Finish it to win a big pile
+  of coins (as much as mining 80 crystals). It pays again every 4 minutes, and it remembers your best time.
+- **📜 Quests**: always one quest on the right side of the screen (mine crystals, sell, hatch eggs,
+  finish the obby, ...). Each one gives coins and XP, and the next one starts right away.
+- **🎁 Free gifts** for playing (after 1, 3, 5, 8, 12 ... minutes), some of them free eggs.
+- **📅 Daily rewards**: come back every day. The rewards get bigger for 7 days in a row.
+- **🎵 Music**: a calm music box plays in the background (turn it off on the right side).
+  You can put real songs in too, see below.
 - **Shop** with 11 pickaxes, 10 backpacks and 8 pets. Your best 3 pets follow you around and boost your gems.
 - **🥚 Egg machines** (one at the spawn, one in each zone) hatch **21 rare pets**: Legendary pets
   glow and have an aura, and the Galaxy Egg has a 0.1% **Secret** pet. Every machine shows its chances.
@@ -16,9 +28,13 @@ sell them for coins, and spend the coins in the shop.
   3 dimensions, level 2 opens 6, level 3 opens 9, and it never stops. There are 12 themes
   (Candy World, Neon City, Ocean Reef, Jungle, …). After that they come back with new colors and
   stronger crystals: Candy World II, Candy World III, and so on.
+  Normal dimensions have soft, natural colors. **Every 5th dimension is a ✨ SHINY dimension**:
+  it glows, sparkles and gives **2x gems**.
 - **Rebirths**: start over and earn more coins forever. You keep your pets.
-- **Gates** between zones: walk up and press **E** to unlock the next zone.
-- **Giant crystals**, a health bar on every crystal, sparkles, flying gems, sounds, and a glowing line that leads you to a sell pad when your backpack is full.
+- **Gates** between zones: walk up and press **E** to unlock the next zone. The iron bars slide up when you do.
+- **Giant crystals**, a health bar on every crystal, sounds, and a glowing line that leads you to the
+  closest sell pad you are allowed to use when your backpack is full. There is also a
+  **🌀 Teleport to Sell** button.
 - **Progress saves automatically** once the game is published.
 - Works on computer, phone and tablet.
 
@@ -48,14 +64,19 @@ Use this if the file doesn't open for some reason.
    The names must be exactly the same, with capital letters.
 4. For the best graphics: click **Lighting** in the Explorer, then in Properties set **Technology** to **Future**.
 5. Click **Workspace** and turn **StreamingEnabled** off.
-6. Press **▶ Play**.
+6. For grass blades: open **Workspace**, click **Terrain** and turn on **Decoration**.
+7. Press **▶ Play**.
 
 ## How to play
 
 - **Click** (or **tap**) a crystal to mine it. **Hold** the button to keep mining.
-- When the backpack is full, walk onto a gold **💰 SELL** pad.
+- When the backpack is full, stand on a **💰 SELL** pad (or press **🌀 Teleport to Sell**).
+  You can only sell in zones you have unlocked, and in the dimension you are in.
 - Open the **🛒 Shop** to buy better pickaxes, bigger backpacks and pets.
-- At an **egg machine**, press **E** to hatch 1 egg or **R** to hatch 3.
+- At an **egg machine**, press **E** to hatch 1 egg or **R** to hatch 3. If you have a free egg,
+  **E** uses it.
+- Walk onto the **🏃 SKY OBBY** pad at the spawn and press **E** to start the obby.
+- Check the right side of the screen for your **quest**, **free gifts** and **daily reward**.
 - Click **🌌 DIMENSIONS** (or walk into the purple portal at the spawn) and pick a dimension.
   The **🏠 HOME** portal on every island takes you back.
 - Walk to a gate and press **E** to unlock the next zone.
@@ -97,6 +118,22 @@ Everything you'd want to tweak is in **`GameShared`** (in ReplicatedStorage):
 - `Shared.DimensionThemes`: the dimension themes. Add your own and it joins the list!
 - In `Shared.Settings`, `DimensionsPerLevel = 3` sets how many dimensions each level unlocks,
   and `XPBase` sets how much XP a level needs
+- `ShinyEvery = 5`: every 5th dimension is shiny. `GoldenChance = 0.02`: how often crystals are golden.
+- `ObbyRewardCrystals` and `ObbyCooldown`: how much the obby pays and how often
+- `Shared.Gifts`, `Shared.DailyRewards`, `Shared.QuestKinds`: the free gifts, daily rewards and quests
+
+## Add your own music
+
+The music box is made from a built-in Roblox sound, so it works without anything else.
+For real songs:
+
+1. In Studio, open the **Toolbox** (View tab → Toolbox) and pick **Audio**.
+2. Search for something like "calm", "adventure" or "chill". Songs uploaded by **Roblox**
+   are free to use in any game.
+3. Right-click a song → **Copy Asset ID**.
+4. Open **GameShared**, find `MusicIds = {},` and paste the number between the brackets:
+   `MusicIds = { 1234567890 },`. You can add more songs with commas: `{ 111, 222, 333 }`.
+   They play one after another. `MusicVolume` sets how loud.
 
 **Testing tip:** set `StudioStartCoins = 1000000` to start with a million coins in Studio,
 so you can try every item. Set it back to `0` before you publish.
@@ -107,8 +144,8 @@ so you can try every item. Set it back to `0` before you publish.
 CrystalRush.rbxlx            ← ready-made place file (open this in Studio)
 default.project.json         ← Rojo project, used to build the .rbxlx
 src/shared/GameShared.luau   ← settings, items and 3D models (ModuleScript)
-src/server/Main.server.luau  ← map building, mining, shop, saving (Script)
-src/client/Client.client.luau← screen UI, clicking, pets, effects (LocalScript)
+src/server/Main.server.luau  ← map building, mining, shop, obby, quests, saving (Script)
+src/client/Client.client.luau← screen UI, clicking, pets, effects, music (LocalScript)
 ```
 
 If you change the files in `src/`, rebuild the place file with

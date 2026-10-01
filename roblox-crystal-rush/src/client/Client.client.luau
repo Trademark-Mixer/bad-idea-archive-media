@@ -2,9 +2,9 @@
 	Client  (LocalScript inside StarterPlayer > StarterPlayerScripts)
 
 	Runs on each player's own computer:
-	  * the screen UI (coins, backpack, shop, rebirth, teleport)
+	  * the screen UI (coins, backpack, shop, rebirth, teleport, quests, gifts, daily rewards)
 	  * clicking crystals to mine them
-	  * pets following you, spinning decorations, sparkles and sounds
+	  * pets following you, spinning decorations, sparkles, sounds and music
 	  * changing the sky and colors in every zone
 ]]
 
@@ -26,7 +26,7 @@ local Format = Shared.Format
 
 local RemoteFolder = ReplicatedStorage:WaitForChild("Remotes")
 local R: { [string]: RemoteEvent } = {}
-for _, name in ipairs({ "Mine", "Buy", "Rebirth", "Teleport", "Sync", "Notify", "Effect", "OpenMenu", "EnterDimension" }) do
+for _, name in ipairs({ "Mine", "Buy", "Rebirth", "Teleport", "Sync", "Notify", "Effect", "OpenMenu", "EnterDimension", "GoSell", "Claim" }) do
 	R[name] = RemoteFolder:WaitForChild(name) :: RemoteEvent
 end
 
@@ -39,6 +39,10 @@ local PetFolder = Workspace:WaitForChild("Pets")
 local GateFolder = Workspace:WaitForChild("Gates")
 local SellFolder = Workspace:WaitForChild("SellPads")
 local WallFolder = Workspace:WaitForChild("Walls")
+-- flying gems, rock chips and shards live here (only on this player's screen)
+local FxFolder = Instance.new("Folder")
+FxFolder.Name = "LocalEffects"
+FxFolder.Parent = Workspace
 
 -- Hide the default tool bar (your pickaxe is always in your hand)
 pcall(function()
@@ -58,8 +62,18 @@ type State = {
 	Hatched: number,
 	Level: number,
 	XP: number,
+	FreeEggs: number,
+	Quest: { Kind: string, Target: number, Progress: number },
+	QuestsDone: number,
+	Played: number, -- seconds you have played since you joined
+	Gifts: { boolean }, -- which free gifts you already claimed
+	DailyReady: boolean,
+	DailyStreak: number,
+	ObbyBest: number,
+	ObbyWait: number, -- seconds until the obby pays out again
 }
 local state: State? = nil
+local syncedAt = 0 -- when the last state arrived (os.clock)
 local ownedPets: { [number]: number } = {} -- [pet number] = how many you own
 local equippedPets: { [number]: number } = {} -- [pet number] = how many are following you
 
@@ -284,6 +298,106 @@ local function updateScale()
 end
 
 --------------------------------------------------------------------------------
+-- MUSIC (your songs from Settings.MusicIds, or a calm little music box)
+--------------------------------------------------------------------------------
+local music = { On = true }
+local setMusic: (on: boolean) -> ()
+do
+	local musicGroup: SoundGroup = new("SoundGroup", { Name = "CrystalRushMusic", Volume = Settings.MusicVolume, Parent = SoundService })
+	new("ReverbSoundEffect", { DecayTime = 2.4, Density = 0.9, Diffusion = 1, DryLevel = -3, WetLevel = -7, Parent = musicGroup })
+	new("EqualizerSoundEffect", { HighGain = -9, MidGain = -2, LowGain = 2, Parent = musicGroup })
+	setMusic = function(on: boolean)
+		music.On = on
+		tween(musicGroup, 0.6, { Volume = if on then Settings.MusicVolume else 0 })
+	end
+
+	-- The music box: chords C, Am, F, G as little arpeggios, with a slow tune on top.
+	-- Numbers are notes (12 = one octave higher).
+	local MUSIC_CHORDS = {
+		{ 0, 4, 7, 12, 7, 4, 7, 4 },
+		{ -3, 0, 4, 9, 4, 0, 4, 0 },
+		{ -7, -3, 0, 5, 0, -3, 0, -3 },
+		{ -5, -1, 2, 7, 2, -1, 2, -1 },
+	}
+	local MUSIC_TUNE: { { [number]: number } } = {
+		{ [1] = 16, [5] = 14 },
+		{ [1] = 12, [5] = 16 },
+		{ [1] = 17, [5] = 16, [7] = 14 },
+		{ [1] = 14, [5] = 11 },
+	}
+
+	local function musicNote(note: number, volume: number)
+		local template = soundTemplates.Click
+		if not template then
+			playSound("Click", 1, 0)
+			template = soundTemplates.Click
+		end
+		local sound = template:Clone()
+		sound.PlaybackSpeed = 0.75 * 2 ^ (note / 12)
+		sound.Volume = volume
+		sound.SoundGroup = musicGroup
+		sound.Parent = SoundService
+		sound:Play()
+		Debris:AddItem(sound, 3)
+	end
+
+	local function playMusicBox()
+		local loops = 0
+		while true do
+			for bar, chord in ipairs(MUSIC_CHORDS) do
+				for k, note in ipairs(chord) do
+					if music.On then
+						musicNote(note, 0.22)
+						local tune = MUSIC_TUNE[bar][k]
+						if tune then
+							musicNote(tune, 0.34)
+						end
+					end
+					task.wait(0.36)
+				end
+			end
+			loops += 1
+			if loops % 2 == 0 then
+				task.wait(5) -- a little quiet time
+			end
+		end
+	end
+
+	local function playSongs(ids: { number })
+		local i = 0
+		while true do
+			i = i % #ids + 1
+			local song = new("Sound", {
+				Name = "Song",
+				SoundId = "rbxassetid://" .. tostring(ids[i]),
+				Volume = 1,
+				SoundGroup = musicGroup,
+				Parent = SoundService,
+			})
+			song:Play()
+			local started = os.clock()
+			repeat
+				task.wait(1)
+				local elapsed = os.clock() - started
+				local finished = song.TimeLength > 0 and not song.IsPlaying and elapsed > 2
+				local broken = song.TimeLength == 0 and elapsed > 12 -- the song didn't load
+			until finished or broken or elapsed > 900
+			song:Destroy()
+		end
+	end
+
+	task.spawn(function()
+		task.wait(2)
+		local ids = Settings.MusicIds
+		if type(ids) == "table" and #ids > 0 then
+			playSongs(ids)
+		else
+			playMusicBox()
+		end
+	end)
+end
+
+--------------------------------------------------------------------------------
 -- SCREEN GUIS
 --------------------------------------------------------------------------------
 for _, oldName in ipairs({ "CrystalRushGui", "CrystalRushFX" }) do
@@ -434,6 +548,297 @@ button({
 })
 
 --------------------------------------------------------------------------------
+-- RIGHT SIDE: QUEST, FREE GIFTS, DAILY REWARD, OBBY, MUSIC
+--------------------------------------------------------------------------------
+local clockText: (seconds: number) -> string
+local playedSeconds: () -> number
+local obbyWait: () -> number
+local refreshSide: () -> ()
+local questPop: UIScale
+local obbyState = { Checkpoint = 0 }
+do
+	clockText = function(seconds: number): string
+		local s = math.max(0, math.ceil(seconds))
+		if s >= 3600 then
+			return string.format("%d:%02d:%02d", s // 3600, (s // 60) % 60, s % 60)
+		end
+		return string.format("%d:%02d", s // 60, s % 60)
+	end
+
+	local side = new("Frame", {
+		Name = "SidePanel",
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, -16, 0.45, 0),
+		Size = UDim2.fromOffset(240, 440),
+		BackgroundTransparency = 1,
+		Parent = gui,
+	})
+	autoScale(side)
+	new("UIListLayout", {
+		Padding = UDim.new(0, 10),
+		HorizontalAlignment = Enum.HorizontalAlignment.Right,
+		VerticalAlignment = Enum.VerticalAlignment.Center,
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		Parent = side,
+	})
+
+	-- Quest tracker
+	local questCard = new("Frame", { Name = "Quest", Size = UDim2.fromOffset(240, 114), BackgroundColor3 = DARK, LayoutOrder = 1, Parent = side })
+	round(questCard, 16)
+	outline(questCard, 3)
+	label({
+		Text = "📜 QUEST",
+		Size = UDim2.new(1, -20, 0, 22),
+		Position = UDim2.fromOffset(10, 8),
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextColor3 = Color3.fromRGB(255, 215, 110),
+		Parent = questCard,
+	})
+	local questText = label({
+		Text = "",
+		Size = UDim2.new(1, -20, 0, 24),
+		Position = UDim2.fromOffset(10, 32),
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Parent = questCard,
+	})
+	local questBar = new("Frame", { Size = UDim2.new(1, -20, 0, 22), Position = UDim2.fromOffset(10, 61), BackgroundColor3 = Color3.fromRGB(18, 18, 30), Parent = questCard })
+	round(questBar, 11)
+	local questFill = new("Frame", { Size = UDim2.fromScale(0, 1), BackgroundColor3 = WHITE, Parent = questBar })
+	round(questFill, 11)
+	gradient(questFill, COLORS.Green)
+	local questCount = label({
+		Text = "0 / 0",
+		Size = UDim2.fromScale(1, 0.78),
+		Position = UDim2.fromScale(0.5, 0.5),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Parent = questBar,
+	})
+	local questReward = label({
+		Text = "",
+		Size = UDim2.new(1, -20, 0, 18),
+		Position = UDim2.fromOffset(10, 89),
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextColor3 = Color3.fromRGB(205, 210, 230),
+		Stroke = 0,
+		Parent = questCard,
+	})
+	questPop = new("UIScale", { Parent = questCard })
+
+	-- A little red "!" that wiggles when something is ready
+	local function badge(parent: Instance): TextLabel
+		local b = label({
+			Name = "Badge",
+			Text = "!",
+			Size = UDim2.fromOffset(28, 28),
+			Position = UDim2.new(1, 6, 0, -8),
+			AnchorPoint = Vector2.new(1, 0),
+			BackgroundTransparency = 0,
+			BackgroundColor3 = Color3.fromRGB(235, 60, 70),
+			Visible = false,
+			ZIndex = 3,
+			Parent = parent,
+		})
+		round(b, 14)
+		return b
+	end
+
+	local giftButton, giftLabel, giftGrad = button({
+		Size = UDim2.fromOffset(240, 54),
+		Text = "🎁 Free gift",
+		Colors = COLORS.Pink,
+		Radius = 16,
+		LayoutOrder = 2,
+		Parent = side,
+		OnClick = function()
+			openWindow("Gifts")
+		end,
+	})
+	local giftBadge = badge(giftButton)
+
+	local dailyButton, dailyLabel, dailyGrad = button({
+		Size = UDim2.fromOffset(240, 54),
+		Text = "📅 Daily reward",
+		Colors = COLORS.Blue,
+		Radius = 16,
+		LayoutOrder = 3,
+		Parent = side,
+		OnClick = function()
+			openWindow("Daily")
+		end,
+	})
+	local dailyBadge = badge(dailyButton)
+
+	local obbyPill = new("Frame", { Name = "ObbyInfo", Size = UDim2.fromOffset(240, 44), BackgroundColor3 = DARK, LayoutOrder = 4, Parent = side })
+	round(obbyPill, 14)
+	outline(obbyPill, 3)
+	local obbyInfo = label({
+		Text = "🏃 Sky Obby",
+		Size = UDim2.new(1, -20, 0.6, 0),
+		Position = UDim2.fromScale(0.5, 0.5),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Parent = obbyPill,
+	})
+
+	local eggsPill = new("Frame", { Name = "FreeEggs", Size = UDim2.fromOffset(240, 40), BackgroundColor3 = WHITE, LayoutOrder = 5, Visible = false, Parent = side })
+	round(eggsPill, 14)
+	outline(eggsPill, 3)
+	gradient(eggsPill, COLORS.Gold)
+	local eggsText = label({
+		Text = "",
+		Size = UDim2.new(1, -20, 0.62, 0),
+		Position = UDim2.fromScale(0.5, 0.5),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Parent = eggsPill,
+	})
+
+	local musicLabel: TextLabel
+	_, musicLabel = button({
+		Size = UDim2.fromOffset(240, 44),
+		Text = "🔊 Music: ON",
+		Colors = COLORS.Gray,
+		Radius = 14,
+		LayoutOrder = 6,
+		Parent = side,
+		OnClick = function()
+			setMusic(not music.On)
+			musicLabel.Text = if music.On then "🔊 Music: ON" else "🔇 Music: OFF"
+		end,
+	})
+
+	-- How long you have played (the server tells us, and we keep counting)
+	playedSeconds = function(): number
+		local s = state
+		if not s then
+			return 0
+		end
+		return s.Played + (os.clock() - syncedAt)
+	end
+
+	local function giftsReady(): (number, number?)
+		local s = state
+		if not s then
+			return 0, nil
+		end
+		local ready, nextIn = 0, nil
+		local played = playedSeconds()
+		for i, gift in ipairs(Shared.Gifts) do
+			if not s.Gifts[i] then
+				local left = gift.Minutes * 60 - played
+				if left <= 0 then
+					ready += 1
+				elseif not nextIn or left < nextIn then
+					nextIn = left
+				end
+			end
+		end
+		return ready, nextIn
+	end
+
+	obbyWait = function(): number
+		local s = state
+		if not s then
+			return 0
+		end
+		return math.max(0, s.ObbyWait - (os.clock() - syncedAt))
+	end
+
+	refreshSide = function()
+		local s = state
+		if not s then
+			return
+		end
+		-- quest
+		local quest = s.Quest
+		questText.Text = Shared.QuestText(quest)
+		questCount.Text = Format(quest.Progress) .. " / " .. Format(quest.Target)
+		tween(questFill, 0.3, { Size = UDim2.fromScale(math.clamp(quest.Progress / quest.Target, 0, 1), 1) })
+		local coins, xp = Shared.QuestReward(s, s.QuestsDone)
+		questReward.Text = "Reward: 💰 " .. Format(coins) .. "  ⭐ " .. Format(xp) .. " XP"
+		-- gifts
+		local ready, nextIn = giftsReady()
+		giftBadge.Visible = ready > 0
+		if ready > 0 then
+			giftLabel.Text = if ready > 1 then "🎁 " .. ready .. " GIFTS READY!" else "🎁 GIFT READY!"
+			setColors(giftGrad, COLORS.Gold)
+		elseif nextIn then
+			giftLabel.Text = "🎁 Gift in " .. clockText(nextIn)
+			setColors(giftGrad, COLORS.Pink)
+		else
+			giftLabel.Text = "🎁 All gifts claimed!"
+			setColors(giftGrad, COLORS.Gray)
+		end
+		-- daily
+		dailyBadge.Visible = s.DailyReady
+		dailyLabel.Text = if s.DailyReady then "📅 DAILY REWARD!" else "📅 Daily: day " .. s.DailyStreak .. " 🔥"
+		setColors(dailyGrad, if s.DailyReady then COLORS.Gold else COLORS.Blue)
+		-- obby
+		local wait = obbyWait()
+		obbyInfo.Text = if wait > 0 then "🏃 Obby reward in " .. clockText(wait) else "🏃 Sky Obby: win 💰 " .. Format(Shared.ObbyReward(s))
+		-- free eggs
+		eggsPill.Visible = s.FreeEggs > 0
+		eggsText.Text = "🥚 " .. s.FreeEggs .. " FREE " .. (if s.FreeEggs == 1 then "egg" else "eggs") .. "! Hatch 1 to use"
+	end
+
+	-- Obby timer (top of the screen while you do the sky obby)
+	local obbyHud = new("Frame", {
+		Name = "ObbyHud",
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 64),
+		Size = UDim2.fromOffset(380, 62),
+		BackgroundColor3 = DARK,
+		Visible = false,
+		Parent = gui,
+	})
+	autoScale(obbyHud)
+	round(obbyHud, 18)
+	outline(obbyHud, 3)
+	local obbyTime = label({
+		Text = "🏃 0:00.0",
+		Size = UDim2.new(0, 160, 0, 38),
+		Position = UDim2.new(0, 14, 0.5, 0),
+		AnchorPoint = Vector2.new(0, 0.5),
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Parent = obbyHud,
+	})
+	local obbyFlags = label({
+		Text = "🚩 0/3",
+		Size = UDim2.new(0, 84, 0, 30),
+		Position = UDim2.new(0, 180, 0.5, 0),
+		AnchorPoint = Vector2.new(0, 0.5),
+		TextColor3 = Color3.fromRGB(255, 200, 190),
+		Parent = obbyHud,
+	})
+	button({
+		Size = UDim2.fromOffset(96, 44),
+		Position = UDim2.new(1, -10, 0.5, 0),
+		AnchorPoint = Vector2.new(1, 0.5),
+		Text = "✖ Quit",
+		Colors = COLORS.Red,
+		Radius = 12,
+		Parent = obbyHud,
+		OnClick = function()
+			R.Teleport:FireServer(0)
+		end,
+	})
+
+	-- every frame: wiggle the "!" badges and run the obby timer
+	RunService.RenderStepped:Connect(function()
+		local t = os.clock()
+		giftBadge.Rotation = math.sin(t * 7) * 12
+		dailyBadge.Rotation = math.sin(t * 7 + 1) * 12
+		local obbyStart = player:GetAttribute("ObbyStart")
+		if type(obbyStart) == "number" then
+			local elapsed = math.max(0, Workspace:GetServerTimeNow() - obbyStart)
+			obbyHud.Visible = true
+			obbyTime.Text = string.format("🏃 %d:%04.1f", elapsed // 60, elapsed % 60)
+			obbyFlags.Text = "🚩 " .. obbyState.Checkpoint .. "/3"
+		else
+			obbyHud.Visible = false
+		end
+	end)
+end
+
+--------------------------------------------------------------------------------
 -- TOASTS (little messages at the bottom), BANNERS AND WARNINGS
 --------------------------------------------------------------------------------
 local toastHolder = new("Frame", {
@@ -441,6 +846,7 @@ local toastHolder = new("Frame", {
 	Position = UDim2.new(0.5, 0, 1, -24),
 	Size = UDim2.fromOffset(520, 230),
 	BackgroundTransparency = 1,
+	ZIndex = 3,
 	Parent = gui,
 })
 autoScale(toastHolder)
@@ -473,8 +879,8 @@ local function toast(message: string, kind: string?)
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Parent = frame,
 	})
-	local scale: UIScale = new("UIScale", { Scale = 0.4, Parent = frame })
-	tween(scale, 0.25, { Scale = 1 }, Enum.EasingStyle.Back)
+	local scale: UIScale = new("UIScale", { Scale = 0.6, Parent = frame })
+	tween(scale, 0.3, { Scale = 1 }, Enum.EasingStyle.Back)
 
 	-- only keep the newest 4
 	local frames = {}
@@ -495,6 +901,7 @@ local function toast(message: string, kind: string?)
 			return
 		end
 		tween(frame, 0.4, { BackgroundTransparency = 1 })
+		tween(scale, 0.4, { Scale = 0.9 })
 		tween(text, 0.4, { TextTransparency = 1 })
 		tween(stroke, 0.4, { Transparency = 1 })
 		local textStroke = text:FindFirstChildOfClass("UIStroke")
@@ -514,6 +921,7 @@ local banner = label({
 	Size = UDim2.fromOffset(700, 70),
 	TextTransparency = 1,
 	Stroke = 4,
+	ZIndex = 3,
 	Parent = gui,
 })
 autoScale(banner)
@@ -528,7 +936,9 @@ local function showBanner(text: string, color: Color3?)
 	banner.TextColor3 = color or WHITE
 	banner.TextTransparency = 1
 	bannerStroke.Transparency = 1
-	tween(banner, 0.4, { TextTransparency = 0 })
+	banner.Size = UDim2.fromOffset(520, 52)
+	tween(banner, 0.45, { Size = UDim2.fromOffset(700, 70) }, Enum.EasingStyle.Back)
+	tween(banner, 0.3, { TextTransparency = 0 })
 	tween(bannerStroke, 0.4, { Transparency = 0 })
 	task.delay(2.6, function()
 		if bannerId == myId then
@@ -539,17 +949,35 @@ local function showBanner(text: string, color: Color3?)
 end
 
 -- "Backpack full!" warning
-local fullWarning = label({
-	Text = "🎒 BACKPACK FULL! Go to a 💰 SELL pad",
+local fullWarning = new("Frame", {
+	Name = "FullWarning",
 	AnchorPoint = Vector2.new(0.5, 0.5),
 	Position = UDim2.fromScale(0.5, 0.3),
-	Size = UDim2.fromOffset(620, 44),
-	TextColor3 = Color3.fromRGB(255, 225, 90),
+	Size = UDim2.fromOffset(620, 104),
+	BackgroundTransparency = 1,
 	Visible = false,
-	Stroke = 3,
 	Parent = gui,
 })
 autoScale(fullWarning)
+label({
+	Text = "🎒 BACKPACK FULL! Go to a 💰 SELL pad",
+	Size = UDim2.new(1, 0, 0, 44),
+	TextColor3 = Color3.fromRGB(255, 225, 90),
+	Stroke = 3,
+	Parent = fullWarning,
+})
+button({
+	Size = UDim2.fromOffset(270, 52),
+	Position = UDim2.new(0.5, 0, 0, 50),
+	AnchorPoint = Vector2.new(0.5, 0),
+	Text = "🌀 Teleport to Sell",
+	Colors = COLORS.Gold,
+	Radius = 14,
+	Parent = fullWarning,
+	OnClick = function()
+		R.GoSell:FireServer()
+	end,
+})
 
 local lastFullToast = 0
 local function backpackFull()
@@ -567,12 +995,43 @@ type Window = { Holder: Frame, Pop: UIScale, Body: Frame, OnOpen: (() -> ())? }
 local windows: { [string]: Window } = {}
 local openName: string? = nil
 
+-- darkens the game behind an open window (click it to close the window)
+local backdrop = new("TextButton", {
+	Name = "Backdrop",
+	Text = "",
+	AutoButtonColor = false,
+	Size = UDim2.fromScale(1, 1),
+	BackgroundColor3 = Color3.fromRGB(8, 8, 18),
+	BackgroundTransparency = 1,
+	Visible = false,
+	ZIndex = 2,
+	Parent = gui,
+})
+local backdropToken = 0
+
 local function closeWindow()
-	if openName then
-		windows[openName].Holder.Visible = false
-		openName = nil
+	local name = openName
+	if not name then
+		return
 	end
+	openName = nil
+	backdropToken += 1
+	local token = backdropToken
+	local window = windows[name]
+	tween(window.Pop, 0.09, { Scale = 0.9 }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+	tween(backdrop, 0.15, { BackgroundTransparency = 1 })
+	task.delay(0.09, function()
+		if openName ~= name then
+			window.Holder.Visible = false
+		end
+	end)
+	task.delay(0.15, function()
+		if token == backdropToken then
+			backdrop.Visible = false
+		end
+	end)
 end
+backdrop.Activated:Connect(closeWindow)
 
 openWindow = function(name: string, keepOpen: boolean?)
 	if openName == name then
@@ -587,9 +1046,14 @@ openWindow = function(name: string, keepOpen: boolean?)
 		return
 	end
 	openName = name
+	backdropToken += 1
 	window.Holder.Visible = true
-	window.Pop.Scale = 0.6
-	tween(window.Pop, 0.3, { Scale = 1 }, Enum.EasingStyle.Back)
+	window.Holder.Position = UDim2.new(0.5, 0, 0.5, 30)
+	tween(window.Holder, 0.35, { Position = UDim2.fromScale(0.5, 0.5) }, Enum.EasingStyle.Quint)
+	window.Pop.Scale = 0.85
+	tween(window.Pop, 0.35, { Scale = 1 }, Enum.EasingStyle.Back)
+	backdrop.Visible = true
+	tween(backdrop, 0.25, { BackgroundTransparency = 0.6 })
 	if window.OnOpen then
 		window.OnOpen()
 	end
@@ -603,6 +1067,7 @@ local function makeWindow(name: string, title: string, width: number, height: nu
 		Size = UDim2.fromOffset(width, height),
 		BackgroundTransparency = 1,
 		Visible = false,
+		ZIndex = 4,
 		Parent = gui,
 	})
 	autoScale(holder)
@@ -1128,8 +1593,12 @@ local function makeDimCard(d: number): DimCard
 	local frame = new("Frame", { Name = "Dimension" .. d, BackgroundColor3 = WHITE, LayoutOrder = d, Parent = dimScroller })
 	round(frame, 16)
 	outline(frame, 3)
-	gradient(frame, { dim.Accent:Lerp(WHITE, 0.1), dim.Theme.Ground:Lerp(Color3.new(0, 0, 0), 0.4) })
-	label({ Text = dim.Emoji .. " #" .. d, Size = UDim2.new(1, -12, 0, 40), Position = UDim2.fromOffset(6, 6), Stroke = 3, Parent = frame })
+	if dim.Shiny then
+		gradient(frame, { Color3.fromRGB(255, 225, 120), dim.Accent:Lerp(Color3.new(0, 0, 0), 0.3) })
+	else
+		gradient(frame, { dim.Accent:Lerp(Color3.fromRGB(120, 120, 130), 0.45), dim.Ground:Lerp(Color3.new(0, 0, 0), 0.5) })
+	end
+	label({ Text = (if dim.Shiny then "✨ #" else dim.Emoji .. " #") .. d, Size = UDim2.new(1, -12, 0, 40), Position = UDim2.fromOffset(6, 6), Stroke = 3, Parent = frame })
 	label({ Text = dim.Name, Size = UDim2.new(1, -12, 0, 26), Position = UDim2.fromOffset(6, 48), Parent = frame })
 	label({
 		Text = "❤️ " .. Format(dim.Health) .. "   💎 " .. Format(dim.Gems),
@@ -1185,6 +1654,187 @@ local function refreshDimensions()
 	dimInfo.Text = string.format("⭐ Level %d: you can visit %d dimensions. Level up to unlock %d more!", s.Level, unlocked, Settings.DimensionsPerLevel)
 end
 dimWindow.OnOpen = refreshDimensions
+
+--------------------------------------------------------------------------------
+-- FREE GIFTS (for playing)
+--------------------------------------------------------------------------------
+local refreshGifts: () -> ()
+local refreshDaily: () -> ()
+do
+	local giftsWindow = makeWindow("Gifts", "🎁 FREE GIFTS", 680, 480, COLORS.Pink)
+	label({
+		Text = "Keep playing to unlock more gifts! (They start again when you rejoin.)",
+		Size = UDim2.new(1, 0, 0, 26),
+		TextColor3 = Color3.fromRGB(220, 215, 240),
+		Stroke = 0,
+		Parent = giftsWindow.Body,
+	})
+	local giftGrid = new("Frame", {
+		Size = UDim2.new(1, 0, 1, -38),
+		Position = UDim2.fromOffset(0, 38),
+		BackgroundTransparency = 1,
+		Parent = giftsWindow.Body,
+	})
+	new("UIGridLayout", {
+		CellSize = UDim2.fromOffset(114, 160),
+		CellPadding = UDim2.fromOffset(10, 12),
+		HorizontalAlignment = Enum.HorizontalAlignment.Center,
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		Parent = giftGrid,
+	})
+	type GiftCard = { Index: number, Icon: TextLabel, Reward: TextLabel, ButtonLabel: TextLabel, ButtonGrad: UIGradient }
+	local giftCards: { GiftCard } = {}
+	for i, gift in ipairs(Shared.Gifts) do
+		local frame = new("Frame", { Name = "Gift" .. i, BackgroundColor3 = WHITE, LayoutOrder = i, Parent = giftGrid })
+		round(frame, 14)
+		outline(frame, 3)
+		gradient(frame, { Color3.fromRGB(78, 66, 120), Color3.fromRGB(42, 38, 72) })
+		local icon = label({ Text = if gift.Egg then "🥚" else "🎁", Size = UDim2.new(1, 0, 0, 54), Position = UDim2.fromOffset(0, 8), Stroke = 0, Parent = frame })
+		local reward = label({
+			Text = "",
+			Size = UDim2.new(1, -10, 0, 24),
+			Position = UDim2.fromOffset(5, 66),
+			TextColor3 = Color3.fromRGB(255, 235, 150),
+			Parent = frame,
+		})
+		local _, buttonLabel, buttonGrad = button({
+			Size = UDim2.new(1, -14, 0, 42),
+			Position = UDim2.new(0.5, 0, 1, -8),
+			AnchorPoint = Vector2.new(0.5, 1),
+			Text = "",
+			Colors = COLORS.Gray,
+			Parent = frame,
+			OnClick = function()
+				local s = state
+				if s and not s.Gifts[i] and playedSeconds() >= gift.Minutes * 60 then
+					R.Claim:FireServer("gift", i)
+				elseif s and not s.Gifts[i] then
+					toast("⏳ Keep playing to unlock this gift!", "info")
+				end
+			end,
+		})
+		table.insert(giftCards, { Index = i, Icon = icon, Reward = reward, ButtonLabel = buttonLabel, ButtonGrad = buttonGrad })
+	end
+
+	refreshGifts = function()
+		local s = state
+		if not s then
+			return
+		end
+		local played = playedSeconds()
+		for _, card in ipairs(giftCards) do
+			local gift = Shared.Gifts[card.Index]
+			card.Reward.Text = if gift.Egg then "FREE egg!" else "💰 " .. Format(Shared.RewardCoins(s, gift.Crystals or 0))
+			local left = gift.Minutes * 60 - played
+			if s.Gifts[card.Index] then
+				card.ButtonLabel.Text = "✔ Claimed"
+				card.Icon.TextTransparency = 0.6
+				setColors(card.ButtonGrad, COLORS.Gray)
+			elseif left <= 0 then
+				card.ButtonLabel.Text = "CLAIM!"
+				card.Icon.TextTransparency = 0
+				setColors(card.ButtonGrad, COLORS.Green)
+			else
+				card.ButtonLabel.Text = "⏳ " .. clockText(left)
+				card.Icon.TextTransparency = 0
+				setColors(card.ButtonGrad, COLORS.Blue)
+			end
+		end
+	end
+	giftsWindow.OnOpen = refreshGifts
+
+	-- Daily rewards (come back every day!)
+	local dailyWindow = makeWindow("Daily", "📅 DAILY REWARDS", 740, 400, COLORS.Blue)
+	local dailyInfo = label({ Text = "", Size = UDim2.new(1, 0, 0, 30), Parent = dailyWindow.Body })
+	local dayRow = new("Frame", { Size = UDim2.new(1, 0, 0, 160), Position = UDim2.fromOffset(0, 42), BackgroundTransparency = 1, Parent = dailyWindow.Body })
+	new("UIListLayout", {
+		FillDirection = Enum.FillDirection.Horizontal,
+		HorizontalAlignment = Enum.HorizontalAlignment.Center,
+		Padding = UDim.new(0, 8),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		Parent = dayRow,
+	})
+	type DayCard = { Grad: UIGradient, Reward: TextLabel, Check: TextLabel, Stroke: UIStroke, Pop: UIScale }
+	local dayCards: { DayCard } = {}
+	for i, reward in ipairs(Shared.DailyRewards) do
+		local frame = new("Frame", { Name = "Day" .. i, Size = UDim2.fromOffset(92, 156), BackgroundColor3 = WHITE, LayoutOrder = i, Parent = dayRow })
+		round(frame, 14)
+		local stroke = outline(frame, 3)
+		local grad = gradient(frame, COLORS.Gray)
+		label({ Text = "Day " .. i, Size = UDim2.new(1, -8, 0, 26), Position = UDim2.fromOffset(4, 6), Parent = frame })
+		label({ Text = if reward.Egg then "🥚" else "💰", Size = UDim2.new(1, 0, 0, 48), Position = UDim2.fromOffset(0, 36), Stroke = 0, Parent = frame })
+		local rewardLabel = label({ Text = "", Size = UDim2.new(1, -8, 0, 40), Position = UDim2.fromOffset(4, 90), TextWrapped = true, Parent = frame })
+		local check = label({
+			Text = "✔",
+			Size = UDim2.fromOffset(40, 40),
+			Position = UDim2.new(1, -2, 0, 2),
+			AnchorPoint = Vector2.new(1, 0),
+			TextColor3 = Color3.fromRGB(130, 255, 140),
+			Visible = false,
+			Parent = frame,
+		})
+		table.insert(dayCards, { Grad = grad, Reward = rewardLabel, Check = check, Stroke = stroke, Pop = new("UIScale", { Parent = frame }) })
+	end
+	local dailyClaimLabel: TextLabel, dailyClaimGrad: UIGradient
+	_, dailyClaimLabel, dailyClaimGrad = button({
+		Size = UDim2.fromOffset(380, 62),
+		Position = UDim2.new(0.5, 0, 1, -4),
+		AnchorPoint = Vector2.new(0.5, 1),
+		Text = "",
+		Colors = COLORS.Green,
+		Radius = 18,
+		Parent = dailyWindow.Body,
+		OnClick = function()
+			local s = state
+			if s and s.DailyReady then
+				R.Claim:FireServer("daily")
+			else
+				toast("📅 Come back tomorrow for your next reward!", "info")
+			end
+		end,
+	})
+
+	refreshDaily = function()
+		local s = state
+		if not s then
+			return
+		end
+		local today = (s.DailyStreak - 1) % #Shared.DailyRewards + 1
+		for i, card in ipairs(dayCards) do
+			local reward = Shared.DailyRewards[i]
+			card.Reward.Text = "💰 " .. Format(Shared.RewardCoins(s, reward.Crystals or 0)) .. (if reward.Egg then "\n+ FREE egg" else "")
+			if i == today then
+				setColors(card.Grad, COLORS.Gold)
+				card.Stroke.Thickness = 4
+				card.Check.Visible = not s.DailyReady
+			elseif i < today then
+				setColors(card.Grad, COLORS.Green)
+				card.Stroke.Thickness = 3
+				card.Check.Visible = true
+			else
+				setColors(card.Grad, COLORS.Gray)
+				card.Stroke.Thickness = 3
+				card.Check.Visible = false
+			end
+		end
+		dailyInfo.Text = "🔥 Streak: " .. s.DailyStreak .. (if s.DailyStreak == 1 then " day" else " days") .. "  •  Come back every day for bigger rewards!"
+		if s.DailyReady then
+			dailyClaimLabel.Text = "🎁 CLAIM DAY " .. today .. "!"
+			setColors(dailyClaimGrad, COLORS.Green)
+		else
+			dailyClaimLabel.Text = "⏳ Next reward in " .. clockText(86400 - os.time() % 86400)
+			setColors(dailyClaimGrad, COLORS.Gray)
+		end
+	end
+	dailyWindow.OnOpen = function()
+		refreshDaily()
+		local s = state
+		if s then
+			local card = dayCards[(s.DailyStreak - 1) % #Shared.DailyRewards + 1]
+			pop(card.Pop, 1.15)
+		end
+	end
+end
 
 R.OpenMenu.OnClientEvent:Connect(function(name)
 	openWindow(name, true)
@@ -1271,17 +1921,19 @@ local function flyIcons(fromWorld: Vector3, emoji: string, target: GuiObject, ta
 end
 
 -- Crystal pieces that fly off when a crystal breaks
-local function shards(position: Vector3, color: Color3, count: number)
+local function shards(position: Vector3, color: Color3, count: number, shiny: boolean)
 	for _ = 1, count do
 		local shard = new("Part", {
 			Size = Vector3.new(0.5, 0.9, 0.5) * (0.6 + math.random() * 0.7),
 			CFrame = CFrame.new(position + Vector3.new(math.random() - 0.5, math.random() * 2, math.random() - 0.5))
 				* CFrame.Angles(math.random() * 6, math.random() * 6, math.random() * 6),
 			Color = color,
-			Material = Enum.Material.Neon,
+			Material = if shiny then Enum.Material.Neon else Enum.Material.Glass,
+			Transparency = if shiny then 0 else 0.1,
+			Reflectance = if shiny then 0 else 0.3,
 			CanTouch = false,
 			CastShadow = false,
-			Parent = Workspace,
+			Parent = FxFolder,
 		})
 		shard.AssemblyLinearVelocity = Vector3.new(math.random(-20, 20), math.random(15, 32), math.random(-20, 20))
 		shard.AssemblyAngularVelocity = Vector3.new(math.random(-10, 10), math.random(-10, 10), math.random(-10, 10))
@@ -1327,6 +1979,140 @@ local function myRoot(): BasePart?
 		return root
 	end
 	return nil
+end
+
+-- Are we in a shiny dimension right now?
+local function inShinyDimension(): boolean
+	local d = player:GetAttribute("Dimension")
+	return type(d) == "number" and Shared.GetDimension(d).Shiny
+end
+
+-- A puff of dust
+local function dust(position: Vector3, color: Color3, count: number, size: number)
+	local att = attachmentAt(position, 3)
+	local emitter = new("ParticleEmitter", {
+		Texture = "rbxasset://textures/particles/smoke_main.dds",
+		Color = ColorSequence.new(color),
+		LightEmission = 0,
+		LightInfluence = 1,
+		Size = NumberSequence.new(size, size * 2.4),
+		Transparency = NumberSequence.new(0.45, 1),
+		Lifetime = NumberRange.new(0.9, 1.5),
+		Speed = NumberRange.new(3, 7),
+		SpreadAngle = Vector2.new(180, 180),
+		Drag = 4,
+		Acceleration = Vector3.new(0, 1.5, 0),
+		Rate = 0,
+		Rotation = NumberRange.new(0, 360),
+		RotSpeed = NumberRange.new(-40, 40),
+		Parent = att,
+	})
+	emitter:Emit(count)
+end
+
+-- Little pieces of rock that bounce away
+local function chips(position: Vector3, color: Color3, count: number)
+	for _ = 1, count do
+		local chip = new("Part", {
+			Size = Vector3.new(0.35 + math.random() * 0.4, 0.3 + math.random() * 0.3, 0.35 + math.random() * 0.4),
+			CFrame = CFrame.new(position + Vector3.new(math.random() - 0.5, 0.3, math.random() - 0.5))
+				* CFrame.Angles(math.random() * 6, math.random() * 6, math.random() * 6),
+			Color = color:Lerp(Color3.new(0, 0, 0), math.random() * 0.25),
+			Material = Enum.Material.Slate,
+			CanTouch = false,
+			CastShadow = false,
+			Parent = FxFolder,
+		})
+		chip.AssemblyLinearVelocity = Vector3.new(math.random(-14, 14), math.random(10, 20), math.random(-14, 14))
+		chip.AssemblyAngularVelocity = Vector3.new(math.random(-12, 12), math.random(-12, 12), math.random(-12, 12))
+		task.delay(1.1, function()
+			if chip.Parent then
+				tween(chip, 0.5, { Transparency = 1 })
+			end
+		end)
+		Debris:AddItem(chip, 1.7)
+	end
+end
+
+-- Gems fly out of a broken crystal into you
+type FlyingGem = { Part: BasePart, Start: Vector3, Side: Vector3, Delay: number }
+local GEM_SIZE = Vector3.new(0.45, 0.7, 0.45)
+local function gemsToPlayer(from: Vector3, color: Color3, count: number, onArrive: () -> ())
+	local root = myRoot()
+	if not root then
+		return
+	end
+	local material = if inShinyDimension() then Enum.Material.Neon else Enum.Material.Glass
+	local gems: { FlyingGem } = {}
+	for i = 1, count do
+		local gem = new("Part", {
+			Size = GEM_SIZE,
+			CFrame = CFrame.new(from),
+			Anchored = true,
+			CanCollide = false,
+			CanTouch = false,
+			CastShadow = false,
+			Color = color,
+			Material = material,
+			Reflectance = 0.3,
+			Parent = FxFolder,
+		})
+		Debris:AddItem(gem, 3)
+		table.insert(gems, {
+			Part = gem,
+			Start = from + Vector3.new(math.random() * 2 - 1, math.random() * 1.5, math.random() * 2 - 1),
+			Side = Vector3.new(math.random() * 8 - 4, 0, math.random() * 8 - 4),
+			Delay = (i - 1) * 0.05,
+		})
+	end
+	local started = os.clock()
+	local connection: RBXScriptConnection
+	connection = RunService.RenderStepped:Connect(function()
+		local now = os.clock() - started
+		local target = if root.Parent then root.Position + Vector3.new(0, 0.5, 0) else from
+		local flying = 0
+		for _, g in ipairs(gems) do
+			if g.Part.Parent then
+				local a = math.clamp((now - g.Delay) / 0.6, 0, 1)
+				local e = a * a -- speeds up as it gets closer
+				local mid = g.Start + g.Side + Vector3.new(0, 5, 0)
+				local pos = g.Start:Lerp(mid, e):Lerp(mid:Lerp(target, e), e)
+				g.Part.CFrame = CFrame.new(pos) * CFrame.Angles(a * 9, a * 7, 0)
+				g.Part.Size = GEM_SIZE * (1 - a * 0.6)
+				if a >= 1 then
+					g.Part:Destroy()
+					onArrive()
+				else
+					flying += 1
+				end
+			end
+		end
+		if flying == 0 then
+			connection:Disconnect()
+		end
+	end)
+end
+
+-- New crystals grow up out of the ground
+local function backOut(t: number): number
+	local c1 = 1.70158
+	return 1 + (c1 + 1) * (t - 1) ^ 3 + c1 * (t - 1) ^ 2
+end
+local function grow(m: Model)
+	local final = m:GetPivot()
+	local started = os.clock()
+	local connection: RBXScriptConnection
+	connection = RunService.RenderStepped:Connect(function()
+		local t = math.clamp((os.clock() - started) / 0.55, 0, 1)
+		if not m.Parent then
+			connection:Disconnect()
+			return
+		end
+		placeModel(m, final * CFrame.new(0, -3.5 * (1 - backOut(t)), 0))
+		if t >= 1 then
+			connection:Disconnect()
+		end
+	end)
 end
 
 --------------------------------------------------------------------------------
@@ -1582,59 +2368,85 @@ end
 --------------------------------------------------------------------------------
 -- EVENTS FROM THE SERVER
 --------------------------------------------------------------------------------
-R.Effect.OnClientEvent:Connect(function(kind, a, b, c)
+local function rootPosition(): Vector3?
+	local root = myRoot()
+	return if root then root.Position else nil
+end
+
+local function celebrate(notes: number, speed: number)
+	local position = rootPosition()
+	if position then
+		confetti(position + Vector3.new(0, 3, 0))
+	end
+	chime(notes, speed)
+end
+
+local updateGate: (gate: Instance, animate: boolean?) -> ()
+
+R.Effect.OnClientEvent:Connect(function(kind, a, b, c, d, e)
 	if kind == "hit" then
 		local position: Vector3, damage: number, m: Model? = a, b, c
-		burst(position, Color3.new(1, 1, 1), 6, 14, 0.5)
-		worldText(position + Vector3.new(0, 1, 0), "-" .. Format(damage), Color3.fromRGB(255, 255, 255), 26)
+		burst(position, Color3.new(1, 1, 1), 4, 12, 0.35)
+		local rock = m and m.PrimaryPart
+		dust(position - Vector3.new(0, 2, 0), if rock then rock.Color:Lerp(WHITE, 0.35) else Color3.fromRGB(170, 165, 158), 2, 0.8)
+		worldText(position + Vector3.new(0, 1, 0), "-" .. Format(damage), Color3.fromRGB(255, 255, 255), 24)
 		playSound("Hit", 1.5 + math.random() * 0.4, 0.45)
 		if m and m.Parent then
 			shake(m)
 		end
 	elseif kind == "break" then
-		local position: Vector3, color: Color3, giant: boolean = a, b, c
-		burst(position, color, if giant then 45 else 25, if giant then 40 else 26, if giant then 1.4 else 0.9)
-		shards(position, color, if giant then 14 else 8)
-		local root = myRoot()
-		if root and (root.Position - position).Magnitude < 80 then
+		local position: Vector3, color: Color3, giant: boolean, golden: boolean? = a, b, c, d
+		burst(position, color, if giant then 30 else 14, if giant then 34 else 22, if giant then 1 else 0.6)
+		shards(position, color, if giant then 12 else 7, inShinyDimension())
+		chips(position - Vector3.new(0, 1.5, 0), Color3.fromRGB(110, 104, 98), if giant then 10 else 5)
+		dust(position - Vector3.new(0, 2, 0), Color3.fromRGB(175, 170, 162), if giant then 14 else 7, if giant then 2.2 else 1.3)
+		if golden then
+			burst(position, Color3.fromRGB(255, 215, 90), 40, 30, 1)
+		end
+		local position2 = rootPosition()
+		if position2 and (position2 - position).Magnitude < 80 then
 			playSound("Boom", if giant then 1.2 else 1.8, if giant then 0.35 else 0.18)
 		end
 	elseif kind == "reward" then
-		local position: Vector3, gems: number, xp: number? = a, b, c
-		worldText(position + Vector3.new(0, 2.5, 0), "+" .. Format(gems) .. " 💎", Color3.fromRGB(120, 240, 255), 38)
+		local position: Vector3, gems: number, xp: number?, golden: boolean?, color: Color3? = a, b, c, d, e
+		worldText(position + Vector3.new(0, 2.5, 0), "+" .. Format(gems) .. " 💎", Color3.fromRGB(120, 240, 255), 34)
 		if xp then
-			worldText(position + Vector3.new(0, 0.5, 0), "+" .. Format(xp) .. " XP", Color3.fromRGB(255, 150, 230), 26)
+			worldText(position + Vector3.new(0, 0.5, 0), "+" .. Format(xp) .. " XP", Color3.fromRGB(255, 150, 230), 24)
 		end
-		flyIcons(position, "💎", gemsPill, gemsPop, math.clamp(math.floor(gems / 5) + 2, 2, 7))
-		playSound("Click", 2, 0.6)
+		local arrived = 0
+		gemsToPlayer(position, color or Color3.fromRGB(120, 200, 230), math.clamp(math.floor(gems / 5) + 3, 3, 8), function()
+			arrived += 1
+			pop(gemsPop, 1.08)
+			playSound("Click", 1.6 + arrived * 0.08, 0.35)
+		end)
+		if golden then
+			showBanner("✨ GOLDEN CRYSTAL! ✨", Color3.fromRGB(255, 215, 90))
+			celebrate(7, 1.1)
+		end
 	elseif kind == "sold" then
 		local coins: number = a
-		local root = myRoot()
-		if root then
-			flyIcons(root.Position, "💰", coinsPill, coinsPop, 8)
-			confetti(root.Position + Vector3.new(0, 2, 0))
+		local position = rootPosition()
+		if position then
+			flyIcons(position, "💰", coinsPill, coinsPop, 8)
+			confetti(position + Vector3.new(0, 2, 0))
 		end
 		showBanner("💰 +" .. Format(coins) .. " COINS!", Color3.fromRGB(255, 220, 80))
 		chime(6, 1)
 	elseif kind == "full" then
 		backpackFull()
 	elseif kind == "bought" then
-		local root = myRoot()
-		if root then
-			confetti(root.Position + Vector3.new(0, 3, 0))
-		end
-		chime(4, 1.4)
+		celebrate(4, 1.4)
 	elseif kind == "unlock" then
 		local zone = Shared.Zones[a]
 		if zone then
 			showBanner("🔓 " .. string.upper(zone.Name) .. " UNLOCKED!", zone.Accent:Lerp(WHITE, 0.3))
 		end
-		playSound("Boom", 1.1, 0.4)
-		chime(6, 1.2)
-		local root = myRoot()
-		if root then
-			confetti(root.Position + Vector3.new(0, 3, 0))
+		local gate = GateFolder:FindFirstChild("Gate" .. tostring(a))
+		if gate then
+			updateGate(gate, true)
 		end
+		playSound("Boom", 1.1, 0.4)
+		celebrate(6, 1.2)
 	elseif kind == "rebirth" then
 		local who = Players:GetPlayerByUserId(a)
 		local char = who and who.Character
@@ -1660,16 +2472,90 @@ R.Effect.OnClientEvent:Connect(function(kind, a, b, c)
 			showBanner("⭐ LEVEL UP! LEVEL " .. tostring(b) .. " ⭐", Color3.fromRGB(255, 170, 235))
 			toast("🌌 " .. Settings.DimensionsPerLevel .. " new dimensions unlocked! Open DIMENSIONS to visit them.", "gold")
 			pop(levelPop, 1.25)
-			chime(8, 1)
-			if root and root:IsA("BasePart") then
-				confetti(root.Position + Vector3.new(0, 3, 0))
-			end
+			celebrate(8, 1)
 		end
 	elseif kind == "hatch" then
 		task.spawn(playHatch, a, b)
 	elseif kind == "spawn" then
-		local position: Vector3, color: Color3 = a, b
-		burst(position, color, 14, 10, 0.7)
+		local position: Vector3, color: Color3, golden: boolean?, m: Model? = a, b, c, d
+		local near = rootPosition()
+		local close = near ~= nil and (near - position).Magnitude < 150
+		if close then
+			dust(position - Vector3.new(0, 2.5, 0), Color3.fromRGB(175, 170, 162), 5, 1)
+			burst(position, color, 8, 8, 0.5)
+			if m and m.Parent then
+				grow(m)
+			end
+		end
+		if golden and close then
+			burst(position, Color3.fromRGB(255, 215, 90), 25, 14, 0.8)
+			toast("✨ A GOLDEN crystal appeared nearby! It gives 10x gems!", "gold")
+		end
+	elseif kind == "quest" then
+		local text: string, coins: number, xp: number = a, b, c
+		showBanner("📜 QUEST COMPLETE!", Color3.fromRGB(255, 215, 110))
+		toast(text .. "  ✔  +💰 " .. Format(coins) .. "  +" .. Format(xp) .. " XP", "gold")
+		pop(questPop, 1.2)
+		local position = rootPosition()
+		if position then
+			flyIcons(position, "💰", coinsPill, coinsPop, 6)
+		end
+		celebrate(7, 1.05)
+	elseif kind == "gift" then
+		showBanner("🎁 FREE GIFT!", Color3.fromRGB(255, 160, 230))
+		toast("🎁 You got " .. tostring(a) .. "!", "gold")
+		celebrate(6, 1.2)
+	elseif kind == "daily" then
+		showBanner("📅 DAY " .. tostring(b) .. " REWARD!", Color3.fromRGB(140, 210, 255))
+		toast("📅 You got " .. tostring(a) .. "! Come back tomorrow for more.", "gold")
+		celebrate(8, 1)
+	elseif kind == "obbystart" then
+		closeWindow()
+		obbyState.Checkpoint = 0
+		showBanner("🏃 SKY OBBY! Reach the 🏆 trophy!", Color3.fromRGB(255, 220, 140))
+		chime(3, 1.2)
+	elseif kind == "checkpoint" then
+		obbyState.Checkpoint = a
+		showBanner("🚩 CHECKPOINT " .. tostring(a) .. " / " .. tostring(b), Color3.fromRGB(255, 150, 140))
+		local position = rootPosition()
+		if position then
+			burst(position, Color3.fromRGB(255, 120, 110), 20, 18, 0.7)
+		end
+		chime(4, 1.3)
+	elseif kind == "obbyfall" then
+		toast("💨 Whoops! Back to your last checkpoint.", "info")
+		playSound("Hit", 0.7, 0.5)
+	elseif kind == "obbylava" then
+		toast("🔥 Ouch, hot lava! Back to your last checkpoint.", "bad")
+		local position = rootPosition()
+		if position then
+			burst(position, Color3.fromRGB(255, 120, 40), 25, 16, 0.8)
+		end
+		playSound("Splash", 1.4, 0.4)
+	elseif kind == "obby" then
+		local time: number, coins: number, record: boolean, wait: number = a, b, c, d
+		showBanner("🏆 FINISHED IN " .. string.format("%.1f", time) .. "s!", Color3.fromRGB(255, 220, 120))
+		if coins > 0 then
+			toast("🏆 +💰 " .. Format(coins) .. " for finishing the obby!", "gold")
+			local position = rootPosition()
+			if position then
+				flyIcons(position, "💰", coinsPill, coinsPop, 10)
+			end
+		else
+			toast("⏳ You finished! The obby pays again in " .. clockText(wait) .. ".", "info")
+		end
+		if record then
+			task.delay(0.8, function()
+				toast("⭐ NEW BEST TIME: " .. string.format("%.1f", time) .. " seconds!", "good")
+			end)
+		end
+		celebrate(9, 0.95)
+	elseif kind == "teleported" then
+		local position = rootPosition()
+		if position then
+			burst(position, Color3.fromRGB(150, 220, 255), 25, 16, 0.7)
+		end
+		playSound("Click", 0.8, 0.6)
 	end
 end)
 
@@ -1683,253 +2569,258 @@ end)
 --------------------------------------------------------------------------------
 -- MINING (click / tap / hold on crystals)
 --------------------------------------------------------------------------------
-local rayParams = RaycastParams.new()
-rayParams.FilterType = Enum.RaycastFilterType.Exclude
+do
+	local rayParams = RaycastParams.new()
+	rayParams.FilterType = Enum.RaycastFilterType.Exclude
 
-local function crystalAt(point: Vector2, isViewportPoint: boolean): Model?
-	local ray = if isViewportPoint then camera:ViewportPointToRay(point.X, point.Y) else camera:ScreenPointToRay(point.X, point.Y)
-	local ignore: { Instance } = { PetFolder, WallFolder }
-	if player.Character then
-		table.insert(ignore, player.Character)
+	local function crystalAt(point: Vector2, isViewportPoint: boolean): Model?
+		local ray = if isViewportPoint then camera:ViewportPointToRay(point.X, point.Y) else camera:ScreenPointToRay(point.X, point.Y)
+		local ignore: { Instance } = { PetFolder, WallFolder, FxFolder }
+		if player.Character then
+			table.insert(ignore, player.Character)
+		end
+		rayParams.FilterDescendantsInstances = ignore
+		local result = Workspace:Raycast(ray.Origin, ray.Direction * 400, rayParams)
+		if result then
+			local m = result.Instance.Parent
+			if m and m:IsA("Model") and m:GetAttribute("IsCrystal") then
+				return m
+			end
+		end
+		return nil
 	end
-	rayParams.FilterDescendantsInstances = ignore
-	local result = Workspace:Raycast(ray.Origin, ray.Direction * 400, rayParams)
-	if result then
-		local m = result.Instance.Parent
-		if m and m:IsA("Model") and m:GetAttribute("IsCrystal") then
-			return m
+
+	local function inRange(m: Model): boolean
+		local root = myRoot()
+		if not root then
+			return false
+		end
+		local radius = m:GetAttribute("Radius") or 2
+		return (root.Position - m:GetPivot().Position).Magnitude <= Settings.MineRange + radius
+	end
+
+	local lastSwing = 0
+	local lastFarHint = 0
+	local swings = 0
+
+	local function swing()
+		local char = player.Character
+		local tool = char and char:FindFirstChildOfClass("Tool")
+		if tool then
+			local anim = Instance.new("StringValue")
+			anim.Name = "toolanim"
+			anim.Value = "Slash"
+			anim.Parent = tool
+			Debris:AddItem(anim, 1)
 		end
 	end
-	return nil
-end
 
-local function inRange(m: Model): boolean
-	local root = myRoot()
-	if not root then
-		return false
-	end
-	local radius = m:GetAttribute("Radius") or 2
-	return (root.Position - m:GetPivot().Position).Magnitude <= Settings.MineRange + radius
-end
-
-local lastSwing = 0
-local lastFarHint = 0
-local swings = 0
-
-local function swing()
-	local char = player.Character
-	local tool = char and char:FindFirstChildOfClass("Tool")
-	if tool then
-		local anim = Instance.new("StringValue")
-		anim.Name = "toolanim"
-		anim.Value = "Slash"
-		anim.Parent = tool
-		Debris:AddItem(anim, 1)
-	end
-end
-
-local function tryMine(point: Vector2, isViewportPoint: boolean)
-	local now = os.clock()
-	if now - lastSwing < Settings.MineCooldown then
-		return
-	end
-	local m = crystalAt(point, isViewportPoint)
-	if not m then
-		return
-	end
-	if not inRange(m) then
-		if now - lastFarHint > 2.5 then
-			lastFarHint = now
-			toast("🏃 Walk closer to mine that crystal!", "info")
+	local function tryMine(point: Vector2, isViewportPoint: boolean)
+		local now = os.clock()
+		if now - lastSwing < Settings.MineCooldown then
+			return
 		end
-		return
+		local m = crystalAt(point, isViewportPoint)
+		if not m then
+			return
+		end
+		if not inRange(m) then
+			if now - lastFarHint > 2.5 then
+				lastFarHint = now
+				toast("🏃 Walk closer to mine that crystal!", "info")
+			end
+			return
+		end
+		local s = state
+		if s and s.Gems >= s.Capacity then
+			backpackFull()
+			return
+		end
+		local zone = m:GetAttribute("Zone")
+		if s and type(zone) == "number" and zone > s.Zone then
+			return
+		end
+		lastSwing = now
+		R.Mine:FireServer(m)
+		swing()
+		swings += 1
+		if swings == 6 then
+			toast("💡 Tip: hold the mouse button down to keep mining!", "info")
+		end
 	end
-	local s = state
-	if s and s.Gems >= s.Capacity then
-		backpackFull()
-		return
-	end
-	local zone = m:GetAttribute("Zone")
-	if s and type(zone) == "number" and zone > s.Zone then
-		return
-	end
-	lastSwing = now
-	R.Mine:FireServer(m)
-	swing()
-	swings += 1
-	if swings == 6 then
-		toast("💡 Tip: hold the mouse button down to keep mining!", "info")
-	end
-end
 
-local holding = false
-local touchPoint: Vector2? = nil
-local gamepadHolding = false
+	local holding = false
+	local touchPoint: Vector2? = nil
+	local gamepadHolding = false
 
-UserInputService.InputBegan:Connect(function(input, processed)
-	if processed then
-		return
-	end
-	if input.UserInputType == Enum.UserInputType.MouseButton1 then
-		holding = true
-		touchPoint = nil
-		tryMine(UserInputService:GetMouseLocation(), true)
-	elseif input.UserInputType == Enum.UserInputType.Touch then
-		local point = Vector2.new(input.Position.X, input.Position.Y)
-		holding = true
-		touchPoint = point
-		tryMine(point, false)
-	elseif input.KeyCode == Enum.KeyCode.ButtonR2 then
-		gamepadHolding = true
-	end
-end)
-
-UserInputService.InputChanged:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.Touch and touchPoint then
-		touchPoint = Vector2.new(input.Position.X, input.Position.Y)
-	end
-end)
-
-UserInputService.InputEnded:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-		holding = false
-		touchPoint = nil
-	elseif input.KeyCode == Enum.KeyCode.ButtonR2 then
-		gamepadHolding = false
-	end
-end)
-
--- Outline the crystal under your mouse
-local highlight = new("Highlight", {
-	FillColor = WHITE,
-	FillTransparency = 0.85,
-	OutlineColor = WHITE,
-	OutlineTransparency = 0,
-	DepthMode = Enum.HighlightDepthMode.Occluded,
-	Enabled = false,
-	Parent = camera,
-})
-
-RunService.Heartbeat:Connect(function()
-	if holding then
-		if touchPoint then
-			tryMine(touchPoint, false)
-		else
+	UserInputService.InputBegan:Connect(function(input, processed)
+		if processed then
+			return
+		end
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			holding = true
+			touchPoint = nil
 			tryMine(UserInputService:GetMouseLocation(), true)
+		elseif input.UserInputType == Enum.UserInputType.Touch then
+			local point = Vector2.new(input.Position.X, input.Position.Y)
+			holding = true
+			touchPoint = point
+			tryMine(point, false)
+		elseif input.KeyCode == Enum.KeyCode.ButtonR2 then
+			gamepadHolding = true
 		end
-	elseif gamepadHolding then
-		tryMine(camera.ViewportSize / 2, true)
-	end
+	end)
 
-	if UserInputService.MouseEnabled and not openName then
-		local m = crystalAt(UserInputService:GetMouseLocation(), true)
-		if m then
-			highlight.Adornee = m
-			highlight.OutlineColor = if inRange(m) then WHITE else Color3.fromRGB(255, 90, 90)
-			highlight.Enabled = true
+	UserInputService.InputChanged:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.Touch and touchPoint then
+			touchPoint = Vector2.new(input.Position.X, input.Position.Y)
+		end
+	end)
+
+	UserInputService.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			holding = false
+			touchPoint = nil
+		elseif input.KeyCode == Enum.KeyCode.ButtonR2 then
+			gamepadHolding = false
+		end
+	end)
+
+	-- Outline the crystal under your mouse
+	local highlight = new("Highlight", {
+		FillColor = WHITE,
+		FillTransparency = 0.85,
+		OutlineColor = WHITE,
+		OutlineTransparency = 0,
+		DepthMode = Enum.HighlightDepthMode.Occluded,
+		Enabled = false,
+		Parent = camera,
+	})
+
+	RunService.Heartbeat:Connect(function()
+		if holding then
+			if touchPoint then
+				tryMine(touchPoint, false)
+			else
+				tryMine(UserInputService:GetMouseLocation(), true)
+			end
+		elseif gamepadHolding then
+			tryMine(camera.ViewportSize / 2, true)
+		end
+
+		if UserInputService.MouseEnabled and not openName then
+			local m = crystalAt(UserInputService:GetMouseLocation(), true)
+			if m then
+				highlight.Adornee = m
+				highlight.OutlineColor = if inRange(m) then WHITE else Color3.fromRGB(255, 90, 90)
+				highlight.Enabled = true
+			else
+				highlight.Enabled = false
+			end
 		else
 			highlight.Enabled = false
 		end
-	else
-		highlight.Enabled = false
-	end
-end)
+	end)
+end
 
 --------------------------------------------------------------------------------
 -- PETS FOLLOW THEIR OWNERS, DECORATIONS SPIN
 --------------------------------------------------------------------------------
-local PET_OFFSETS = { Vector3.new(-3.4, 0, 3.2), Vector3.new(3.4, 0, 3.2), Vector3.new(0, 0, 5.6) }
+do
+	local PET_OFFSETS = { Vector3.new(-3.4, 0, 3.2), Vector3.new(3.4, 0, 3.2), Vector3.new(0, 0, 5.6) }
 
 
-local petCFrames: { [Model]: CFrame } = setmetatable({}, { __mode = "k" }) :: any
+	local petCFrames: { [Model]: CFrame } = setmetatable({}, { __mode = "k" }) :: any
 
-type Spinner = { Base: CFrame, Speed: number, Bob: number, Phase: number }
-local spinners: { [Instance]: Spinner } = {}
+	type Spinner = { Base: CFrame, Speed: number, Bob: number, Phase: number }
+	local spinners: { [Instance]: Spinner } = {}
 
-local function addSpinner(inst: Instance)
-	local base: CFrame
-	if inst:IsA("BasePart") then
-		base = inst.CFrame
-	elseif inst:IsA("Model") then
-		base = inst:GetPivot()
-	else
-		return
+	local function addSpinner(inst: Instance)
+		local base: CFrame
+		if inst:IsA("BasePart") then
+			base = inst.CFrame
+		elseif inst:IsA("Model") then
+			base = inst:GetPivot()
+		else
+			return
+		end
+		spinners[inst] = {
+			Base = base,
+			Speed = inst:GetAttribute("SpinSpeed") or 1,
+			Bob = inst:GetAttribute("Bob") or 0,
+			Phase = math.random() * 6,
+		}
 	end
-	spinners[inst] = {
-		Base = base,
-		Speed = inst:GetAttribute("SpinSpeed") or 1,
-		Bob = inst:GetAttribute("Bob") or 0,
-		Phase = math.random() * 6,
-	}
-end
-for _, inst in ipairs(CollectionService:GetTagged("Spin")) do
-	addSpinner(inst)
-end
-CollectionService:GetInstanceAddedSignal("Spin"):Connect(addSpinner)
-CollectionService:GetInstanceRemovedSignal("Spin"):Connect(function(inst)
-	spinners[inst] = nil
-end)
+	for _, inst in ipairs(CollectionService:GetTagged("Spin")) do
+		addSpinner(inst)
+	end
+	CollectionService:GetInstanceAddedSignal("Spin"):Connect(addSpinner)
+	CollectionService:GetInstanceRemovedSignal("Spin"):Connect(function(inst)
+		spinners[inst] = nil
+	end)
 
-RunService.RenderStepped:Connect(function(dt)
-	local t = os.clock()
+	RunService.RenderStepped:Connect(function(dt)
+		local t = os.clock()
 
-	-- pets
-	for _, pet in ipairs(PetFolder:GetChildren()) do
-		if pet:IsA("Model") and pet.PrimaryPart then
-			local owner = Players:GetPlayerByUserId(pet:GetAttribute("Owner") or 0)
-			local char = owner and owner.Character
-			local root = char and char:FindFirstChild("HumanoidRootPart")
-			if root and root:IsA("BasePart") then
-				local slot = pet:GetAttribute("Slot") or 1
-				local scale = pet:GetAttribute("Scale") or 1
-				local offset = PET_OFFSETS[slot] or PET_OFFSETS[1]
-				local moving = root.AssemblyLinearVelocity.Magnitude > 2
-				local hop = if moving then math.abs(math.sin(t * 9 + slot)) * 1.1 else math.sin(t * 3 + slot) * 0.3 + 0.3
-				local spot = (root.CFrame * CFrame.new(offset)).Position
-				local look = root.CFrame.LookVector
-				local position = Vector3.new(spot.X, root.Position.Y - 1.6 + (scale - 1) * 1.1 + hop, spot.Z)
-				local target = CFrame.lookAt(position, position + Vector3.new(look.X, 0, look.Z) + Vector3.new(0, 0, 0.001))
-				local current = petCFrames[pet] or target
-				current = current:Lerp(target, math.min(1, dt * 9))
-				petCFrames[pet] = current
-				placeModel(pet, current)
+		-- pets
+		for _, pet in ipairs(PetFolder:GetChildren()) do
+			if pet:IsA("Model") and pet.PrimaryPart then
+				local owner = Players:GetPlayerByUserId(pet:GetAttribute("Owner") or 0)
+				local char = owner and owner.Character
+				local root = char and char:FindFirstChild("HumanoidRootPart")
+				if root and root:IsA("BasePart") then
+					local slot = pet:GetAttribute("Slot") or 1
+					local scale = pet:GetAttribute("Scale") or 1
+					local offset = PET_OFFSETS[slot] or PET_OFFSETS[1]
+					local moving = root.AssemblyLinearVelocity.Magnitude > 2
+					local hop = if moving then math.abs(math.sin(t * 9 + slot)) * 1.1 else math.sin(t * 3 + slot) * 0.3 + 0.3
+					local spot = (root.CFrame * CFrame.new(offset)).Position
+					local look = root.CFrame.LookVector
+					local position = Vector3.new(spot.X, root.Position.Y - 1.6 + (scale - 1) * 1.1 + hop, spot.Z)
+					local target = CFrame.lookAt(position, position + Vector3.new(look.X, 0, look.Z) + Vector3.new(0, 0, 0.001))
+					local current = petCFrames[pet] or target
+					current = current:Lerp(target, math.min(1, dt * 9))
+					petCFrames[pet] = current
+					placeModel(pet, current)
+				end
 			end
 		end
-	end
 
-	-- spinning things
-	for inst, info in pairs(spinners) do
-		if inst.Parent then
-			local cf = CFrame.new(info.Base.Position + Vector3.new(0, math.sin(t * 1.6 + info.Phase) * info.Bob, 0))
-				* CFrame.Angles(0, t * info.Speed + info.Phase, 0)
-				* info.Base.Rotation
-			if inst:IsA("BasePart") then
-				inst.CFrame = cf
-			elseif inst:IsA("Model") then
-				placeModel(inst, cf)
+		-- spinning things
+		for inst, info in pairs(spinners) do
+			if inst.Parent then
+				local cf = CFrame.new(info.Base.Position + Vector3.new(0, math.sin(t * 1.6 + info.Phase) * info.Bob, 0))
+					* CFrame.Angles(0, t * info.Speed + info.Phase, 0)
+					* info.Base.Rotation
+				if inst:IsA("BasePart") then
+					inst.CFrame = cf
+				elseif inst:IsA("Model") then
+					placeModel(inst, cf)
+				end
 			end
 		end
-	end
 
-	-- spin the models in the shop and pets window while they are open
-	if openName == "Shop" then
-		for _, card in ipairs(cards) do
-			if card.Frame.Visible then
+		-- spin the models in the shop and pets window while they are open
+		if openName == "Shop" then
+			for _, card in ipairs(cards) do
+				if card.Frame.Visible then
+					placeModel(card.Model, CFrame.Angles(0, t * 0.9, 0) * card.Base)
+				end
+			end
+		elseif openName == "Pets" then
+			for _, card in ipairs(petCards) do
 				placeModel(card.Model, CFrame.Angles(0, t * 0.9, 0) * card.Base)
 			end
 		end
-	elseif openName == "Pets" then
-		for _, card in ipairs(petCards) do
-			placeModel(card.Model, CFrame.Angles(0, t * 0.9, 0) * card.Base)
-		end
-	end
-end)
+	end)
+end
 
 --------------------------------------------------------------------------------
 -- ZONE MOODS (the sky changes in each zone) AND GATES
 --------------------------------------------------------------------------------
 local atmosphere = Lighting:WaitForChild("CrystalRushAtmosphere", 10) :: Atmosphere?
 local colorFx = Lighting:WaitForChild("CrystalRushColor", 10) :: ColorCorrectionEffect?
+local bloomFx = Lighting:WaitForChild("CrystalRushBloom", 10) :: BloomEffect?
 local currentArea = ""
 
 local function applyMood(mood, instant: boolean?)
@@ -1960,7 +2851,35 @@ local function applyMood(mood, instant: boolean?)
 	end
 end
 
-local function updateGate(gate: Instance)
+local barsOpen: { [Instance]: boolean } = setmetatable({}, { __mode = "k" }) :: any
+local barHome: { [BasePart]: CFrame } = setmetatable({}, { __mode = "k" }) :: any
+
+local function setBars(gate: Instance, open: boolean, animate: boolean)
+	local bars = gate:FindFirstChild("Bars")
+	if not bars or (barsOpen[gate] == true) == open then
+		return
+	end
+	barsOpen[gate] = open
+	for _, part in ipairs(bars:GetChildren()) do
+		if part:IsA("BasePart") then
+			local home = barHome[part] or part.CFrame
+			barHome[part] = home
+			if open and animate then
+				tween(part, 1.8, { CFrame = home + Vector3.new(0, 34, 0), Transparency = 1 }, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
+			elseif open then
+				part.Transparency = 1
+			else
+				part.CFrame = home
+				part.Transparency = 0
+			end
+		end
+	end
+	if open and animate then
+		playSound("Hit", 0.5, 0.6)
+	end
+end
+
+updateGate = function(gate: Instance, animate: boolean?)
 	local s = state
 	local zoneIndex = gate:GetAttribute("Zone")
 	if not s or type(zoneIndex) ~= "number" then
@@ -1970,16 +2889,11 @@ local function updateGate(gate: Instance)
 	local unlocked = s.Zone >= zoneIndex
 	local barrier = gate:FindFirstChild("Barrier")
 	if barrier and barrier:IsA("BasePart") then
-		if unlocked then
-			barrier.CanCollide = false
-			barrier.CanQuery = false
-			barrier.Transparency = 1
-		else
-			barrier.CanQuery = true
-			barrier.CanCollide = true
-			barrier.Transparency = 0.3
-		end
+		barrier.CanCollide = not unlocked
+		barrier.CanQuery = not unlocked
+		barrier.Transparency = 1
 	end
+	setBars(gate, unlocked, animate == true)
 	local beam = gate:FindFirstChild("Beam")
 	local signGui = beam and beam:FindFirstChild("Sign")
 	if signGui then
@@ -2017,9 +2931,10 @@ local guideStart: Attachment? = nil
 local function updateGuide()
 	local s = state
 	local root = myRoot()
-	local full = s ~= nil and s.Gems >= s.Capacity
+	local inObby = player:GetAttribute("ObbyStart") ~= nil
+	local full = s ~= nil and s.Gems >= s.Capacity and not inObby
 	fullWarning.Visible = full
-	if not full or not root then
+	if not full or not root or not s then
 		if guideBeam then
 			guideBeam.Enabled = false
 		end
@@ -2027,9 +2942,18 @@ local function updateGuide()
 	end
 	local best: Attachment? = nil
 	local bestDistance = math.huge
+	local here = player:GetAttribute("Dimension")
 	for _, pad in ipairs(SellFolder:GetChildren()) do
 		local target = pad:FindFirstChild("GuideTarget", true)
-		if target and target:IsA("Attachment") then
+		local padDimension = pad:GetAttribute("Dimension")
+		local padZone = pad:GetAttribute("Zone")
+		local usable
+		if padDimension ~= nil then
+			usable = padDimension == here
+		else
+			usable = here == nil and (type(padZone) ~= "number" or s.Zone >= padZone)
+		end
+		if usable and target and target:IsA("Attachment") then
 			local distance = (target.WorldPosition - root.Position).Magnitude
 			if distance < bestDistance then
 				best, bestDistance = target, distance
@@ -2096,11 +3020,22 @@ local function refreshAll()
 	refreshRebirth()
 	refreshPetsWindow()
 	refreshDimensions()
+	refreshSide()
+	refreshGifts()
+	refreshDaily()
 	updateGates()
+	-- egg machines say "FREE" when you have a free egg
+	for _, pp in ipairs(CollectionService:GetTagged("HatchOnePrompt")) do
+		if pp:IsA("ProximityPrompt") then
+			local price = pp:GetAttribute("Price")
+			pp.ActionText = if s.FreeEggs > 0 then "Hatch 1  (🎁 FREE egg!)" else "Hatch 1  (💰 " .. Format(if type(price) == "number" then price else 0) .. ")"
+		end
+	end
 end
 
 R.Sync.OnClientEvent:Connect(function(newState: State)
 	state = newState
+	syncedAt = os.clock()
 	ownedPets = {}
 	for index, count in ipairs(newState.Pets) do
 		if count > 0 then
@@ -2122,11 +3057,19 @@ R.Sync.OnClientEvent:Connect(function(newState: State)
 				task.wait(3.5)
 				toast("💰 When your backpack is full, step on a SELL pad", "gold")
 				task.wait(3.5)
-				toast("🛒 Spend coins in the Shop on pickaxes, backpacks and pets!", "good")
+				toast("🏃 Try the SKY OBBY at the spawn for a big coin reward!", "good")
 				task.wait(3.5)
 				toast("🥚 Hatch eggs at the egg machine to find RARE pets!", "gold")
 				task.wait(3.5)
-				toast("🌌 Mine to level up and unlock new DIMENSIONS!", "info")
+				toast("📜 Finish quests and claim 🎁 free gifts on the right!", "info")
+			end)
+		end
+		if newState.DailyReady then
+			task.delay(if newState.TotalGems == 0 then 20 else 2.5, function()
+				local s = state
+				if s and s.DailyReady and not openName then
+					openWindow("Daily", true)
+				end
 			end)
 		end
 	end
@@ -2167,7 +3110,14 @@ task.spawn(function()
 					currentArea = area
 					local dim = Shared.GetDimension(dimension)
 					applyMood(dim.Mood, first)
-					showBanner("🌌 DIMENSION " .. dimension .. ": " .. string.upper(dim.Name), dim.Accent:Lerp(WHITE, 0.3))
+					if bloomFx then
+						tween(bloomFx, 2, { Intensity = if dim.Shiny then 0.9 else 0.25, Threshold = if dim.Shiny then 1.4 else 2.2 })
+					end
+					if dim.Shiny then
+						showBanner("✨ SHINY DIMENSION " .. dimension .. "! 2x GEMS ✨", Color3.fromRGB(255, 225, 120))
+					else
+						showBanner("🌌 DIMENSION " .. dimension .. ": " .. string.upper(dim.Name), dim.Accent:Lerp(WHITE, 0.3))
+					end
 					refreshDimensions()
 				end
 			else
@@ -2177,6 +3127,9 @@ task.spawn(function()
 					local wasDimension = string.sub(currentArea, 1, 1) == "D"
 					currentArea = area
 					applyMood(Shared.Zones[math.max(zoneIndex, 1)].Mood, first)
+					if bloomFx then
+						tween(bloomFx, 2, { Intensity = 0.25, Threshold = 2.2 })
+					end
 					if zoneIndex > 0 and not first then
 						local zone = Shared.Zones[zoneIndex]
 						showBanner(zone.Emoji .. " " .. string.upper(zone.Name), zone.Accent:Lerp(WHITE, 0.3))
@@ -2199,6 +3152,32 @@ task.spawn(function()
 		end
 		updateGuide()
 		task.wait(0.3)
+	end
+end)
+
+-- Once a second: timers on the right side, the gifts window and the obby sign
+local obbySign: Instance? = nil
+task.spawn(function()
+	while true do
+		local s = state
+		if s then
+			refreshSide()
+			if openName == "Gifts" then
+				refreshGifts()
+			elseif openName == "Daily" then
+				refreshDaily()
+			end
+			if not obbySign then
+				local map = Workspace:FindFirstChild("Map")
+				obbySign = map and map:FindFirstChild("ObbySign", true)
+			end
+			local subtitle = obbySign and obbySign:FindFirstChild("Subtitle")
+			if subtitle and subtitle:IsA("TextLabel") then
+				local wait = obbyWait()
+				subtitle.Text = if wait > 0 then "Reward again in " .. clockText(wait) else "Win 💰 " .. Format(Shared.ObbyReward(s)) .. "!"
+			end
+		end
+		task.wait(1)
 	end
 end)
 
