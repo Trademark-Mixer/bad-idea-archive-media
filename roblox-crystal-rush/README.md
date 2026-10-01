@@ -8,6 +8,9 @@ sell them for coins, and spend the coins in the shop.
 - **5 zones**, each with its own look and sky color:
   🌻 Sunny Meadow → 💜 Crystal Caves → 🌋 Lava Volcano → ❄️ Frozen Peaks → 🌌 Galaxy Isles
 - **Shop** with 11 pickaxes, 10 backpacks and 8 pets. Your best 3 pets follow you around and boost your gems.
+- **🥚 Egg machines** (one at the spawn, one in each zone) hatch **21 rare pets**: Legendary pets
+  glow and have an aura, and the Galaxy Egg has a 0.1% **Secret** pet. Every machine shows its chances.
+- **🐾 Pets** window shows your whole collection. Pets you haven't found yet are black shadows.
 - **Rebirths**: start over and earn more coins forever. You keep your pets.
 - **Gates** between zones: walk up and press **E** to unlock the next zone.
 - **Giant crystals**, a health bar on every crystal, sparkles, flying gems, sounds, and a glowing line that leads you to a sell pad when your backpack is full.
@@ -47,9 +50,23 @@ Use this if the file doesn't open for some reason.
 - **Click** (or **tap**) a crystal to mine it. **Hold** the button to keep mining.
 - When the backpack is full, walk onto a gold **💰 SELL** pad.
 - Open the **🛒 Shop** to buy better pickaxes, bigger backpacks and pets.
+- At an **egg machine**, press **E** to hatch 1 egg or **R** to hatch 3.
 - Walk to a gate and press **E** to unlock the next zone.
 - Use **🌀 Teleport** to jump between zones you've unlocked.
 - At **75K coins** you can **♻️ Rebirth** for a permanent coin boost.
+
+## Getting a new version into Studio
+
+**If you haven't changed anything yourself:** download the new `CrystalRush.rbxlx` and open it
+the same way as before (**File → Open from File…**). It already has everything.
+
+**If you already published the game:** open the new file, then go to
+**File → Publish to Roblox As…** and pick your existing game. That replaces the old version,
+and players keep their saved progress.
+
+**If you changed things in Studio yourself** (like prices), copy the new code into your 3 scripts:
+double-click a script to open it, press **Ctrl+A** (select all), paste the new code over it, and do
+the same for the other two. Then copy your changes back into `GameShared`.
 
 ## Publish it so friends can play
 
@@ -69,6 +86,7 @@ Everything you'd want to tweak is in **`GameShared`** (in ReplicatedStorage):
 - `Shared.Settings`: walk speed, mining range, how many crystals, respawn time, rebirth price …
 - `Shared.Zones`: zone names, unlock prices, crystal health and gems, colors and sky mood
 - `Shared.Pickaxes`, `Shared.Backpacks`, `Shared.Pets`: names, prices, power and colors
+- `Shared.Eggs`: egg prices and which pets come out (with their chances in %)
 
 **Testing tip:** set `StudioStartCoins = 1000000` to start with a million coins in Studio,
 so you can try every item. Set it back to `0` before you publish.

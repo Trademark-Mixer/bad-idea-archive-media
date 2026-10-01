@@ -53,12 +53,13 @@ type State = {
 	Pickaxe: number,
 	Backpack: number,
 	Zone: number,
-	Pets: { number },
+	Pets: { number }, -- Pets[n] = how many of pet n you own
 	TotalGems: number,
+	Hatched: number,
 }
 local state: State? = nil
-local ownedPets: { [number]: boolean } = {}
-local equippedPets: { [number]: boolean } = {}
+local ownedPets: { [number]: number } = {} -- [pet number] = how many you own
+local equippedPets: { [number]: number } = {} -- [pet number] = how many are following you
 
 --------------------------------------------------------------------------------
 -- SOUNDS (built-in Roblox sounds, played at different pitches)
@@ -235,6 +236,36 @@ local function setColors(grad: UIGradient, colors: { Color3 })
 	grad.Color = ColorSequence.new(colors[1], colors[2])
 end
 
+-- Moves a whole model every frame. It remembers where each part sits compared
+-- to the model's pivot, which is smoother and cheaper than PivotTo each frame.
+local modelOffsets: { [Model]: { [BasePart]: CFrame } } = setmetatable({}, { __mode = "k" }) :: any
+local function placeModel(m: Model, cframe: CFrame)
+	local offsets = modelOffsets[m]
+	if offsets then
+		-- parts can be swapped out (for example by streaming); start fresh if so
+		for p in pairs(offsets) do
+			if p.Parent == nil then
+				offsets = nil
+				break
+			end
+		end
+	end
+	if not offsets then
+		local newOffsets = {}
+		local pivot = m:GetPivot()
+		for _, d in ipairs(m:GetDescendants()) do
+			if d:IsA("BasePart") then
+				newOffsets[d] = pivot:ToObjectSpace(d.CFrame)
+			end
+		end
+		modelOffsets[m] = newOffsets
+		offsets = newOffsets
+	end
+	for p, offset in pairs(offsets) do
+		p.CFrame = cframe * offset
+	end
+end
+
 -- Everything scales with the screen size (so it fits phones too)
 local scalers: { UIScale } = {}
 local function autoScale(obj: Instance)
@@ -333,40 +364,34 @@ local boostText = label({
 	Parent = boostPill,
 })
 
--- Menu buttons
-local menuRow = new("Frame", { Size = UDim2.fromOffset(250, 94), BackgroundTransparency = 1, LayoutOrder = 4, Parent = hud })
-new("UIListLayout", {
-	FillDirection = Enum.FillDirection.Horizontal,
-	Padding = UDim.new(0, 12),
+-- Menu buttons (2 rows of 2)
+local menuGrid = new("Frame", { Size = UDim2.fromOffset(250, 128), BackgroundTransparency = 1, LayoutOrder = 4, Parent = hud })
+new("UIGridLayout", {
+	CellSize = UDim2.fromOffset(119, 58),
+	CellPadding = UDim2.fromOffset(12, 12),
 	SortOrder = Enum.SortOrder.LayoutOrder,
-	Parent = menuRow,
+	Parent = menuGrid,
 })
 
 local openWindow: (name: string, keepOpen: boolean?) -> ()
 
 local function menuButton(order: number, emoji: string, caption: string, colors: { Color3 }, windowName: string)
-	local holder = new("Frame", { Size = UDim2.fromOffset(75, 94), BackgroundTransparency = 1, LayoutOrder = order, Parent = menuRow })
 	button({
-		Size = UDim2.fromOffset(75, 75),
-		Text = emoji,
+		Size = UDim2.fromOffset(119, 58),
+		Text = emoji .. " " .. caption,
 		Colors = colors,
-		Radius = 18,
-		Parent = holder,
+		Radius = 16,
+		LayoutOrder = order,
+		Parent = menuGrid,
 		OnClick = function()
 			openWindow(windowName)
 		end,
 	})
-	label({
-		Text = caption,
-		Size = UDim2.new(1, 10, 0, 26),
-		Position = UDim2.new(0.5, 0, 1, 0),
-		AnchorPoint = Vector2.new(0.5, 1),
-		Parent = holder,
-	})
 end
 menuButton(1, "🛒", "Shop", COLORS.Green, "Shop")
-menuButton(2, "🌀", "Teleport", COLORS.Blue, "Teleport")
-menuButton(3, "♻️", "Rebirth", COLORS.Purple, "Rebirth")
+menuButton(2, "🐾", "Pets", COLORS.Gold, "Pets")
+menuButton(3, "🌀", "Teleport", COLORS.Blue, "Teleport")
+menuButton(4, "♻️", "Rebirth", COLORS.Purple, "Rebirth")
 
 --------------------------------------------------------------------------------
 -- TOASTS (little messages at the bottom), BANNERS AND WARNINGS
@@ -633,8 +658,8 @@ local function fitCamera(cam: Camera, m: Model, direction: Vector3)
 	cam.CFrame = CFrame.lookAt(cf.Position + direction.Unit * distance, cf.Position)
 end
 
-local function makeCard(category: string, index: number, count: number, name: string, stat: string, price: number, m: Model, direction: Vector3)
-	local rarity = Shared.GetRarity(index, count)
+local function makeCard(category: string, index: number, count: number, name: string, stat: string, price: number, m: Model, direction: Vector3, color: Color3?)
+	local rarityColor = color or Shared.GetRarity(index, count).Color
 	local frame = new("Frame", {
 		Name = category .. index,
 		BackgroundColor3 = WHITE,
@@ -644,7 +669,7 @@ local function makeCard(category: string, index: number, count: number, name: st
 	})
 	round(frame, 16)
 	outline(frame, 3)
-	gradient(frame, { rarity.Color:Lerp(WHITE, 0.15), rarity.Color:Lerp(Color3.new(0, 0, 0), 0.45) })
+	gradient(frame, { rarityColor:Lerp(WHITE, 0.15), rarityColor:Lerp(Color3.new(0, 0, 0), 0.45) })
 
 	local viewport = new("ViewportFrame", {
 		Size = UDim2.new(1, -16, 0, 104),
@@ -700,7 +725,10 @@ for i, def in ipairs(Shared.Backpacks) do
 	makeCard("Backpack", i, #Shared.Backpacks, def.Name, "🎒 Holds " .. Format(def.Capacity), def.Price, Shared.BuildBackpack(i), Vector3.new(0.45, 0.3, 1))
 end
 for i, def in ipairs(Shared.Pets) do
-	makeCard("Pet", i, #Shared.Pets, def.Name, "✨ +" .. tostring(math.floor(def.Bonus * 100)) .. "% Gems", def.Price, Shared.BuildPet(i), Vector3.new(0.35, 0.3, -1))
+	if def.Price then -- egg pets are not sold in the shop
+		local stat = "✨ " .. Shared.BonusText(def.Bonus) .. " Gems"
+		makeCard("Pet", i, #Shared.Pets, def.Name, stat, def.Price, Shared.BuildPet(i), Vector3.new(0.35, 0.3, -1), Shared.RarityColor(def.Rarity))
+	end
 end
 
 local currentTab = "Pickaxe"
@@ -721,8 +749,8 @@ local function refreshShop()
 			equipped = card.Index == s.Backpack
 			owned = card.Index < s.Backpack
 		else
-			owned = ownedPets[card.Index] == true
-			equipped = equippedPets[card.Index] == true
+			owned = (ownedPets[card.Index] or 0) > 0
+			equipped = (equippedPets[card.Index] or 0) > 0
 		end
 		if equipped then
 			card.Label.Text = "EQUIPPED"
@@ -837,8 +865,8 @@ local function refreshRebirth()
 		"⭐ Rebirths: %d  →  %d\n💰 Coin boost: x%s  →  x%s\nCost: 💰 %s",
 		s.Rebirths,
 		s.Rebirths + 1,
-		tostring(Shared.CoinMultiplier(s.Rebirths)),
-		tostring(Shared.CoinMultiplier(s.Rebirths + 1)),
+		Shared.MultiplierText(Shared.CoinMultiplier(s.Rebirths)),
+		Shared.MultiplierText(Shared.CoinMultiplier(s.Rebirths + 1)),
 		Format(cost)
 	)
 	if os.clock() < confirmUntil then
@@ -882,6 +910,139 @@ _, rebirthLabel, rebirthGrad = button({
 	end,
 })
 rebirth.OnOpen = refreshRebirth
+
+--------------------------------------------------------------------------------
+-- MY PETS (your pet collection)
+--------------------------------------------------------------------------------
+local petsWindow = makeWindow("Pets", "🐾 MY PETS", 760, 560, COLORS.Gold)
+local petsInfo = label({ Text = "", Size = UDim2.new(1, 0, 0, 30), Parent = petsWindow.Body })
+local petScroller = new("ScrollingFrame", {
+	Size = UDim2.new(1, 0, 1, -42),
+	Position = UDim2.new(0, 0, 0, 42),
+	BackgroundTransparency = 1,
+	BorderSizePixel = 0,
+	ScrollBarThickness = 8,
+	ScrollBarImageColor3 = WHITE,
+	CanvasSize = UDim2.new(),
+	AutomaticCanvasSize = Enum.AutomaticSize.Y,
+	ScrollingDirection = Enum.ScrollingDirection.Y,
+	Parent = petsWindow.Body,
+})
+new("UIGridLayout", {
+	CellSize = UDim2.fromOffset(166, 222),
+	CellPadding = UDim2.fromOffset(12, 12),
+	HorizontalAlignment = Enum.HorizontalAlignment.Center,
+	SortOrder = Enum.SortOrder.LayoutOrder,
+	Parent = petScroller,
+})
+new("UIPadding", { PaddingTop = UDim.new(0, 6), PaddingBottom = UDim.new(0, 10), Parent = petScroller })
+
+type PetCard = {
+	Index: number,
+	Viewport: ViewportFrame,
+	Model: Model,
+	Base: CFrame,
+	NameLabel: TextLabel,
+	Status: TextLabel,
+	StatusGrad: UIGradient,
+}
+local petCards: { PetCard } = {}
+
+for i, def in ipairs(Shared.Pets) do
+	local color = Shared.RarityColor(def.Rarity)
+	local frame = new("Frame", { Name = "Pet" .. i, BackgroundColor3 = WHITE, LayoutOrder = i, Parent = petScroller })
+	round(frame, 16)
+	outline(frame, 3)
+	gradient(frame, { color:Lerp(WHITE, 0.15), color:Lerp(Color3.new(0, 0, 0), 0.45) })
+	local viewport = new("ViewportFrame", {
+		Size = UDim2.new(1, -16, 0, 104),
+		Position = UDim2.fromOffset(8, 8),
+		BackgroundColor3 = Color3.new(0, 0, 0),
+		BackgroundTransparency = 0.72,
+		Ambient = Color3.fromRGB(190, 190, 200),
+		LightColor = WHITE,
+		LightDirection = Vector3.new(-1, -1, -1),
+		Parent = frame,
+	})
+	round(viewport, 12)
+	local cam = new("Camera", { FieldOfView = 34, Parent = viewport })
+	viewport.CurrentCamera = cam
+	local m = Shared.BuildPet(i)
+	m.Parent = viewport
+	fitCamera(cam, m, Vector3.new(0.35, 0.3, -1))
+	local nameLabel = label({ Text = def.Name, Size = UDim2.new(1, -12, 0, 26), Position = UDim2.fromOffset(6, 115), Parent = frame })
+	label({
+		Text = def.Rarity .. "  •  " .. Shared.BonusText(def.Bonus),
+		Size = UDim2.new(1, -12, 0, 22),
+		Position = UDim2.fromOffset(6, 143),
+		TextColor3 = Color3.fromRGB(255, 240, 160),
+		Parent = frame,
+	})
+	local statusBox = new("Frame", {
+		Size = UDim2.new(1, -18, 0, 40),
+		Position = UDim2.new(0.5, 0, 1, -8),
+		AnchorPoint = Vector2.new(0.5, 1),
+		BackgroundColor3 = WHITE,
+		Parent = frame,
+	})
+	round(statusBox, 12)
+	outline(statusBox, 3)
+	local statusGrad = gradient(statusBox, COLORS.Gray)
+	local status = label({
+		Text = "",
+		Size = UDim2.fromScale(0.9, 0.7),
+		Position = UDim2.fromScale(0.5, 0.5),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Parent = statusBox,
+	})
+	table.insert(petCards, {
+		Index = i,
+		Viewport = viewport,
+		Model = m,
+		Base = m:GetPivot(),
+		NameLabel = nameLabel,
+		Status = status,
+		StatusGrad = statusGrad,
+	})
+end
+
+local function refreshPetsWindow()
+	local s = state
+	if not s then
+		return
+	end
+	local found = 0
+	for _, card in ipairs(petCards) do
+		local def = Shared.Pets[card.Index]
+		local count = ownedPets[card.Index] or 0
+		local following = equippedPets[card.Index] or 0
+		if count > 0 then
+			found += 1
+		end
+		-- pets you haven't found yet are a black shadow
+		card.Viewport.ImageColor3 = if count > 0 then WHITE else Color3.new(0, 0, 0)
+		card.NameLabel.Text = if count > 0 then def.Name else "???"
+		if following > 0 then
+			card.Status.Text = "⭐ EQUIPPED" .. (if following > 1 then " x" .. following else "")
+			setColors(card.StatusGrad, COLORS.Blue)
+		elseif count > 0 then
+			card.Status.Text = "OWNED x" .. count
+			setColors(card.StatusGrad, COLORS.Gray)
+		else
+			card.Status.Text = if def.Price then "🛒 Shop" else "🥚 " .. (def.From or "Egg")
+			setColors(card.StatusGrad, COLORS.Purple)
+		end
+	end
+	petsInfo.Text = string.format(
+		"Your best %d follow you  •  Boost x%s 💎  •  Found %d/%d  •  Hatched %s",
+		Settings.MaxPets,
+		Shared.MultiplierText(Shared.GemMultiplier(ownedPets)),
+		found,
+		#Shared.Pets,
+		Format(s.Hatched or 0)
+	)
+end
+petsWindow.OnOpen = refreshPetsWindow
 
 R.OpenMenu.OnClientEvent:Connect(function(name)
 	openWindow(name, true)
@@ -1027,6 +1188,256 @@ local function myRoot(): BasePart?
 end
 
 --------------------------------------------------------------------------------
+-- EGG HATCHING ANIMATION
+--------------------------------------------------------------------------------
+local hatchOverlay = new("TextButton", {
+	Name = "HatchOverlay",
+	Text = "",
+	AutoButtonColor = false,
+	Size = UDim2.fromScale(1, 1),
+	BackgroundColor3 = Color3.fromRGB(12, 8, 24),
+	BackgroundTransparency = 1,
+	Visible = false,
+	ZIndex = 20,
+	Parent = gui,
+})
+local hatchRow = new("Frame", {
+	AnchorPoint = Vector2.new(0.5, 0.5),
+	Position = UDim2.fromScale(0.5, 0.46),
+	Size = UDim2.fromOffset(820, 380),
+	BackgroundTransparency = 1,
+	Parent = hatchOverlay,
+})
+autoScale(hatchRow)
+new("UIListLayout", {
+	FillDirection = Enum.FillDirection.Horizontal,
+	HorizontalAlignment = Enum.HorizontalAlignment.Center,
+	VerticalAlignment = Enum.VerticalAlignment.Center,
+	Padding = UDim.new(0, 24),
+	SortOrder = Enum.SortOrder.LayoutOrder,
+	Parent = hatchRow,
+})
+local hatchHint = label({
+	Text = "Click anywhere to continue",
+	AnchorPoint = Vector2.new(0.5, 1),
+	Position = UDim2.new(0.5, 0, 1, -40),
+	Size = UDim2.fromOffset(500, 34),
+	TextColor3 = Color3.fromRGB(220, 220, 240),
+	Visible = false,
+	Parent = hatchOverlay,
+})
+autoScale(hatchHint)
+local hatchFlash = new("Frame", {
+	Size = UDim2.fromScale(1, 1),
+	BackgroundColor3 = WHITE,
+	BackgroundTransparency = 1,
+	ZIndex = 5,
+	Parent = hatchOverlay,
+})
+
+type HatchSlot = {
+	Frame: Frame,
+	Rays: Frame,
+	Viewport: ViewportFrame,
+	Camera: Camera,
+	Model: Model?,
+	Base: CFrame,
+	Info: Frame,
+	Pop: UIScale,
+}
+
+local function makeHatchSlot(order: number): HatchSlot
+	local frame = new("Frame", { Size = UDim2.fromOffset(250, 370), BackgroundTransparency = 1, LayoutOrder = order, Parent = hatchRow })
+	-- glowing light rays behind the pet
+	local rays = new("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromOffset(125, 130),
+		Size = UDim2.fromOffset(10, 10),
+		BackgroundTransparency = 1,
+		Visible = false,
+		Parent = frame,
+	})
+	for i = 0, 7 do
+		local ray = new("Frame", {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.fromOffset(30, 320),
+			Rotation = i * 22.5,
+			BackgroundColor3 = WHITE,
+			BorderSizePixel = 0,
+			Parent = rays,
+		})
+		new("UIGradient", {
+			Rotation = 90,
+			Transparency = NumberSequence.new({
+				NumberSequenceKeypoint.new(0, 1),
+				NumberSequenceKeypoint.new(0.5, 0.2),
+				NumberSequenceKeypoint.new(1, 1),
+			}),
+			Parent = ray,
+		})
+	end
+	local viewport = new("ViewportFrame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromOffset(125, 130),
+		Size = UDim2.fromOffset(240, 240),
+		BackgroundTransparency = 1,
+		Ambient = Color3.fromRGB(200, 200, 210),
+		LightColor = WHITE,
+		LightDirection = Vector3.new(-1, -1, -1),
+		Parent = frame,
+	})
+	local cam = new("Camera", { FieldOfView = 30, Parent = viewport })
+	viewport.CurrentCamera = cam
+	local info = new("Frame", { Position = UDim2.fromOffset(0, 255), Size = UDim2.fromOffset(250, 110), BackgroundTransparency = 1, Visible = false, Parent = frame })
+	local popScale: UIScale = new("UIScale", { Parent = info })
+	return { Frame = frame, Rays = rays, Viewport = viewport, Camera = cam, Base = CFrame.new(), Info = info, Pop = popScale }
+end
+
+local function clearHatchSlots()
+	for _, child in ipairs(hatchRow:GetChildren()) do
+		if child:IsA("Frame") then
+			child:Destroy()
+		end
+	end
+end
+
+type HatchResult = { Pet: number, New: boolean }
+local hatchToken = 0
+
+local function playHatch(eggIndex: number, results: { HatchResult })
+	hatchToken += 1
+	local token = hatchToken
+	closeWindow()
+	clearHatchSlots()
+	hatchOverlay.Visible = true
+	hatchHint.Visible = false
+	hatchOverlay.BackgroundTransparency = 1
+	tween(hatchOverlay, 0.3, { BackgroundTransparency = 0.3 })
+
+	local slots: { HatchSlot } = {}
+	for i = 1, #results do
+		local slot = makeHatchSlot(i)
+		local egg = Shared.BuildEgg(eggIndex)
+		egg.Parent = slot.Viewport
+		fitCamera(slot.Camera, egg, Vector3.new(0, 0.1, -1))
+		slot.Model = egg
+		slot.Base = egg:GetPivot()
+		table.insert(slots, slot)
+	end
+
+	-- the eggs wobble more and more...
+	local started = os.clock()
+	local wobble = RunService.RenderStepped:Connect(function()
+		local t = os.clock() - started
+		local amount = math.min(t / 1.6, 1) * 0.5
+		for i, slot in ipairs(slots) do
+			local m = slot.Model
+			if m then
+				placeModel(m, slot.Base * CFrame.Angles(0, 0, math.sin(t * (12 + t * 12) + i) * amount))
+			end
+		end
+	end)
+	for k = 1, 6 do
+		task.wait(0.27)
+		if token ~= hatchToken then
+			wobble:Disconnect()
+			return
+		end
+		playSound("Click", 0.7 + k * 0.15, 0.8)
+	end
+	wobble:Disconnect()
+
+	-- ...and POP!
+	hatchFlash.BackgroundTransparency = 0
+	tween(hatchFlash, 0.7, { BackgroundTransparency = 1 })
+	playSound("Boom", 1.4, 0.35)
+	local bestRank = 1
+	for i, slot in ipairs(slots) do
+		local result = results[i]
+		local def = Shared.Pets[result.Pet]
+		local color = Shared.RarityColor(def.Rarity)
+		bestRank = math.max(bestRank, Shared.RarityRank(def.Rarity))
+		local egg = slot.Model
+		if egg then
+			egg:Destroy()
+		end
+		local pet = Shared.BuildPet(result.Pet)
+		pet.Parent = slot.Viewport
+		fitCamera(slot.Camera, pet, Vector3.new(0.3, 0.25, -1))
+		slot.Model = pet
+		slot.Base = pet:GetPivot()
+		for _, ray in ipairs(slot.Rays:GetChildren()) do
+			if ray:IsA("Frame") then
+				ray.BackgroundColor3 = color
+			end
+		end
+		slot.Rays.Visible = true
+		label({ Text = def.Name, Size = UDim2.new(1, 0, 0, 40), Parent = slot.Info })
+		label({ Text = string.upper(def.Rarity), Size = UDim2.new(1, 0, 0, 30), Position = UDim2.fromOffset(0, 42), TextColor3 = color, Parent = slot.Info })
+		label({
+			Text = Shared.BonusText(def.Bonus) .. " Gems 💎",
+			Size = UDim2.new(1, 0, 0, 26),
+			Position = UDim2.fromOffset(0, 76),
+			TextColor3 = Color3.fromRGB(255, 240, 160),
+			Parent = slot.Info,
+		})
+		if result.New then
+			label({
+				Text = "NEW!",
+				Size = UDim2.fromOffset(90, 36),
+				Position = UDim2.new(1, -6, 0, 6),
+				AnchorPoint = Vector2.new(1, 0),
+				Rotation = 12,
+				TextColor3 = Color3.fromRGB(255, 225, 60),
+				Parent = slot.Frame,
+			})
+		end
+		slot.Info.Visible = true
+		pop(slot.Pop, 1.4)
+	end
+	if bestRank >= Shared.RarityRank("Legendary") then
+		chime(9, 0.9)
+		local root = myRoot()
+		if root then
+			confetti(root.Position + Vector3.new(0, 3, 0))
+		end
+	elseif bestRank >= Shared.RarityRank("Rare") then
+		chime(6, 1.1)
+	else
+		chime(4, 1.3)
+	end
+
+	-- show the pets until the player clicks (or a few seconds pass)
+	local shownAt = os.clock()
+	local spinner = RunService.RenderStepped:Connect(function(dt)
+		local t = os.clock() - shownAt
+		for _, slot in ipairs(slots) do
+			slot.Rays.Rotation += dt * 25
+			local m = slot.Model
+			if m then
+				placeModel(m, CFrame.Angles(0, math.sin(t * 1.5) * 0.6, 0) * slot.Base)
+			end
+		end
+	end)
+	task.wait(0.6)
+	hatchHint.Visible = true
+	local clicked = false
+	local click = hatchOverlay.Activated:Connect(function()
+		clicked = true
+	end)
+	while not clicked and os.clock() - shownAt < 5 and token == hatchToken do
+		task.wait(0.05)
+	end
+	click:Disconnect()
+	spinner:Disconnect()
+	if token == hatchToken then
+		hatchOverlay.Visible = false
+		clearHatchSlots()
+	end
+end
+
+--------------------------------------------------------------------------------
 -- EVENTS FROM THE SERVER
 --------------------------------------------------------------------------------
 R.Effect.OnClientEvent:Connect(function(kind, a, b, c)
@@ -1092,6 +1503,8 @@ R.Effect.OnClientEvent:Connect(function(kind, a, b, c)
 			playSound("Boom", 0.8, 0.5)
 			chime(8, 0.9)
 		end
+	elseif kind == "hatch" then
+		task.spawn(playHatch, a, b)
 	elseif kind == "spawn" then
 		local position: Vector3, color: Color3 = a, b
 		burst(position, color, 14, 10, 0.7)
@@ -1265,35 +1678,7 @@ end)
 --------------------------------------------------------------------------------
 local PET_OFFSETS = { Vector3.new(-3.4, 0, 3.2), Vector3.new(3.4, 0, 3.2), Vector3.new(0, 0, 5.6) }
 
--- Moves a whole model every frame. It remembers where each part sits compared
--- to the model's pivot, which is smoother and cheaper than PivotTo each frame.
-local modelOffsets: { [Model]: { [BasePart]: CFrame } } = setmetatable({}, { __mode = "k" }) :: any
-local function placeModel(m: Model, cframe: CFrame)
-	local offsets = modelOffsets[m]
-	if offsets then
-		-- parts can be swapped out (for example by streaming); start fresh if so
-		for p in pairs(offsets) do
-			if p.Parent == nil then
-				offsets = nil
-				break
-			end
-		end
-	end
-	if not offsets then
-		local newOffsets = {}
-		local pivot = m:GetPivot()
-		for _, d in ipairs(m:GetDescendants()) do
-			if d:IsA("BasePart") then
-				newOffsets[d] = pivot:ToObjectSpace(d.CFrame)
-			end
-		end
-		modelOffsets[m] = newOffsets
-		offsets = newOffsets
-	end
-	for p, offset in pairs(offsets) do
-		p.CFrame = cframe * offset
-	end
-end
+
 local petCFrames: { [Model]: CFrame } = setmetatable({}, { __mode = "k" }) :: any
 
 type Spinner = { Base: CFrame, Speed: number, Bob: number, Phase: number }
@@ -1334,12 +1719,13 @@ RunService.RenderStepped:Connect(function(dt)
 			local root = char and char:FindFirstChild("HumanoidRootPart")
 			if root and root:IsA("BasePart") then
 				local slot = pet:GetAttribute("Slot") or 1
+				local scale = pet:GetAttribute("Scale") or 1
 				local offset = PET_OFFSETS[slot] or PET_OFFSETS[1]
 				local moving = root.AssemblyLinearVelocity.Magnitude > 2
 				local hop = if moving then math.abs(math.sin(t * 9 + slot)) * 1.1 else math.sin(t * 3 + slot) * 0.3 + 0.3
 				local spot = (root.CFrame * CFrame.new(offset)).Position
 				local look = root.CFrame.LookVector
-				local position = Vector3.new(spot.X, root.Position.Y - 1.6 + hop, spot.Z)
+				local position = Vector3.new(spot.X, root.Position.Y - 1.6 + (scale - 1) * 1.1 + hop, spot.Z)
 				local target = CFrame.lookAt(position, position + Vector3.new(look.X, 0, look.Z) + Vector3.new(0, 0, 0.001))
 				local current = petCFrames[pet] or target
 				current = current:Lerp(target, math.min(1, dt * 9))
@@ -1363,12 +1749,16 @@ RunService.RenderStepped:Connect(function(dt)
 		end
 	end
 
-	-- spin the models in the shop while it is open
+	-- spin the models in the shop and pets window while they are open
 	if openName == "Shop" then
 		for _, card in ipairs(cards) do
 			if card.Frame.Visible then
 				placeModel(card.Model, CFrame.Angles(0, t * 0.9, 0) * card.Base)
 			end
+		end
+	elseif openName == "Pets" then
+		for _, card in ipairs(petCards) do
+			placeModel(card.Model, CFrame.Angles(0, t * 0.9, 0) * card.Base)
 		end
 	end
 end)
@@ -1527,25 +1917,33 @@ local function refreshAll()
 	end
 	local rebirths = s.Rebirths
 	local petBoost = Shared.GemMultiplier(ownedPets)
-	boostText.Text = string.format("⭐ %d Rebirths  •  x%s 💰  •  x%s 💎", rebirths, tostring(Shared.CoinMultiplier(rebirths)), tostring(petBoost))
+	boostText.Text = string.format(
+		"⭐ %d Rebirths  •  x%s 💰  •  x%s 💎",
+		rebirths,
+		Shared.MultiplierText(Shared.CoinMultiplier(rebirths)),
+		Shared.MultiplierText(petBoost)
+	)
 	local fill = math.clamp(s.Gems / s.Capacity, 0, 1)
 	tween(gemsFill, 0.25, { Size = UDim2.fromScale(fill, 1) })
 	setColors(gemsFillGrad, if fill >= 1 then COLORS.Gold else COLORS.Cyan)
 	refreshShop()
 	refreshTeleport()
 	refreshRebirth()
+	refreshPetsWindow()
 	updateGates()
 end
 
 R.Sync.OnClientEvent:Connect(function(newState: State)
 	state = newState
 	ownedPets = {}
-	for _, index in ipairs(newState.Pets) do
-		ownedPets[index] = true
+	for index, count in ipairs(newState.Pets) do
+		if count > 0 then
+			ownedPets[index] = count
+		end
 	end
 	equippedPets = {}
 	for _, index in ipairs(Shared.GetEquippedPets(ownedPets)) do
-		equippedPets[index] = true
+		equippedPets[index] = (equippedPets[index] or 0) + 1
 	end
 	refreshAll()
 	if firstSync then
@@ -1559,6 +1957,8 @@ R.Sync.OnClientEvent:Connect(function(newState: State)
 				toast("💰 When your backpack is full, step on a SELL pad", "gold")
 				task.wait(3.5)
 				toast("🛒 Spend coins in the Shop on pickaxes, backpacks and pets!", "good")
+				task.wait(3.5)
+				toast("🥚 Hatch eggs at the egg machine to find RARE pets!", "gold")
 			end)
 		end
 	end

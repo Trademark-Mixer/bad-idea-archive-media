@@ -818,6 +818,154 @@ local function buildSellPad(pos: Vector3, size: number)
 end
 
 --------------------------------------------------------------------------------
+-- EGG MACHINES
+--------------------------------------------------------------------------------
+local hatchEgg -- defined later
+
+-- A floating board that shows the chance of every pet in an egg
+local function oddsBoard(parent: Instance, egg)
+	local rows = #egg.Pets
+	local rowHeight = 1 / (rows + 1.4)
+	local bb = Instance.new("BillboardGui")
+	bb.Name = "Odds"
+	bb.Size = UDim2.fromScale(8.5, (rows + 1.4) * 1.05)
+	bb.StudsOffset = Vector3.new(8, 4.5, 0)
+	bb.LightInfluence = 0
+	bb.MaxDistance = 60
+	local frame = Instance.new("Frame")
+	frame.Size = UDim2.fromScale(1, 1)
+	frame.BackgroundColor3 = Color3.fromRGB(25, 25, 40)
+	frame.BackgroundTransparency = 0.2
+	frame.Parent = bb
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0.08, 0)
+	corner.Parent = frame
+	local stroke = Instance.new("UIStroke")
+	stroke.Thickness = 3
+	stroke.Color = egg.Spots
+	stroke.Parent = frame
+	local function row(text: string, y: number, height: number, color: Color3)
+		local lbl = Instance.new("TextLabel")
+		lbl.BackgroundTransparency = 1
+		lbl.Position = UDim2.fromScale(0.06, y)
+		lbl.Size = UDim2.fromScale(0.88, height)
+		lbl.Font = Enum.Font.FredokaOne
+		lbl.TextScaled = true
+		lbl.TextColor3 = color
+		lbl.Text = text
+		lbl.Parent = frame
+		local textStroke = Instance.new("UIStroke")
+		textStroke.Thickness = 2
+		textStroke.Parent = lbl
+	end
+	row("🎲 Chances", rowHeight * 0.15, rowHeight * 1.05, Color3.new(1, 1, 1))
+	for k, entry in ipairs(egg.Pets) do
+		local def = Shared.Pets[entry.Index]
+		row(def.Name .. "  " .. string.format("%g", entry.Chance) .. "%", rowHeight * (k + 0.3), rowHeight * 0.85, Shared.RarityColor(def.Rarity))
+	end
+	bb.Parent = parent
+end
+
+local function buildEggMachine(eggIndex: number, pos: Vector3)
+	local egg = Shared.Eggs[eggIndex]
+	local m = model("EggMachine" .. eggIndex)
+	m.ModelStreamingMode = Enum.ModelStreamingMode.Persistent
+	local stone = Color3.fromRGB(70, 60, 95)
+	local upright = CFrame.Angles(0, 0, rad(90))
+	P({
+		Name = "Ring",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(0.4, 15, 15),
+		CFrame = CFrame.new(pos + Vector3.new(0, 0.2, 0)) * upright,
+		Color = egg.Spots,
+		Material = Enum.Material.Neon,
+		Parent = m,
+	})
+	P({
+		Name = "Base",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(0.8, 13, 13),
+		CFrame = CFrame.new(pos + Vector3.new(0, 0.4, 0)) * upright,
+		Color = stone,
+		Material = Enum.Material.Marble,
+		Parent = m,
+	})
+	local pillar = P({
+		Name = "Pillar",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(4, 5, 5),
+		CFrame = CFrame.new(pos + Vector3.new(0, 2.8, 0)) * upright,
+		Color = stone,
+		Material = Enum.Material.Marble,
+		Parent = m,
+	})
+	local top = P({
+		Name = "Top",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(0.4, 6, 6),
+		CFrame = CFrame.new(pos + Vector3.new(0, 4.95, 0)) * upright,
+		Color = egg.Spots,
+		Material = Enum.Material.Neon,
+		Parent = m,
+	})
+	particles(top, {
+		Color = egg.Spots,
+		Size = 0.5,
+		Rate = 10,
+		Lifetime = NumberRange.new(1, 2),
+		Speed = NumberRange.new(2, 4),
+		Direction = Enum.NormalId.Right,
+	})
+
+	-- the big egg floating on top
+	local eggModel = Shared.BuildEgg(eggIndex)
+	eggModel.Name = "Egg"
+	eggModel:PivotTo(CFrame.new(pos + Vector3.new(0, 8.6, 0)))
+	eggModel.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
+	eggModel.Parent = m
+	spin(eggModel, 0.8, 0.6)
+	light(eggModel.PrimaryPart :: Instance, egg.Spots, 18, 1.5)
+
+	sign(pillar, "🥚 " .. string.upper(egg.Name), "💰 " .. Format(egg.Price) .. " per egg", egg.Spots:Lerp(Color3.new(1, 1, 1), 0.4), 16, 5, 12)
+	oddsBoard(top, egg)
+
+	-- two buttons: hatch 1 egg (E) or 3 eggs (R)
+	local spotOne = P({ Name = "HatchOne", Size = Vector3.new(1, 1, 1), CFrame = CFrame.new(pos + Vector3.new(0, 4.5, 0)), Transparency = 1, CanCollide = false, Parent = m })
+	local spotThree = P({ Name = "HatchThree", Size = Vector3.new(1, 1, 1), CFrame = CFrame.new(pos + Vector3.new(0, 1.8, 0)), Transparency = 1, CanCollide = false, Parent = m })
+	local one = prompt(spotOne, "Hatch 1  (💰 " .. Format(egg.Price) .. ")", egg.Name, 0.3)
+	local three = prompt(spotThree, "Hatch 3  (💰 " .. Format(egg.Price * 3) .. ")", egg.Name, 0.3)
+	three.KeyboardKeyCode = Enum.KeyCode.R
+	three.GamepadKeyCode = Enum.KeyCode.ButtonY
+	for _, pp in ipairs({ one, three }) do
+		pp.MaxActivationDistance = 13
+	end
+	one.Triggered:Connect(function(player)
+		hatchEgg(player, eggIndex, 1)
+	end)
+	three.Triggered:Connect(function(player)
+		hatchEgg(player, eggIndex, 3)
+	end)
+	return m
+end
+
+-- Where each egg machine goes: zone 1 eggs at the spawn, the others at their zone's entrance
+local function eggMachineSpots(zoneIndex: number): { [number]: Vector3 }
+	local spots = {}
+	local k = 0
+	for eggIndex, egg in ipairs(Shared.Eggs) do
+		if egg.Zone == zoneIndex then
+			k += 1
+			if zoneIndex == 1 then
+				spots[eggIndex] = Vector3.new(34 + (k - 1) * 16, 0, -32)
+			else
+				spots[eggIndex] = Vector3.new(26 + (k - 1) * 16, 0, Shared.ZoneStart(zoneIndex) - 16)
+			end
+		end
+	end
+	return spots
+end
+
+--------------------------------------------------------------------------------
 -- THE HUB (spawn area)
 --------------------------------------------------------------------------------
 local function buildHub()
@@ -1014,6 +1162,10 @@ local function buildHub()
 		{ Vector3.new(-34, 0, -34), 10 }, -- rebirth altar
 		{ Vector3.new(60, 0, 38), 15 }, -- pond
 	}
+	for eggIndex, pos in pairs(eggMachineSpots(1)) do
+		buildEggMachine(eggIndex, pos)
+		table.insert(busy, { pos, 11 })
+	end
 	local function hubSpot(minX: number, maxX: number, radius: number): Vector3?
 		for _ = 1, 20 do
 			local side = if rng:NextNumber() < 0.5 then -1 else 1
@@ -1126,6 +1278,12 @@ local function buildZone(i: number)
 	local padPos = Vector3.new(-26, 0, zs - 16)
 	buildSellPad(padPos, 14)
 	reserve(i, padPos, 14)
+	if i >= 2 then
+		for eggIndex, pos in pairs(eggMachineSpots(i)) do
+			buildEggMachine(eggIndex, pos)
+			reserve(i, pos, 12)
+		end
+	end
 	reserve(i, Shared.ZoneSpawn(i), 8)
 
 	if i == 1 then -- Sunny Meadow
@@ -1533,8 +1691,9 @@ type PlayerData = {
 	Pickaxe: number,
 	Backpack: number,
 	Zone: number,
-	Pets: { [number]: boolean },
+	Pets: { [number]: number }, -- [pet number] = how many you own
 	TotalGems: number,
+	Hatched: number,
 }
 
 local store: DataStore? = nil
@@ -1553,7 +1712,7 @@ local Data: { [Player]: PlayerData } = {}
 local CanSave: { [Player]: boolean } = {}
 
 local function defaultData(): PlayerData
-	return { Coins = 0, Gems = 0, Rebirths = 0, Pickaxe = 1, Backpack = 1, Zone = 1, Pets = {}, TotalGems = 0 }
+	return { Coins = 0, Gems = 0, Rebirths = 0, Pickaxe = 1, Backpack = 1, Zone = 1, Pets = {}, TotalGems = 0, Hatched = 0 }
 end
 
 local function loadData(player: Player): (PlayerData, boolean)
@@ -1571,10 +1730,17 @@ local function loadData(player: Player): (PlayerData, boolean)
 						(data :: any)[key] = saved[key]
 					end
 				end
-				if type(saved.Pets) == "table" then
+				if type(saved.PetCounts) == "table" then
+					for key, count in pairs(saved.PetCounts) do
+						local index = tonumber(key)
+						if index and Shared.Pets[index] and type(count) == "number" and count >= 1 then
+							data.Pets[index] = math.floor(count)
+						end
+					end
+				elseif type(saved.Pets) == "table" then -- saves from the first version of the game
 					for _, index in ipairs(saved.Pets) do
 						if type(index) == "number" and Shared.Pets[index] then
-							data.Pets[index] = true
+							data.Pets[index] = (data.Pets[index] or 0) + 1
 						end
 					end
 				end
@@ -1599,9 +1765,9 @@ local function saveData(player: Player)
 	if not (data and CanSave[player] and store) then
 		return
 	end
-	local pets = {}
-	for index in pairs(data.Pets) do
-		table.insert(pets, index)
+	local petCounts = {}
+	for index, count in pairs(data.Pets) do
+		petCounts[tostring(index)] = count
 	end
 	local payload = {
 		Coins = data.Coins,
@@ -1610,8 +1776,9 @@ local function saveData(player: Player)
 		Pickaxe = data.Pickaxe,
 		Backpack = data.Backpack,
 		Zone = data.Zone,
-		Pets = pets,
+		PetCounts = petCounts,
 		TotalGems = data.TotalGems,
+		Hatched = data.Hatched,
 	}
 	local ok, err = pcall(function()
 		(store :: DataStore):SetAsync("Player_" .. player.UserId, payload)
@@ -1633,9 +1800,10 @@ local function sync(player: Player)
 	if not data then
 		return
 	end
-	local pets = {}
-	for index in pairs(data.Pets) do
-		table.insert(pets, index)
+	-- Pets[n] = how many of pet n you own
+	local pets = table.create(#Shared.Pets, 0)
+	for index, count in pairs(data.Pets) do
+		pets[index] = count
 	end
 	Remotes.Sync:FireClient(player, {
 		Coins = data.Coins,
@@ -1647,6 +1815,7 @@ local function sync(player: Player)
 		Zone = data.Zone,
 		Pets = pets,
 		TotalGems = data.TotalGems,
+		Hatched = data.Hatched,
 	})
 	local stats = player:FindFirstChild("leaderstats")
 	if stats then
@@ -1771,6 +1940,7 @@ local function refreshPets(player: Player)
 		pet.Name = player.Name .. "_" .. pet.Name
 		pet:SetAttribute("Owner", player.UserId)
 		pet:SetAttribute("Slot", slot)
+		pet:SetAttribute("Scale", Shared.Pets[index].Size or 1)
 		pet.ModelStreamingMode = Enum.ModelStreamingMode.Persistent
 		if root and root:IsA("BasePart") then
 			pet:PivotTo(root.CFrame * CFrame.new(0, 0, 5))
@@ -1952,17 +2122,17 @@ Remotes.Buy.OnServerEvent:Connect(function(player, category, index)
 		notify(player, "🎒 You got the " .. def.Name .. "!", "good")
 	elseif category == "Pet" then
 		local def = Shared.Pets[index]
-		if not def then
+		if not def or not def.Price then -- egg pets can't be bought
 			return
 		end
-		if data.Pets[index] then
+		if (data.Pets[index] or 0) > 0 then
 			notify(player, "You already own " .. def.Name .. "!", "info")
 			return
 		end
 		if not spend(player, data, def.Price) then
 			return
 		end
-		data.Pets[index] = true
+		data.Pets[index] = 1
 		refreshPets(player)
 		notify(player, "🐾 " .. def.Name .. " joined your team!", "good")
 	elseif category == "Zone" then
@@ -1974,6 +2144,60 @@ Remotes.Buy.OnServerEvent:Connect(function(player, category, index)
 	Remotes.Effect:FireClient(player, "bought", category, index)
 	sync(player)
 end)
+
+--------------------------------------------------------------------------------
+-- HATCHING EGGS
+--------------------------------------------------------------------------------
+local hatchRandom = Random.new()
+local lastHatch: { [Player]: number } = {}
+
+hatchEgg = function(player: Player, eggIndex: number, amount: number)
+	local data = Data[player]
+	local egg = Shared.Eggs[eggIndex]
+	if not data or not egg then
+		return
+	end
+	if data.Zone < egg.Zone then
+		notify(player, "🔒 Unlock " .. Shared.Zones[egg.Zone].Name .. " first!", "bad")
+		return
+	end
+	local now = os.clock()
+	if now - (lastHatch[player] or -math.huge) < Settings.HatchCooldown then
+		return -- still hatching the last egg
+	end
+	if not spend(player, data, egg.Price * amount) then
+		return
+	end
+	lastHatch[player] = now
+
+	local results = {}
+	for _ = 1, amount do
+		local index = Shared.RollEgg(eggIndex, hatchRandom)
+		local isNew = (data.Pets[index] or 0) == 0
+		data.Pets[index] = (data.Pets[index] or 0) + 1
+		table.insert(results, { Pet = index, New = isNew })
+	end
+	data.Hatched += amount
+	sync(player)
+	Remotes.Effect:FireClient(player, "hatch", eggIndex, results)
+
+	-- new pets start following you after the hatch animation
+	task.delay(2.2, function()
+		if Data[player] == data then
+			refreshPets(player)
+		end
+	end)
+
+	-- tell everyone in the server about super rare pets
+	for _, result in ipairs(results) do
+		local def = Shared.Pets[result.Pet]
+		if Shared.RarityRank(def.Rarity) >= Shared.RarityRank("Legendary") then
+			for _, other in ipairs(Players:GetPlayers()) do
+				notify(other, "🎉 " .. player.DisplayName .. " hatched a " .. string.upper(def.Rarity) .. " " .. def.Name .. "!", "gold")
+			end
+		end
+	end
+end
 
 --------------------------------------------------------------------------------
 -- REBIRTH
@@ -2101,6 +2325,7 @@ Players.PlayerRemoving:Connect(function(player)
 	lastSell[player] = nil
 	lastTeleport[player] = nil
 	lastFullWarning[player] = nil
+	lastHatch[player] = nil
 end)
 
 game:BindToClose(function()

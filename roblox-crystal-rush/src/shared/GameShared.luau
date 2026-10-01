@@ -27,6 +27,7 @@ Shared.Settings = {
 	GiantHealth = 5, -- giant crystals have 5x more health...
 	GiantGems = 6, -- ...and give 6x more gems
 	MaxPets = 3, -- how many pets can follow you at once (your best ones)
+	HatchCooldown = 3, -- seconds between hatching eggs
 	RebirthBoost = 0.5, -- every rebirth gives +50% coins when selling
 	RebirthBaseCost = 75000, -- coins needed for your first rebirth
 	RebirthCostGrowth = 2.5, -- each rebirth costs this many times more
@@ -287,33 +288,181 @@ Shared.Backpacks = {
 
 --------------------------------------------------------------------------------
 -- PETS  (Bonus = extra gems. 0.25 means +25% gems)
---   Kind picks the look: dog, cat, bunny, fox, panda, dragon, unicorn, cosmic
+--   Kind picks the look: dog, cat, bunny, fox, panda, dragon, unicorn, cosmic,
+--                        bee, slime, penguin, phoenix
+--   Price  = pets with a price are sold in the Shop. The rest come from eggs!
+--   Rarity = Common, Uncommon, Rare, Epic, Legendary, Mythic or Secret
+--   Extra looks you can add: Material, Shine (0 to 1), Glow (a color),
+--                            Aura (a color) and Size (1.3 = 30% bigger)
 --------------------------------------------------------------------------------
+local RGB = Color3.fromRGB
 Shared.Pets = {
-	{ Name = "Puppy", Kind = "dog", Bonus = 0.25, Price = 100, Color = Color3.fromRGB(235, 185, 125), Accent = Color3.fromRGB(150, 95, 60) },
-	{ Name = "Kitty", Kind = "cat", Bonus = 0.5, Price = 750, Color = Color3.fromRGB(255, 165, 75), Accent = Color3.fromRGB(255, 240, 220) },
-	{ Name = "Bunny", Kind = "bunny", Bonus = 1, Price = 4000, Color = Color3.fromRGB(245, 245, 250), Accent = Color3.fromRGB(255, 170, 200) },
-	{ Name = "Fox", Kind = "fox", Bonus = 2, Price = 25000, Color = Color3.fromRGB(255, 120, 40), Accent = Color3.fromRGB(255, 250, 245) },
-	{ Name = "Panda", Kind = "panda", Bonus = 3.5, Price = 120000, Color = Color3.fromRGB(250, 250, 250), Accent = Color3.fromRGB(35, 35, 40) },
-	{ Name = "Dragon", Kind = "dragon", Bonus = 6, Price = 600000, Color = Color3.fromRGB(80, 200, 110), Accent = Color3.fromRGB(255, 200, 80) },
-	{ Name = "Unicorn", Kind = "unicorn", Bonus = 10, Price = 3000000, Color = Color3.fromRGB(255, 240, 255), Accent = Color3.fromRGB(255, 140, 220) },
-	{ Name = "Cosmic Cat", Kind = "cosmic", Bonus = 20, Price = 18000000, Color = Color3.fromRGB(110, 60, 230), Accent = Color3.fromRGB(90, 240, 255) },
+	-- Shop pets
+	{ Name = "Puppy", Kind = "dog", Rarity = "Common", Bonus = 0.25, Price = 100, Color = RGB(235, 185, 125), Accent = RGB(150, 95, 60) },
+	{ Name = "Kitty", Kind = "cat", Rarity = "Common", Bonus = 0.5, Price = 750, Color = RGB(255, 165, 75), Accent = RGB(255, 240, 220) },
+	{ Name = "Bunny", Kind = "bunny", Rarity = "Uncommon", Bonus = 1, Price = 4000, Color = RGB(245, 245, 250), Accent = RGB(255, 170, 200) },
+	{ Name = "Fox", Kind = "fox", Rarity = "Uncommon", Bonus = 2, Price = 25000, Color = RGB(255, 120, 40), Accent = RGB(255, 250, 245) },
+	{ Name = "Panda", Kind = "panda", Rarity = "Rare", Bonus = 3.5, Price = 120000, Color = RGB(250, 250, 250), Accent = RGB(35, 35, 40) },
+	{ Name = "Dragon", Kind = "dragon", Rarity = "Epic", Bonus = 6, Price = 600000, Color = RGB(80, 200, 110), Accent = RGB(255, 200, 80) },
+	{ Name = "Unicorn", Kind = "unicorn", Rarity = "Legendary", Bonus = 10, Price = 3000000, Color = RGB(255, 240, 255), Accent = RGB(255, 140, 220) },
+	{ Name = "Cosmic Cat", Kind = "cosmic", Rarity = "Mythic", Bonus = 20, Price = 18000000, Color = RGB(110, 60, 230), Accent = RGB(90, 240, 255) },
+
+	-- Meadow Egg pets
+	{ Name = "Bee", Kind = "bee", Rarity = "Common", Bonus = 0.3, Color = RGB(255, 210, 60), Accent = RGB(40, 35, 30) },
+	{ Name = "Slime", Kind = "slime", Rarity = "Uncommon", Bonus = 0.6, Color = RGB(110, 240, 120), Accent = RGB(60, 180, 80) },
+	{ Name = "Golden Puppy", Kind = "dog", Rarity = "Rare", Bonus = 1.5, Color = RGB(255, 200, 60), Accent = RGB(225, 150, 30), Material = Enum.Material.Metal, Shine = 0.3, Glow = RGB(255, 220, 110) },
+	{ Name = "Rainbow Bunny", Kind = "bunny", Rarity = "Legendary", Bonus = 4, Color = RGB(255, 160, 225), Accent = RGB(150, 220, 255), Glow = RGB(255, 190, 240), Aura = RGB(255, 255, 255), Size = 1.2 },
+
+	-- Crystal Egg pets
+	{ Name = "Amethyst Slime", Kind = "slime", Rarity = "Common", Bonus = 1.2, Color = RGB(190, 110, 255), Accent = RGB(130, 60, 210) },
+	{ Name = "Shadow Cat", Kind = "cat", Rarity = "Uncommon", Bonus = 2, Color = RGB(45, 40, 60), Accent = RGB(190, 110, 255) },
+	{ Name = "Crystal Fox", Kind = "fox", Rarity = "Rare", Bonus = 5, Color = RGB(120, 220, 255), Accent = RGB(230, 250, 255), Material = Enum.Material.Glass, Glow = RGB(140, 230, 255) },
+	{ Name = "Gem Dragon", Kind = "dragon", Rarity = "Legendary", Bonus = 15, Color = RGB(210, 90, 255), Accent = RGB(120, 240, 255), Material = Enum.Material.Glass, Glow = RGB(220, 120, 255), Aura = RGB(190, 110, 255), Size = 1.25 },
+
+	-- Lava Egg pets
+	{ Name = "Magma Slime", Kind = "slime", Rarity = "Common", Bonus = 3, Color = RGB(255, 100, 30), Accent = RGB(255, 200, 60), Glow = RGB(255, 120, 40) },
+	{ Name = "Fire Fox", Kind = "fox", Rarity = "Uncommon", Bonus = 5, Color = RGB(255, 80, 30), Accent = RGB(255, 220, 80) },
+	{ Name = "Phoenix", Kind = "phoenix", Rarity = "Rare", Bonus = 12, Color = RGB(255, 120, 30), Accent = RGB(255, 220, 60), Glow = RGB(255, 140, 40) },
+	{ Name = "Inferno Dragon", Kind = "dragon", Rarity = "Legendary", Bonus = 40, Color = RGB(60, 30, 30), Accent = RGB(255, 100, 20), Material = Enum.Material.CrackedLava, Glow = RGB(255, 110, 30), Size = 1.25 },
+
+	-- Frost Egg pets
+	{ Name = "Penguin", Kind = "penguin", Rarity = "Common", Bonus = 8, Color = RGB(40, 45, 60), Accent = RGB(255, 160, 50) },
+	{ Name = "Snow Bunny", Kind = "bunny", Rarity = "Uncommon", Bonus = 14, Color = RGB(240, 250, 255), Accent = RGB(160, 210, 255) },
+	{ Name = "Ice Panda", Kind = "panda", Rarity = "Rare", Bonus = 30, Color = RGB(215, 240, 255), Accent = RGB(90, 150, 220), Material = Enum.Material.Ice, Glow = RGB(180, 230, 255) },
+	{ Name = "Glacier Unicorn", Kind = "unicorn", Rarity = "Legendary", Bonus = 100, Color = RGB(200, 240, 255), Accent = RGB(120, 200, 255), Material = Enum.Material.Glass, Glow = RGB(180, 230, 255), Aura = RGB(180, 230, 255), Size = 1.25 },
+
+	-- Galaxy Egg pets
+	{ Name = "Star Slime", Kind = "slime", Rarity = "Common", Bonus = 22, Color = RGB(255, 230, 120), Accent = RGB(255, 170, 60), Glow = RGB(255, 235, 150) },
+	{ Name = "Nebula Cat", Kind = "cat", Rarity = "Uncommon", Bonus = 40, Color = RGB(120, 60, 220), Accent = RGB(255, 120, 230), Aura = RGB(255, 120, 230) },
+	{ Name = "Cosmic Dragon", Kind = "dragon", Rarity = "Rare", Bonus = 80, Color = RGB(40, 30, 90), Accent = RGB(120, 255, 240), Glow = RGB(120, 255, 240) },
+	{ Name = "Galaxy Phoenix", Kind = "phoenix", Rarity = "Legendary", Bonus = 250, Color = RGB(170, 90, 255), Accent = RGB(120, 255, 240), Glow = RGB(200, 140, 255), Aura = RGB(120, 255, 240), Size = 1.3 },
+	{ Name = "Void Kitty", Kind = "cosmic", Rarity = "Secret", Bonus = 1000, Color = RGB(15, 10, 25), Accent = RGB(255, 255, 255), Glow = RGB(255, 255, 255), Size = 1.35 },
 }
 
 --------------------------------------------------------------------------------
--- RARITY COLORS (used by the shop cards)
+-- EGGS  (hatch them at the egg machines!)
+--   Zone   = the zone you need to unlock first (the Meadow Egg is at the spawn)
+--   Pets   = which pets can come out, and the chance of each one (in %)
+--------------------------------------------------------------------------------
+Shared.Eggs = {
+	{
+		Name = "Meadow Egg",
+		Zone = 1,
+		Price = 400,
+		Color = RGB(255, 248, 225),
+		Spots = RGB(120, 215, 100),
+		Pets = {
+			{ Name = "Bee", Chance = 60 },
+			{ Name = "Slime", Chance = 30 },
+			{ Name = "Golden Puppy", Chance = 9 },
+			{ Name = "Rainbow Bunny", Chance = 1 },
+		},
+	},
+	{
+		Name = "Crystal Egg",
+		Zone = 2,
+		Price = 8000,
+		Color = RGB(205, 160, 255),
+		Spots = RGB(110, 230, 255),
+		SpotMaterial = Enum.Material.Neon,
+		Pets = {
+			{ Name = "Amethyst Slime", Chance = 60 },
+			{ Name = "Shadow Cat", Chance = 30 },
+			{ Name = "Crystal Fox", Chance = 9 },
+			{ Name = "Gem Dragon", Chance = 1 },
+		},
+	},
+	{
+		Name = "Lava Egg",
+		Zone = 3,
+		Price = 120000,
+		Color = RGB(70, 40, 35),
+		Material = Enum.Material.CrackedLava,
+		Spots = RGB(255, 140, 40),
+		SpotMaterial = Enum.Material.Neon,
+		Pets = {
+			{ Name = "Magma Slime", Chance = 60 },
+			{ Name = "Fire Fox", Chance = 30 },
+			{ Name = "Phoenix", Chance = 9 },
+			{ Name = "Inferno Dragon", Chance = 1 },
+		},
+	},
+	{
+		Name = "Frost Egg",
+		Zone = 4,
+		Price = 2000000,
+		Color = RGB(215, 240, 255),
+		Material = Enum.Material.Glacier,
+		Spots = RGB(110, 180, 255),
+		Pets = {
+			{ Name = "Penguin", Chance = 60 },
+			{ Name = "Snow Bunny", Chance = 30 },
+			{ Name = "Ice Panda", Chance = 9 },
+			{ Name = "Glacier Unicorn", Chance = 1 },
+		},
+	},
+	{
+		Name = "Galaxy Egg",
+		Zone = 5,
+		Price = 30000000,
+		Color = RGB(70, 40, 150),
+		Spots = RGB(255, 130, 235),
+		SpotMaterial = Enum.Material.Neon,
+		Pets = {
+			{ Name = "Star Slime", Chance = 59.9 },
+			{ Name = "Nebula Cat", Chance = 30 },
+			{ Name = "Cosmic Dragon", Chance = 9 },
+			{ Name = "Galaxy Phoenix", Chance = 1 },
+			{ Name = "Void Kitty", Chance = 0.1 },
+		},
+	},
+}
+
+-- Look up pets by name, and check the eggs only use pets that exist
+Shared.PetIndex = {}
+for i, pet in ipairs(Shared.Pets) do
+	Shared.PetIndex[pet.Name] = i
+end
+for _, egg in ipairs(Shared.Eggs) do
+	for _, entry in ipairs(egg.Pets) do
+		local index = Shared.PetIndex[entry.Name]
+		if not index then
+			error('[Crystal Rush] The ' .. egg.Name .. ' has a pet called "' .. entry.Name .. '", but there is no pet with that name in Shared.Pets')
+		end
+		entry.Index = index
+		Shared.Pets[index].From = Shared.Pets[index].From or egg.Name
+	end
+end
+
+--------------------------------------------------------------------------------
+-- RARITY COLORS
 --------------------------------------------------------------------------------
 Shared.Rarities = {
-	{ Name = "Common", Color = Color3.fromRGB(165, 170, 185) },
-	{ Name = "Uncommon", Color = Color3.fromRGB(90, 215, 105) },
-	{ Name = "Rare", Color = Color3.fromRGB(70, 160, 255) },
-	{ Name = "Epic", Color = Color3.fromRGB(180, 90, 255) },
-	{ Name = "Legendary", Color = Color3.fromRGB(255, 185, 40) },
-	{ Name = "Mythic", Color = Color3.fromRGB(255, 70, 140) },
+	{ Name = "Common", Color = RGB(165, 170, 185) },
+	{ Name = "Uncommon", Color = RGB(90, 215, 105) },
+	{ Name = "Rare", Color = RGB(70, 160, 255) },
+	{ Name = "Epic", Color = RGB(180, 90, 255) },
+	{ Name = "Legendary", Color = RGB(255, 185, 40) },
+	{ Name = "Mythic", Color = RGB(255, 70, 140) },
+	{ Name = "Secret", Color = RGB(40, 245, 220) },
 }
 
+function Shared.RarityRank(name: string): number
+	for i, rarity in ipairs(Shared.Rarities) do
+		if rarity.Name == name then
+			return i
+		end
+	end
+	return 1
+end
+
+function Shared.RarityColor(name: string): Color3
+	return Shared.Rarities[Shared.RarityRank(name)].Color
+end
+
+-- Rarity color for shop items (pickaxes and backpacks get rarer as they go)
 function Shared.GetRarity(index: number, count: number)
-	local r = math.clamp(math.ceil(index / count * #Shared.Rarities), 1, #Shared.Rarities)
+	local r = math.clamp(math.ceil(index / count * 6), 1, 6)
 	return Shared.Rarities[r]
 end
 
@@ -374,15 +523,21 @@ function Shared.ZoneSpawn(i: number): Vector3
 	return Vector3.new(0, 4, Shared.ZoneStart(i) - 16)
 end
 
--- Your best pets (up to MaxPets), strongest first
-function Shared.GetEquippedPets(owned: { [number]: boolean }): { number }
+-- Your best pets (up to MaxPets), strongest first.
+-- owned = { [pet number] = how many you have }
+function Shared.GetEquippedPets(owned: { [number]: number }): { number }
 	local list = {}
-	for index in pairs(owned) do
-		if Shared.Pets[index] then
-			table.insert(list, index)
+	for index, count in pairs(owned) do
+		if Shared.Pets[index] and count > 0 then
+			for _ = 1, math.min(count, Shared.Settings.MaxPets) do
+				table.insert(list, index)
+			end
 		end
 	end
 	table.sort(list, function(a, b)
+		if Shared.Pets[a].Bonus == Shared.Pets[b].Bonus then
+			return a < b
+		end
 		return Shared.Pets[a].Bonus > Shared.Pets[b].Bonus
 	end)
 	while #list > Shared.Settings.MaxPets do
@@ -391,12 +546,45 @@ function Shared.GetEquippedPets(owned: { [number]: boolean }): { number }
 	return list
 end
 
-function Shared.GemMultiplier(owned: { [number]: boolean }): number
+function Shared.GemMultiplier(owned: { [number]: number }): number
 	local total = 1
 	for _, index in ipairs(Shared.GetEquippedPets(owned)) do
 		total += Shared.Pets[index].Bonus
 	end
 	return total
+end
+
+-- Picks a random pet from an egg, using the chances
+function Shared.RollEgg(eggIndex: number, random: Random): number
+	local egg = Shared.Eggs[eggIndex]
+	local total = 0
+	for _, entry in ipairs(egg.Pets) do
+		total += entry.Chance
+	end
+	local roll = random:NextNumber(0, total)
+	for _, entry in ipairs(egg.Pets) do
+		roll -= entry.Chance
+		if roll <= 0 then
+			return entry.Index
+		end
+	end
+	return egg.Pets[#egg.Pets].Index
+end
+
+-- Turns 2.4000001 into "2.4" (for boosts like x2.4)
+function Shared.MultiplierText(n: number): string
+	if n >= 1000 then
+		return Shared.Format(n)
+	end
+	local s = string.format("%.2f", n)
+	s = string.gsub(s, "0+$", "")
+	s = string.gsub(s, "%.$", "")
+	return s
+end
+
+-- "+40%" style text for a pet bonus
+function Shared.BonusText(bonus: number): string
+	return "+" .. Shared.Format(math.floor(bonus * 100 + 0.5)) .. "%"
 end
 
 function Shared.CoinMultiplier(rebirths: number): number
@@ -447,24 +635,67 @@ function Shared.BuildPet(index: number): Model
 	model.Name = def.Name
 
 	local kind = def.Kind
-	local bodyMaterial = Enum.Material.SmoothPlastic
-	local body = part(model, { Name = "Body", Shape = BALL, Size = Vector3.one * 2.2, Color = def.Color, Material = bodyMaterial })
+	local bodyMaterial = def.Material or Enum.Material.SmoothPlastic
+	local body
+	if kind == "slime" then
+		-- a squishy see-through blob
+		body = part(model, {
+			Name = "Body",
+			Size = Vector3.new(2.6, 2.1, 2.6),
+			Color = def.Color,
+			Material = def.Material or Enum.Material.Glass,
+			Transparency = 0.2,
+			Reflectance = def.Shine or 0.1,
+		})
+		local mesh = Instance.new("SpecialMesh")
+		mesh.MeshType = Enum.MeshType.Sphere
+		mesh.Parent = body
+	else
+		body = part(model, {
+			Name = "Body",
+			Shape = BALL,
+			Size = Vector3.one * 2.2,
+			Color = def.Color,
+			Material = bodyMaterial,
+			Reflectance = def.Shine or 0,
+		})
+	end
 	model.PrimaryPart = body
 
 	local dark = Color3.fromRGB(25, 25, 35)
 	local pink = Color3.fromRGB(255, 140, 170)
+	local face = if kind == "slime" then 0.2 else 0 -- slimes are a bit wider
+	local hasFeet = kind ~= "slime" and kind ~= "bee"
+	-- very dark pets get glowing eyes so you can still see their face
+	local eyeColor, eyeMaterial = dark, Enum.Material.SmoothPlastic
+	if def.Color.R + def.Color.G + def.Color.B < 0.65 and kind ~= "penguin" then
+		eyeColor, eyeMaterial = def.Accent, Enum.Material.Neon
+	end
 
-	-- Face, cheeks and feet (every pet has these)
+	-- Face, cheeks and feet
 	for _, side in ipairs({ -1, 1 }) do
-		if kind == "panda" then
-			part(model, { Name = "Patch", Shape = BALL, Size = Vector3.one * 0.72, CFrame = CFrame.new(0.42 * side, 0.18, -0.8), Color = def.Accent })
+		if kind == "panda" or kind == "penguin" then
+			part(model, {
+				Name = "Patch",
+				Shape = BALL,
+				Size = Vector3.one * 0.72,
+				CFrame = CFrame.new(0.42 * side, 0.18, -0.8),
+				Color = if kind == "penguin" then WHITE else def.Accent,
+			})
 		end
-		part(model, { Name = "Eye", Shape = BALL, Size = Vector3.one * 0.5, CFrame = CFrame.new(0.42 * side, 0.22, -0.88), Color = dark })
+		part(model, {
+			Name = "Eye",
+			Shape = BALL,
+			Size = Vector3.one * 0.5,
+			CFrame = CFrame.new(0.42 * side, 0.22, -0.88 - face),
+			Color = eyeColor,
+			Material = eyeMaterial,
+		})
 		part(model, {
 			Name = "Shine",
 			Shape = BALL,
 			Size = Vector3.one * 0.18,
-			CFrame = CFrame.new(0.36 * side, 0.32, -1.1),
+			CFrame = CFrame.new(0.36 * side, 0.32, -1.1 - face),
 			Color = WHITE,
 			Material = Enum.Material.Neon,
 		})
@@ -472,11 +703,13 @@ function Shared.BuildPet(index: number): Model
 			Name = "Cheek",
 			Shape = BALL,
 			Size = Vector3.one * 0.38,
-			CFrame = CFrame.new(0.72 * side, -0.12, -0.72),
+			CFrame = CFrame.new(0.72 * side, -0.12, -0.72 - face),
 			Color = pink,
 			Transparency = 0.25,
 		})
-		part(model, { Name = "Foot", Shape = BALL, Size = Vector3.one * 0.6, CFrame = CFrame.new(0.5 * side, -0.95, -0.25), Color = def.Accent })
+		if hasFeet then
+			part(model, { Name = "Foot", Shape = BALL, Size = Vector3.one * 0.6, CFrame = CFrame.new(0.5 * side, -0.95, -0.25), Color = def.Accent })
+		end
 	end
 
 	-- Pointy ears (diamond shape)
@@ -573,7 +806,7 @@ function Shared.BuildPet(index: number): Model
 			Name = "Aura",
 			Shape = BALL,
 			Size = Vector3.one * 2.5,
-			Color = def.Accent,
+			Color = def.Aura or def.Accent,
 			Material = Enum.Material.ForceField,
 			CastShadow = false,
 		})
@@ -596,8 +829,161 @@ function Shared.BuildPet(index: number): Model
 		sparkles.SpreadAngle = Vector2.new(180, 180)
 		sparkles.Rate = 8
 		sparkles.Parent = body
+	elseif kind == "bee" then
+		for _, z in ipairs({ 0.15, 0.62 }) do
+			local width = 2 * math.sqrt(1.21 - z * z) + 0.08 -- just a bit wider than the body there
+			part(model, {
+				Name = "Stripe",
+				Shape = CYLINDER,
+				Size = Vector3.new(0.28, width, width),
+				CFrame = CFrame.new(0, 0, z) * CFrame.Angles(0, math.rad(90), 0),
+				Color = def.Accent,
+			})
+		end
+		for _, side in ipairs({ -1, 1 }) do
+			part(model, {
+				Name = "Wing",
+				Size = Vector3.new(0.08, 1, 1.3),
+				CFrame = CFrame.new(0.7 * side, 1.1, 0.3) * CFrame.Angles(0, 0, math.rad(-30 * side)),
+				Color = WHITE,
+				Material = Enum.Material.Glass,
+				Transparency = 0.35,
+			})
+			part(model, {
+				Name = "Antenna",
+				Size = Vector3.new(0.08, 0.6, 0.08),
+				CFrame = CFrame.new(0.3 * side, 1.25, -0.5) * CFrame.Angles(math.rad(-20), 0, math.rad(-20 * side)),
+				Color = def.Accent,
+			})
+			part(model, { Name = "AntennaTip", Shape = BALL, Size = Vector3.one * 0.22, CFrame = CFrame.new(0.42 * side, 1.55, -0.62), Color = def.Accent })
+		end
+		part(model, {
+			Name = "Stinger",
+			Size = Vector3.new(0.22, 0.22, 0.5),
+			CFrame = CFrame.new(0, -0.1, 1.2),
+			Color = def.Accent,
+		})
+	elseif kind == "slime" then
+		part(model, { Name = "Core", Shape = BALL, Size = Vector3.one * 1, CFrame = CFrame.new(0, -0.15, 0.2), Color = def.Accent, Material = Enum.Material.Neon })
+		part(model, { Name = "Drop", Shape = BALL, Size = Vector3.one * 0.6, CFrame = CFrame.new(0.15, 1.05, 0.25), Color = def.Color, Material = Enum.Material.Glass, Transparency = 0.2 })
+	elseif kind == "penguin" then
+		part(model, { Name = "Belly", Shape = BALL, Size = Vector3.one * 1.6, CFrame = CFrame.new(0, -0.3, -0.5), Color = WHITE })
+		part(model, {
+			Name = "Beak",
+			Size = Vector3.new(0.35, 0.22, 0.4),
+			CFrame = CFrame.new(0, -0.02, -1.15),
+			Color = def.Accent,
+		})
+		for _, side in ipairs({ -1, 1 }) do
+			part(model, {
+				Name = "Flipper",
+				Size = Vector3.new(0.18, 1, 0.5),
+				CFrame = CFrame.new(1.05 * side, -0.15, 0) * CFrame.Angles(0, 0, math.rad(20 * side)),
+				Color = def.Color,
+			})
+		end
+	elseif kind == "phoenix" then
+		part(model, { Name = "Beak", Size = Vector3.new(0.3, 0.25, 0.4), CFrame = CFrame.new(0, -0.05, -1.15), Color = def.Accent })
+		for i, tilt in ipairs({ -25, 0, 25 }) do
+			part(model, {
+				Name = "Crest" .. i,
+				Size = Vector3.new(0.12, 0.75, 0.22),
+				CFrame = CFrame.new(0, 1.2, -0.1 + i * 0.12) * CFrame.Angles(math.rad(tilt + 15), 0, 0),
+				Color = def.Accent,
+				Material = Enum.Material.Neon,
+			})
+			part(model, {
+				Name = "TailFeather" .. i,
+				Size = Vector3.new(0.14, 0.3, 1.5),
+				CFrame = CFrame.new(0, 0.1, 1.45) * CFrame.Angles(math.rad(-15), math.rad(tilt), 0),
+				Color = def.Accent,
+				Material = Enum.Material.Neon,
+			})
+		end
+		for _, side in ipairs({ -1, 1 }) do
+			part(model, {
+				Name = "Wing",
+				Size = Vector3.new(0.12, 1.25, 1.6),
+				CFrame = CFrame.new(1.3 * side, 0.45, 0.4) * CFrame.Angles(0, 0, math.rad(-40 * side)),
+				Color = def.Accent,
+				Material = Enum.Material.Neon,
+			})
+		end
+		local flames = Instance.new("ParticleEmitter")
+		flames.Texture = "rbxasset://textures/particles/fire_main.dds"
+		flames.Color = ColorSequence.new(def.Accent, def.Color)
+		flames.LightEmission = 1
+		flames.Size = NumberSequence.new(0.9, 0)
+		flames.Lifetime = NumberRange.new(0.4, 0.8)
+		flames.Speed = NumberRange.new(1, 2)
+		flames.Rate = 12
+		flames.Parent = body
 	end
 
+	-- Extra looks for rare pets
+	if def.Aura and kind ~= "cosmic" then
+		part(model, {
+			Name = "Aura",
+			Shape = BALL,
+			Size = Vector3.one * 2.7,
+			Color = def.Aura,
+			Material = Enum.Material.ForceField,
+			CastShadow = false,
+		})
+	end
+	if def.Glow then
+		local glow = Instance.new("PointLight")
+		glow.Color = def.Glow
+		glow.Range = 9
+		glow.Brightness = 1.5
+		glow.Parent = body
+		local sparkles = Instance.new("ParticleEmitter")
+		sparkles.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+		sparkles.Color = ColorSequence.new(def.Glow)
+		sparkles.LightEmission = 1
+		sparkles.Size = NumberSequence.new(0.3, 0)
+		sparkles.Lifetime = NumberRange.new(0.6, 1.2)
+		sparkles.Speed = NumberRange.new(0.5, 1.5)
+		sparkles.SpreadAngle = Vector2.new(180, 180)
+		sparkles.Rate = 5
+		sparkles.Parent = body
+	end
+	if def.Size and def.Size ~= 1 then
+		model:ScaleTo(def.Size)
+	end
+
+	return model
+end
+
+-- EGGS ------------------------------------------------------------------------
+function Shared.BuildEgg(index: number): Model
+	local def = Shared.Eggs[index]
+	local model = Instance.new("Model")
+	model.Name = def.Name
+	local shell = part(model, {
+		Name = "Shell",
+		Size = Vector3.new(4, 5.2, 4),
+		Color = def.Color,
+		Material = def.Material or Enum.Material.SmoothPlastic,
+	})
+	local mesh = Instance.new("SpecialMesh")
+	mesh.MeshType = Enum.MeshType.Sphere
+	mesh.Parent = shell
+	model.PrimaryPart = shell
+	-- spots on the shell (angles from the top, and around)
+	local spots = { { 0.45, 0 }, { 0.9, 1.4 }, { 1.35, 2.7 }, { 0.85, 3.9 }, { 1.25, 5.1 }, { 1.9, 0.7 }, { 2.05, 2.1 }, { 1.85, 4.3 }, { 2.4, 5.6 } }
+	for i, spot in ipairs(spots) do
+		local theta, phi = spot[1], spot[2]
+		local pos = Vector3.new(2 * math.sin(theta) * math.cos(phi), 2.6 * math.cos(theta), 2 * math.sin(theta) * math.sin(phi)) * 0.97
+		part(model, {
+			Name = "Spot",
+			Shape = BALL,
+			Size = Vector3.one * (0.95 - i * 0.04),
+			CFrame = CFrame.new(pos),
+			Color = def.Spots,
+			Material = def.SpotMaterial or Enum.Material.SmoothPlastic,
+		})
+	end
 	return model
 end
 
