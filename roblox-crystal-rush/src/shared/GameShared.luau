@@ -28,6 +28,18 @@ Shared.Settings = {
 	GiantGems = 6, -- ...and give 6x more gems
 	MaxPets = 3, -- how many pets can follow you at once (your best ones)
 	HatchCooldown = 3, -- seconds between hatching eggs
+
+	-- Levels and dimensions
+	DimensionsPerLevel = 3, -- level 1 = 3 dimensions, level 2 = 6, level 3 = 9, ...
+	XPBase = 60, -- XP needed for the next level = XPBase x level x level
+	LevelPowerBonus = 0.1, -- every level makes your pickaxe 10% stronger
+	DimensionCrystals = 14, -- crystals on each dimension island
+	DimensionHealth = 5, -- crystal health in dimension 1...
+	DimensionHealthGrowth = 1.8, -- ...and x1.8 for every dimension after that
+	DimensionGems = 4, -- gems per crystal in dimension 1...
+	DimensionGemGrowth = 2, -- ...and x2 for every dimension after that
+	MaxOpenDimensions = 8, -- how many dimension islands can exist at the same time
+	DimensionCloseTime = 30, -- seconds an empty dimension stays before it disappears
 	RebirthBoost = 0.5, -- every rebirth gives +50% coins when selling
 	RebirthBaseCost = 75000, -- coins needed for your first rebirth
 	RebirthCostGrowth = 2.5, -- each rebirth costs this many times more
@@ -209,6 +221,223 @@ Shared.Zones = {
 		},
 	},
 }
+
+--------------------------------------------------------------------------------
+-- DIMENSIONS
+--   Dimensions are floating islands you can visit from the portal at the spawn.
+--   There are 12 themes. After dimension 12 they repeat with new crystal colors
+--   (Candy World II, Neon City II, ...) and keep getting stronger forever.
+--   Decor picks the decorations: candy, pillars, coral, trees, cactus, mushrooms,
+--   clouds, spires, rainbow, ice, lava, cyber
+--------------------------------------------------------------------------------
+local function mood(clockTime: number, atmosphere: Color3, decay: Color3, tint: Color3, extra: { [string]: any }?)
+	local m = {
+		ClockTime = clockTime,
+		Brightness = 2.8,
+		Ambient = Color3.fromRGB(85, 80, 100),
+		OutdoorAmbient = Color3.fromRGB(150, 150, 165),
+		Exposure = 0,
+		Density = 0.32,
+		Haze = 1.6,
+		Glare = 0.2,
+		AtmosphereColor = atmosphere,
+		Decay = decay,
+		Tint = tint,
+		Saturation = 0.2,
+		Contrast = 0.1,
+	}
+	for key, value in pairs(extra or {}) do
+		m[key] = value
+	end
+	return m
+end
+local NIGHT = { Brightness = 1.5, OutdoorAmbient = Color3.fromRGB(120, 105, 170), Exposure = 0.35 }
+
+Shared.DimensionThemes = {
+	{
+		Name = "Candy World",
+		Emoji = "🍭",
+		Ground = Color3.fromRGB(255, 175, 215),
+		GroundMaterial = Enum.Material.SmoothPlastic,
+		Rock = Color3.fromRGB(255, 235, 245),
+		Accent = Color3.fromRGB(255, 90, 170),
+		Crystals = { Color3.fromRGB(255, 120, 200), Color3.fromRGB(120, 255, 210), Color3.fromRGB(255, 240, 120) },
+		Decor = "candy",
+		Mood = mood(13, Color3.fromRGB(255, 200, 230), Color3.fromRGB(200, 120, 170), Color3.fromRGB(255, 240, 248)),
+	},
+	{
+		Name = "Neon City",
+		Emoji = "🌃",
+		Ground = Color3.fromRGB(25, 25, 40),
+		GroundMaterial = Enum.Material.SmoothPlastic,
+		Rock = Color3.fromRGB(45, 45, 70),
+		Accent = Color3.fromRGB(0, 240, 255),
+		Crystals = { Color3.fromRGB(0, 240, 255), Color3.fromRGB(255, 50, 220), Color3.fromRGB(150, 255, 60) },
+		Decor = "pillars",
+		Mood = mood(0.5, Color3.fromRGB(120, 80, 255), Color3.fromRGB(40, 20, 90), Color3.fromRGB(235, 225, 255), NIGHT),
+	},
+	{
+		Name = "Ocean Reef",
+		Emoji = "🐠",
+		Ground = Color3.fromRGB(240, 220, 160),
+		GroundMaterial = Enum.Material.Sand,
+		Rock = Color3.fromRGB(200, 190, 170),
+		Accent = Color3.fromRGB(60, 200, 255),
+		Crystals = { Color3.fromRGB(70, 220, 255), Color3.fromRGB(255, 120, 110), Color3.fromRGB(80, 255, 200) },
+		Decor = "coral",
+		Mood = mood(12, Color3.fromRGB(120, 210, 255), Color3.fromRGB(40, 120, 200), Color3.fromRGB(225, 245, 255), { Density = 0.45 }),
+	},
+	{
+		Name = "Jungle",
+		Emoji = "🌴",
+		Ground = Color3.fromRGB(70, 160, 60),
+		GroundMaterial = Enum.Material.Grass,
+		Rock = Color3.fromRGB(110, 115, 100),
+		Accent = Color3.fromRGB(150, 255, 80),
+		Crystals = { Color3.fromRGB(150, 255, 80), Color3.fromRGB(255, 200, 40), Color3.fromRGB(255, 120, 40) },
+		Decor = "trees",
+		Mood = mood(15, Color3.fromRGB(190, 230, 170), Color3.fromRGB(70, 120, 60), Color3.fromRGB(245, 255, 235), { Density = 0.4 }),
+	},
+	{
+		Name = "Desert Dunes",
+		Emoji = "🏜️",
+		Ground = Color3.fromRGB(235, 195, 120),
+		GroundMaterial = Enum.Material.Sand,
+		Rock = Color3.fromRGB(190, 140, 90),
+		Accent = Color3.fromRGB(255, 170, 40),
+		Crystals = { Color3.fromRGB(255, 170, 40), Color3.fromRGB(255, 90, 60), Color3.fromRGB(255, 230, 120) },
+		Decor = "cactus",
+		Mood = mood(16.5, Color3.fromRGB(255, 210, 150), Color3.fromRGB(170, 110, 60), Color3.fromRGB(255, 245, 225), { Glare = 0.6 }),
+	},
+	{
+		Name = "Toxic Swamp",
+		Emoji = "☢️",
+		Ground = Color3.fromRGB(70, 85, 45),
+		GroundMaterial = Enum.Material.Mud,
+		Rock = Color3.fromRGB(60, 60, 50),
+		Accent = Color3.fromRGB(140, 255, 40),
+		Crystals = { Color3.fromRGB(140, 255, 40), Color3.fromRGB(190, 80, 255), Color3.fromRGB(230, 255, 60) },
+		Decor = "mushrooms",
+		Mood = mood(18, Color3.fromRGB(160, 220, 90), Color3.fromRGB(60, 90, 30), Color3.fromRGB(240, 255, 225), { Density = 0.5, Haze = 2.6 }),
+	},
+	{
+		Name = "Cloud Kingdom",
+		Emoji = "☁️",
+		Ground = Color3.fromRGB(245, 248, 255),
+		GroundMaterial = Enum.Material.SmoothPlastic,
+		Rock = Color3.fromRGB(220, 230, 250),
+		Accent = Color3.fromRGB(255, 215, 90),
+		Crystals = { Color3.fromRGB(255, 215, 90), Color3.fromRGB(140, 200, 255), Color3.fromRGB(255, 255, 255) },
+		Decor = "clouds",
+		Mood = mood(11.5, Color3.fromRGB(215, 235, 255), Color3.fromRGB(150, 190, 240), Color3.fromRGB(245, 250, 255), { Brightness = 3.4 }),
+	},
+	{
+		Name = "Shadow Realm",
+		Emoji = "🌑",
+		Ground = Color3.fromRGB(30, 25, 40),
+		GroundMaterial = Enum.Material.Slate,
+		Rock = Color3.fromRGB(50, 40, 60),
+		Accent = Color3.fromRGB(255, 40, 70),
+		Crystals = { Color3.fromRGB(255, 40, 70), Color3.fromRGB(150, 40, 255), Color3.fromRGB(255, 255, 255) },
+		Decor = "spires",
+		Mood = mood(0, Color3.fromRGB(140, 40, 70), Color3.fromRGB(50, 10, 30), Color3.fromRGB(255, 225, 230), NIGHT),
+	},
+	{
+		Name = "Rainbow Road",
+		Emoji = "🌈",
+		Ground = Color3.fromRGB(250, 250, 255),
+		GroundMaterial = Enum.Material.Marble,
+		Rock = Color3.fromRGB(230, 230, 240),
+		Accent = Color3.fromRGB(255, 120, 200),
+		Crystals = { Color3.fromRGB(255, 80, 80), Color3.fromRGB(80, 200, 255), Color3.fromRGB(255, 230, 60) },
+		Decor = "rainbow",
+		Mood = mood(13.5, Color3.fromRGB(230, 220, 255), Color3.fromRGB(170, 150, 230), Color3.fromRGB(255, 250, 255), { Saturation = 0.35 }),
+	},
+	{
+		Name = "Crystal Glacier",
+		Emoji = "🧊",
+		Ground = Color3.fromRGB(190, 230, 255),
+		GroundMaterial = Enum.Material.Glacier,
+		Rock = Color3.fromRGB(170, 200, 230),
+		Accent = Color3.fromRGB(120, 220, 255),
+		Crystals = { Color3.fromRGB(120, 220, 255), Color3.fromRGB(220, 245, 255), Color3.fromRGB(100, 140, 255) },
+		Decor = "ice",
+		Mood = mood(10.5, Color3.fromRGB(220, 240, 255), Color3.fromRGB(150, 200, 240), Color3.fromRGB(238, 246, 255), { Brightness = 3.3 }),
+	},
+	{
+		Name = "Magma Core",
+		Emoji = "🔥",
+		Ground = Color3.fromRGB(55, 40, 40),
+		GroundMaterial = Enum.Material.Basalt,
+		Rock = Color3.fromRGB(40, 30, 30),
+		Accent = Color3.fromRGB(255, 110, 30),
+		Crystals = { Color3.fromRGB(255, 110, 30), Color3.fromRGB(255, 50, 40), Color3.fromRGB(255, 220, 60) },
+		Decor = "lava",
+		Mood = mood(17.8, Color3.fromRGB(255, 130, 80), Color3.fromRGB(130, 40, 20), Color3.fromRGB(255, 235, 220), { Density = 0.48, Haze = 2.6 }),
+	},
+	{
+		Name = "Cyber Grid",
+		Emoji = "🤖",
+		Ground = Color3.fromRGB(35, 45, 60),
+		GroundMaterial = Enum.Material.DiamondPlate,
+		Rock = Color3.fromRGB(60, 70, 90),
+		Accent = Color3.fromRGB(60, 255, 180),
+		Crystals = { Color3.fromRGB(60, 255, 180), Color3.fromRGB(60, 140, 255), Color3.fromRGB(255, 255, 255) },
+		Decor = "cyber",
+		Mood = mood(23.5, Color3.fromRGB(70, 140, 200), Color3.fromRGB(20, 40, 80), Color3.fromRGB(225, 240, 255), NIGHT),
+	},
+}
+
+local ROMAN = { "", " II", " III", " IV", " V", " VI", " VII", " VIII", " IX", " X" }
+
+local function shiftHue(color: Color3, amount: number): Color3
+	if amount == 0 then
+		return color
+	end
+	local h, sat, v = color:ToHSV()
+	return Color3.fromHSV((h + amount) % 1, sat, v)
+end
+
+-- Everything about dimension number d (works for any number!)
+function Shared.GetDimension(d: number)
+	local themes = Shared.DimensionThemes
+	local theme = themes[(d - 1) % #themes + 1]
+	local cycle = math.floor((d - 1) / #themes)
+	local hue = (cycle * 0.17) % 1
+	local colors = {}
+	for i, color in ipairs(theme.Crystals) do
+		colors[i] = shiftHue(color, hue)
+	end
+	local settings = Shared.Settings
+	return {
+		Number = d,
+		Name = theme.Name .. (ROMAN[cycle + 1] or (" " .. (cycle + 1))),
+		Emoji = theme.Emoji,
+		Theme = theme,
+		Level = math.ceil(d / settings.DimensionsPerLevel), -- level you need
+		Health = math.floor(settings.DimensionHealth * settings.DimensionHealthGrowth ^ (d - 1)),
+		Gems = math.floor(settings.DimensionGems * settings.DimensionGemGrowth ^ (d - 1)),
+		XP = d,
+		CrystalColors = colors,
+		Accent = shiftHue(theme.Accent, hue),
+		Mood = theme.Mood,
+	}
+end
+
+-- How many dimensions you can visit at a level
+function Shared.DimensionsUnlocked(level: number): number
+	return level * Shared.Settings.DimensionsPerLevel
+end
+
+-- XP needed to go from this level to the next one
+function Shared.XPNeeded(level: number): number
+	return Shared.Settings.XPBase * level * level
+end
+
+-- How much stronger your pickaxe is at this level (1.2 = 20% stronger)
+function Shared.LevelPower(level: number): number
+	return 1 + (level - 1) * Shared.Settings.LevelPowerBonus
+end
 
 --------------------------------------------------------------------------------
 -- PICKAXES  (Power = damage per hit)

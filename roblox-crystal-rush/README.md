@@ -11,6 +11,11 @@ sell them for coins, and spend the coins in the shop.
 - **🥚 Egg machines** (one at the spawn, one in each zone) hatch **21 rare pets**: Legendary pets
   glow and have an aura, and the Galaxy Egg has a 0.1% **Secret** pet. Every machine shows its chances.
 - **🐾 Pets** window shows your whole collection. Pets you haven't found yet are black shadows.
+- **⭐ Levels:** you earn XP for every crystal you mine. Each level makes your pickaxe 10% stronger.
+- **🌌 Dimensions:** floating islands you visit through the portal at the spawn. Level 1 opens
+  3 dimensions, level 2 opens 6, level 3 opens 9, and it never stops. There are 12 themes
+  (Candy World, Neon City, Ocean Reef, Jungle, …). After that they come back with new colors and
+  stronger crystals: Candy World II, Candy World III, and so on.
 - **Rebirths**: start over and earn more coins forever. You keep your pets.
 - **Gates** between zones: walk up and press **E** to unlock the next zone.
 - **Giant crystals**, a health bar on every crystal, sparkles, flying gems, sounds, and a glowing line that leads you to a sell pad when your backpack is full.
@@ -51,6 +56,8 @@ Use this if the file doesn't open for some reason.
 - When the backpack is full, walk onto a gold **💰 SELL** pad.
 - Open the **🛒 Shop** to buy better pickaxes, bigger backpacks and pets.
 - At an **egg machine**, press **E** to hatch 1 egg or **R** to hatch 3.
+- Click **🌌 DIMENSIONS** (or walk into the purple portal at the spawn) and pick a dimension.
+  The **🏠 HOME** portal on every island takes you back.
 - Walk to a gate and press **E** to unlock the next zone.
 - Use **🌀 Teleport** to jump between zones you've unlocked.
 - At **75K coins** you can **♻️ Rebirth** for a permanent coin boost.
@@ -87,6 +94,9 @@ Everything you'd want to tweak is in **`GameShared`** (in ReplicatedStorage):
 - `Shared.Zones`: zone names, unlock prices, crystal health and gems, colors and sky mood
 - `Shared.Pickaxes`, `Shared.Backpacks`, `Shared.Pets`: names, prices, power and colors
 - `Shared.Eggs`: egg prices and which pets come out (with their chances in %)
+- `Shared.DimensionThemes`: the dimension themes. Add your own and it joins the list!
+- In `Shared.Settings`, `DimensionsPerLevel = 3` sets how many dimensions each level unlocks,
+  and `XPBase` sets how much XP a level needs
 
 **Testing tip:** set `StudioStartCoins = 1000000` to start with a million coins in Studio,
 so you can try every item. Set it back to `0` before you publish.

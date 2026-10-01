@@ -40,7 +40,7 @@ do
 	end
 	local folder = Instance.new("Folder")
 	folder.Name = "Remotes"
-	for _, name in ipairs({ "Mine", "Buy", "Rebirth", "Teleport", "Sync", "Notify", "Effect", "OpenMenu" }) do
+	for _, name in ipairs({ "Mine", "Buy", "Rebirth", "Teleport", "Sync", "Notify", "Effect", "OpenMenu", "EnterDimension" }) do
 		local remote = Instance.new("RemoteEvent")
 		remote.Name = name
 		remote.Parent = folder
@@ -69,6 +69,11 @@ local GateFolder = folder("Gates")
 local SellFolder = folder("SellPads")
 local PetFolder = folder("Pets")
 local WallFolder = folder("Walls")
+local DimensionFolder = folder("Dimensions")
+
+-- New parts and models go here unless something else is given
+-- (dimension islands switch this to their own folder while they are built)
+local buildParent: Instance = MapFolder
 
 -- Remove the default Baseplate / SpawnLocation if this started as a Baseplate place
 do
@@ -108,14 +113,14 @@ local function P(props): any
 		p.CanTouch = props.CanTouch == true
 	end
 	p.Name = props.Name or "Part"
-	p.Parent = props.Parent or MapFolder
+	p.Parent = props.Parent or buildParent
 	return p
 end
 
 local function model(name: string, parent: Instance?): Model
 	local m = Instance.new("Model")
 	m.Name = name
-	m.Parent = parent or MapFolder
+	m.Parent = parent or buildParent
 	return m
 end
 
@@ -714,6 +719,105 @@ function Decor.FloatingRock(pos: Vector3, scale: number, glow: Color3)
 	spin(gem, 0.2, 1.5)
 end
 
+function Decor.Lollipop(pos: Vector3, scale: number, color: Color3)
+	local m = model("Lollipop")
+	local h = 7 * scale
+	P({
+		Name = "Stick",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(h, 0.6 * scale, 0.6 * scale),
+		CFrame = CFrame.new(pos + Vector3.new(0, h / 2, 0)) * CFrame.Angles(0, 0, rad(90)),
+		Color = Color3.fromRGB(255, 255, 255),
+		Parent = m,
+	})
+	local candy = P({
+		Name = "Candy",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(1 * scale, 5 * scale, 5 * scale),
+		CFrame = CFrame.new(pos + Vector3.new(0, h + 1.8 * scale, 0)) * CFrame.Angles(0, rng:NextNumber(0, math.pi), 0),
+		Color = color,
+		CanCollide = false,
+		Parent = m,
+	})
+	P({
+		Name = "Swirl",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(1.1 * scale, 2.6 * scale, 2.6 * scale),
+		CFrame = candy.CFrame,
+		Color = Color3.fromRGB(255, 255, 255),
+		CanCollide = false,
+		Parent = m,
+	})
+end
+
+function Decor.Cactus(pos: Vector3, scale: number)
+	local m = model("Cactus")
+	local green = Color3.fromRGB(70, 150, 70)
+	local h = 8 * scale
+	P({ Name = "Trunk", Size = Vector3.new(1.6, h, 1.6) * Vector3.new(scale, 1, scale), CFrame = CFrame.new(pos + Vector3.new(0, h / 2, 0)), Color = green, Material = Enum.Material.Grass, Parent = m })
+	for _, side in ipairs({ -1, 1 }) do
+		local armY = h * rng:NextNumber(0.4, 0.65)
+		P({
+			Name = "Arm",
+			Size = Vector3.new(2.2, 1.1, 1.1) * scale,
+			CFrame = CFrame.new(pos + Vector3.new(side * 1.5 * scale, armY, 0)),
+			Color = green,
+			Material = Enum.Material.Grass,
+			Parent = m,
+		})
+		P({
+			Name = "ArmUp",
+			Size = Vector3.new(1.1, 2.6, 1.1) * scale,
+			CFrame = CFrame.new(pos + Vector3.new(side * 2.3 * scale, armY + 1.3 * scale, 0)),
+			Color = green,
+			Material = Enum.Material.Grass,
+			Parent = m,
+		})
+	end
+end
+
+function Decor.Cloud(pos: Vector3, scale: number)
+	for i = 1, 4 do
+		P({
+			Name = "Cloud",
+			Shape = Enum.PartType.Ball,
+			Size = Vector3.one * rng:NextNumber(4, 7) * scale,
+			CFrame = CFrame.new(pos + Vector3.new((i - 2.5) * 3 * scale, rng:NextNumber(1, 3) * scale, rng:NextNumber(-1.5, 1.5) * scale)),
+			Color = Color3.fromRGB(255, 255, 255),
+			CanCollide = false,
+		})
+	end
+end
+
+function Decor.Pillar(pos: Vector3, scale: number, color: Color3)
+	local m = model("NeonPillar")
+	local h = rng:NextNumber(10, 18) * scale
+	P({ Name = "Pillar", Size = Vector3.new(2.5, h, 2.5) * Vector3.new(scale, 1, scale), CFrame = CFrame.new(pos + Vector3.new(0, h / 2, 0)), Color = Color3.fromRGB(40, 40, 60), Material = Enum.Material.Metal, Parent = m })
+	for _, y in ipairs({ 0.3, 0.6, 0.9 }) do
+		P({
+			Name = "Stripe",
+			Size = Vector3.new(2.7, 0.4, 2.7) * Vector3.new(scale, 1, scale),
+			CFrame = CFrame.new(pos + Vector3.new(0, h * y, 0)),
+			Color = color,
+			Material = Enum.Material.Neon,
+			CanCollide = false,
+			Parent = m,
+		})
+	end
+	local orb = P({
+		Name = "Orb",
+		Shape = Enum.PartType.Ball,
+		Size = Vector3.one * 2.4 * scale,
+		CFrame = CFrame.new(pos + Vector3.new(0, h + 2 * scale, 0)),
+		Color = color,
+		Material = Enum.Material.Neon,
+		CanCollide = false,
+		Parent = m,
+	})
+	light(orb, color, 18, 1.8)
+	spin(orb, 0, 0.8)
+end
+
 -- Big stone arch with a sign (used for zone entrances)
 local function buildArch(z: number, zone, parent: Instance, title: string, subtitle: string?)
 	local stone = zone.RockColor:Lerp(Color3.new(1, 1, 1), 0.25)
@@ -1166,6 +1270,61 @@ local function buildHub()
 		buildEggMachine(eggIndex, pos)
 		table.insert(busy, { pos, 11 })
 	end
+
+	-- Dimension portal
+	do
+		local portalPos = Vector3.new(-36, 0, 32)
+		table.insert(busy, { portalPos, 12 })
+		local portal = model("DimensionPortal", hub)
+		P({
+			Name = "Platform",
+			Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new(0.8, 16, 16),
+			CFrame = CFrame.new(portalPos + Vector3.new(0, 0.4, 0)) * CFrame.Angles(0, 0, rad(90)),
+			Color = Color3.fromRGB(45, 35, 80),
+			Material = Enum.Material.Marble,
+			Parent = portal,
+		})
+		local colors = { Color3.fromRGB(170, 90, 255), Color3.fromRGB(80, 230, 255) }
+		local ringCenter = portalPos + Vector3.new(0, 8.5, 0)
+		for k = 0, 19 do
+			local a = k / 20 * math.pi * 2
+			P({
+				Name = "Ring",
+				Size = Vector3.new(2.6, 1.3, 1.3),
+				CFrame = CFrame.new(ringCenter + Vector3.new(math.cos(a) * 7, math.sin(a) * 7, 0)) * CFrame.Angles(0, 0, a + math.pi / 2),
+				Color = colors[k % 2 + 1],
+				Material = Enum.Material.Neon,
+				Parent = portal,
+			})
+		end
+		local swirl = P({
+			Name = "Swirl",
+			Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new(0.3, 13, 13),
+			CFrame = CFrame.new(ringCenter) * CFrame.Angles(0, rad(90), 0),
+			Color = Color3.fromRGB(150, 110, 255),
+			Material = Enum.Material.ForceField,
+			CanCollide = false,
+			Parent = portal,
+		})
+		light(swirl, Color3.fromRGB(160, 120, 255), 30, 2.5)
+		particles(swirl, {
+			Color = Color3.fromRGB(190, 150, 255),
+			Size = 0.6,
+			Rate = 30,
+			Lifetime = NumberRange.new(1, 2),
+			Speed = NumberRange.new(3, 6),
+			Direction = Enum.NormalId.Right,
+			Spread = Vector2.new(60, 60),
+		})
+		sign(swirl, "🌌 DIMENSIONS", "Level up to unlock more!", Color3.fromRGB(200, 170, 255), 18, 5.5, 10)
+		local pp = prompt(swirl, "Choose a Dimension", "Dimension Portal", 0)
+		pp.MaxActivationDistance = 16
+		pp.Triggered:Connect(function(player)
+			Remotes.OpenMenu:FireClient(player, "Dimensions")
+		end)
+	end
 	local function hubSpot(minX: number, maxX: number, radius: number): Vector3?
 		for _ = 1, 20 do
 			local side = if rng:NextNumber() < 0.5 then -1 else 1
@@ -1492,12 +1651,18 @@ local function buildWalls()
 	end
 end
 
+local addXP -- defined later
+
 --------------------------------------------------------------------------------
 -- CRYSTALS
 --------------------------------------------------------------------------------
 type CrystalInfo = {
 	Model: Model,
-	Zone: number,
+	Zone: number, -- 0 for dimension crystals
+	Dimension: number?,
+	XP: number,
+	Folder: Instance, -- where the crystal lives while it is not broken
+	Respawn: (CrystalInfo) -> CFrame?, -- where it grows back (nil = don't grow back)
 	Giant: boolean,
 	Health: number,
 	MaxHealth: number,
@@ -1550,9 +1715,30 @@ local function findSpot(zoneIndex: number, ignore: Model?): CFrame
 	return CFrame.new(best) * CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0)
 end
 
-local function buildCrystal(zoneIndex: number, giant: boolean): CrystalInfo
+type CrystalSpec = {
+	Colors: { Color3 },
+	RockColor: Color3,
+	Health: number,
+	Gems: number,
+	XP: number,
+	Zone: number,
+	Dimension: number?,
+}
+
+local function zoneSpec(zoneIndex: number): CrystalSpec
 	local zone = Shared.Zones[zoneIndex]
-	local color = zone.CrystalColors[rng:NextInteger(1, #zone.CrystalColors)]
+	return {
+		Colors = zone.CrystalColors,
+		RockColor = zone.RockColor,
+		Health = zone.Health,
+		Gems = zone.Gems,
+		XP = zoneIndex,
+		Zone = zoneIndex,
+	}
+end
+
+local function buildCrystal(spec: CrystalSpec, giant: boolean, folder: Instance, respawn: (CrystalInfo) -> CFrame?): CrystalInfo
+	local color = spec.Colors[rng:NextInteger(1, #spec.Colors)]
 	local s = if giant then 1.9 else 1
 	local m = Instance.new("Model")
 	m.Name = if giant then "GiantCrystal" else "Crystal"
@@ -1562,7 +1748,7 @@ local function buildCrystal(zoneIndex: number, giant: boolean): CrystalInfo
 		Name = "Rock",
 		Size = Vector3.new(5, 1.6, 5) * s,
 		CFrame = CFrame.new(0, 0.5 * s, 0) * CFrame.Angles(0, rad(45), 0),
-		Color = zone.RockColor,
+		Color = spec.RockColor,
 		Material = Enum.Material.Slate,
 		Parent = m,
 	})
@@ -1647,14 +1833,18 @@ local function buildCrystal(zoneIndex: number, giant: boolean): CrystalInfo
 	labelStroke.Parent = label
 	bb.Parent = m
 
-	local health = zone.Health * (if giant then Settings.GiantHealth else 1)
+	local health = spec.Health * (if giant then Settings.GiantHealth else 1)
 	local info: CrystalInfo = {
 		Model = m,
-		Zone = zoneIndex,
+		Zone = spec.Zone,
+		Dimension = spec.Dimension,
+		XP = spec.XP * (if giant then 3 else 1),
+		Folder = folder,
+		Respawn = respawn,
 		Giant = giant,
 		Health = health,
 		MaxHealth = health,
-		Gems = zone.Gems * (if giant then Settings.GiantGems else 1),
+		Gems = spec.Gems * (if giant then Settings.GiantGems else 1),
 		Color = color,
 		Main = main,
 		Radius = 2 * s,
@@ -1664,17 +1854,22 @@ local function buildCrystal(zoneIndex: number, giant: boolean): CrystalInfo
 		Label = label,
 	}
 	m:SetAttribute("IsCrystal", true)
-	m:SetAttribute("Zone", zoneIndex)
+	m:SetAttribute("Zone", spec.Zone)
 	m:SetAttribute("Radius", info.Radius)
 	crystals[m] = info
 	updateBar(info)
 	return info
 end
 
+local function zoneRespawn(info: CrystalInfo): CFrame?
+	return findSpot(info.Zone, info.Model)
+end
+
 local function spawnCrystals()
 	for zoneIndex = 1, #Shared.Zones do
+		local spec = zoneSpec(zoneIndex)
 		for _ = 1, Settings.CrystalsPerZone do
-			local info = buildCrystal(zoneIndex, rng:NextNumber() < Settings.GiantChance)
+			local info = buildCrystal(spec, rng:NextNumber() < Settings.GiantChance, CrystalFolder, zoneRespawn)
 			info.Model:PivotTo(findSpot(zoneIndex, info.Model))
 			info.Model.Parent = CrystalFolder
 		end
@@ -1694,6 +1889,8 @@ type PlayerData = {
 	Pets: { [number]: number }, -- [pet number] = how many you own
 	TotalGems: number,
 	Hatched: number,
+	Level: number,
+	XP: number,
 }
 
 local store: DataStore? = nil
@@ -1712,7 +1909,7 @@ local Data: { [Player]: PlayerData } = {}
 local CanSave: { [Player]: boolean } = {}
 
 local function defaultData(): PlayerData
-	return { Coins = 0, Gems = 0, Rebirths = 0, Pickaxe = 1, Backpack = 1, Zone = 1, Pets = {}, TotalGems = 0, Hatched = 0 }
+	return { Coins = 0, Gems = 0, Rebirths = 0, Pickaxe = 1, Backpack = 1, Zone = 1, Pets = {}, TotalGems = 0, Hatched = 0, Level = 1, XP = 0 }
 end
 
 local function loadData(player: Player): (PlayerData, boolean)
@@ -1753,6 +1950,8 @@ local function loadData(player: Player): (PlayerData, boolean)
 	data.Backpack = math.clamp(math.floor(data.Backpack), 1, #Shared.Backpacks)
 	data.Zone = math.clamp(math.floor(data.Zone), 1, #Shared.Zones)
 	data.Coins = math.max(0, math.floor(data.Coins))
+	data.Level = math.max(1, math.floor(data.Level))
+	data.XP = math.max(0, data.XP)
 	data.Gems = math.clamp(math.floor(data.Gems), 0, Shared.Backpacks[data.Backpack].Capacity)
 	if RunService:IsStudio() and Settings.StudioStartCoins > 0 then
 		data.Coins = math.max(data.Coins, Settings.StudioStartCoins)
@@ -1779,6 +1978,8 @@ local function saveData(player: Player)
 		PetCounts = petCounts,
 		TotalGems = data.TotalGems,
 		Hatched = data.Hatched,
+		Level = data.Level,
+		XP = data.XP,
 	}
 	local ok, err = pcall(function()
 		(store :: DataStore):SetAsync("Player_" .. player.UserId, payload)
@@ -1816,17 +2017,40 @@ local function sync(player: Player)
 		Pets = pets,
 		TotalGems = data.TotalGems,
 		Hatched = data.Hatched,
+		Level = data.Level,
+		XP = data.XP,
 	})
 	local stats = player:FindFirstChild("leaderstats")
 	if stats then
 		local coins = stats:FindFirstChild("Coins") :: IntValue?
 		local rebirths = stats:FindFirstChild("Rebirths") :: IntValue?
+		local level = stats:FindFirstChild("Level") :: IntValue?
 		if coins then
 			coins.Value = data.Coins
+		end
+		if level then
+			level.Value = data.Level
 		end
 		if rebirths then
 			rebirths.Value = data.Rebirths
 		end
+	end
+end
+
+--------------------------------------------------------------------------------
+-- LEVELS
+--------------------------------------------------------------------------------
+addXP = function(player: Player, data: PlayerData, amount: number)
+	data.XP += amount
+	local leveledUp = false
+	while data.XP >= Shared.XPNeeded(data.Level) do
+		data.XP -= Shared.XPNeeded(data.Level)
+		data.Level += 1
+		leveledUp = true
+	end
+	if leveledUp then
+		Remotes.Effect:FireAllClients("levelup", player.UserId, data.Level)
+		notify(player, "⭐ LEVEL " .. data.Level .. "! You can now visit " .. Shared.DimensionsUnlocked(data.Level) .. " dimensions!", "gold")
 	end
 end
 
@@ -1949,12 +2173,372 @@ local function refreshPets(player: Player)
 	end
 end
 
+--------------------------------------------------------------------------------
+-- DIMENSIONS (floating islands that are built when someone visits them)
+--------------------------------------------------------------------------------
+type Arena = {
+	Number: number,
+	Slot: number,
+	Center: Vector3,
+	Folder: Folder,
+	CrystalFolder: Folder,
+	Walls: Folder,
+	SellPad: Model,
+	Infos: { CrystalInfo },
+	Reserved: { { pos: Vector3, radius: number } },
+	EmptySince: number?,
+	Alive: boolean,
+}
+local arenas: { [number]: Arena } = {}
+local usedSlots: { [number]: boolean } = {}
+local dimensionOf: { [Player]: number } = {}
+
+local function leaveDimension(player: Player)
+	dimensionOf[player] = nil
+	player:SetAttribute("Dimension", nil)
+end
+
 local function teleport(player: Player, zoneIndex: number)
+	leaveDimension(player)
 	local char = player.Character
 	if char then
 		char:PivotTo(CFrame.new(Shared.ZoneSpawn(zoneIndex)))
 	end
 end
+
+local function arenaCenter(slot: number): Vector3
+	return Vector3.new(5000 + slot * 700, 300, 0)
+end
+
+local function arenaSpawn(arena: Arena): CFrame
+	return CFrame.new(arena.Center + Vector3.new(0, 4, 45))
+end
+
+local function arenaSpot(arena: Arena, ignore: Model?): CFrame?
+	if not arena.Alive then
+		return nil
+	end
+	local best = arena.Center
+	for _ = 1, 40 do
+		local angle = rng:NextNumber(0, math.pi * 2)
+		local radius = rng:NextNumber(6, 50)
+		local pos = arena.Center + Vector3.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
+		local ok = true
+		for _, r in ipairs(arena.Reserved) do
+			if (pos - r.pos).Magnitude < r.radius + 4 then
+				ok = false
+				break
+			end
+		end
+		if ok then
+			for _, other in ipairs(arena.Infos) do
+				if other.Model ~= ignore and other.Alive and (other.Model:GetPivot().Position - pos).Magnitude < 10 then
+					ok = false
+					break
+				end
+			end
+		end
+		if ok then
+			best = pos
+			break
+		end
+	end
+	return CFrame.new(best) * CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0)
+end
+
+local function decorateArena(dim, center: Vector3)
+	local theme = dim.Theme
+	local function edge(minR: number, maxR: number): Vector3
+		local a = rng:NextNumber(0, math.pi * 2)
+		local r = rng:NextNumber(minR, maxR)
+		return center + Vector3.new(math.cos(a) * r, 0, math.sin(a) * r)
+	end
+	local colors = dim.CrystalColors
+	for _ = 1, 16 do
+		local pos = edge(58, 74)
+		local color = colors[rng:NextInteger(1, #colors)]
+		local scale = rng:NextNumber(0.9, 1.5)
+		local decor = theme.Decor
+		if decor == "candy" then
+			Decor.Lollipop(pos, scale, color)
+		elseif decor == "pillars" or decor == "cyber" then
+			Decor.Pillar(pos, scale, color)
+		elseif decor == "coral" or decor == "spires" or decor == "rainbow" then
+			Decor.Spire(pos, scale, color)
+		elseif decor == "trees" then
+			Decor.Tree(pos, scale)
+		elseif decor == "cactus" then
+			Decor.Cactus(pos, scale)
+		elseif decor == "mushrooms" then
+			Decor.Mushroom(pos, scale * 1.4, color)
+		elseif decor == "clouds" then
+			Decor.Cloud(pos, scale)
+		elseif decor == "ice" then
+			Decor.IceSpike(pos, scale)
+		elseif decor == "lava" then
+			Decor.Rock(pos, scale * 1.5, theme.Rock, Enum.Material.Basalt)
+		end
+	end
+	if theme.Decor == "lava" then
+		for _ = 1, 5 do
+			Decor.LavaPool(edge(52, 70), rng:NextNumber(3, 5))
+		end
+	end
+	-- rocks around the edge of the island
+	for k = 0, 23 do
+		local a = k / 24 * math.pi * 2 + rng:NextNumber(-0.1, 0.1)
+		local r = rng:NextNumber(78, 83)
+		Decor.Rock(center + Vector3.new(math.cos(a) * r, 0, math.sin(a) * r), rng:NextNumber(1.4, 2.4), theme.Rock, Enum.Material.Slate)
+	end
+	-- little floating rocks under and around the island
+	for _ = 1, 8 do
+		local pos = edge(90, 120) + Vector3.new(0, rng:NextNumber(-40, 10), 0)
+		Decor.FloatingRock(pos, rng:NextNumber(1, 2), colors[rng:NextInteger(1, #colors)])
+	end
+end
+
+local function buildArena(d: number): Arena?
+	local slot = nil
+	for i = 0, Settings.MaxOpenDimensions - 1 do
+		if not usedSlots[i] then
+			slot = i
+			break
+		end
+	end
+	if not slot then
+		return nil
+	end
+	usedSlots[slot] = true
+	local dim = Shared.GetDimension(d)
+	local theme = dim.Theme
+	local center = arenaCenter(slot)
+
+	local f = Instance.new("Folder")
+	f.Name = "Dimension" .. d
+	f.Parent = DimensionFolder
+	local crystalFolder = Instance.new("Folder")
+	crystalFolder.Name = "Crystals"
+	crystalFolder.Parent = f
+	local walls = Instance.new("Folder")
+	walls.Name = "Dimension" .. d
+	walls.Parent = WallFolder
+
+	local previous = buildParent
+	buildParent = f
+	local upright = CFrame.Angles(0, 0, rad(90))
+
+	-- the floating island
+	P({
+		Name = "Ground",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(8, 170, 170),
+		CFrame = CFrame.new(center - Vector3.new(0, 4, 0)) * upright,
+		Color = theme.Ground,
+		Material = theme.GroundMaterial,
+	})
+	local y = center.Y - 8
+	for _, layer in ipairs({ { 10, 150 }, { 12, 112 }, { 14, 74 }, { 16, 36 } }) do
+		P({
+			Name = "Underside",
+			Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new(layer[1], layer[2], layer[2]),
+			CFrame = CFrame.new(center.X, y - layer[1] / 2, center.Z) * upright,
+			Color = theme.Rock:Lerp(Color3.new(0, 0, 0), 0.35),
+			Material = Enum.Material.Slate,
+		})
+		y -= layer[1]
+	end
+	-- invisible walls so nobody falls off
+	for k = 0, 23 do
+		local a = k / 24 * math.pi * 2
+		P({
+			Name = "Wall",
+			Size = Vector3.new(2, 120, 24.5),
+			CFrame = CFrame.new(center + Vector3.new(math.cos(a) * 86, 60, math.sin(a) * 86)) * CFrame.Angles(0, -a, 0),
+			Transparency = 1,
+			Parent = walls,
+		})
+	end
+
+	-- title floating above the island
+	local titlePart = P({
+		Name = "Title",
+		Size = Vector3.new(1, 1, 1),
+		CFrame = CFrame.new(center + Vector3.new(0, 34, 0)),
+		Transparency = 1,
+		CanCollide = false,
+	})
+	sign(titlePart, "🌌 DIMENSION " .. d, dim.Emoji .. " " .. dim.Name, dim.Accent:Lerp(Color3.new(1, 1, 1), 0.35), 44, 11, 0)
+
+	-- sparkles in the air
+	local air = P({
+		Name = "Sparkles",
+		Size = Vector3.new(150, 1, 150),
+		CFrame = CFrame.new(center + Vector3.new(0, 25, 0)),
+		Transparency = 1,
+		CanCollide = false,
+	})
+	particles(air, {
+		Color = dim.Accent,
+		Size = 0.45,
+		Rate = 30,
+		Lifetime = NumberRange.new(3, 6),
+		Speed = NumberRange.new(0.3, 1),
+		Spread = Vector2.new(180, 180),
+	})
+
+	-- portal back home
+	local homePos = center + Vector3.new(24, 0, 42)
+	local home = model("HomePortal")
+	for k = 0, 15 do
+		local a = k / 16 * math.pi * 2
+		P({
+			Name = "Ring",
+			Size = Vector3.new(2.2, 1.1, 1.1),
+			CFrame = CFrame.new(homePos + Vector3.new(math.cos(a) * 5, 6 + math.sin(a) * 5, 0)) * CFrame.Angles(0, 0, a + math.pi / 2),
+			Color = Color3.fromRGB(110, 230, 255),
+			Material = Enum.Material.Neon,
+			Parent = home,
+		})
+	end
+	local homeSwirl = P({
+		Name = "Swirl",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(0.3, 9, 9),
+		CFrame = CFrame.new(homePos + Vector3.new(0, 6, 0)) * CFrame.Angles(0, rad(90), 0),
+		Color = Color3.fromRGB(110, 230, 255),
+		Material = Enum.Material.ForceField,
+		CanCollide = false,
+		Parent = home,
+	})
+	sign(homeSwirl, "🏠 HOME", "Back to the spawn", Color3.fromRGB(150, 235, 255), 12, 4, 8)
+	local homePrompt = prompt(homeSwirl, "Go Home", "Home Portal", 0)
+	homePrompt.Triggered:Connect(function(player)
+		teleport(player, 0)
+	end)
+
+	local sellPos = center + Vector3.new(-24, 0, 38)
+	local sellPad = buildSellPad(sellPos, 14)
+
+	decorateArena(dim, center)
+	buildParent = previous
+
+	local arena: Arena = {
+		Number = d,
+		Slot = slot,
+		Center = center,
+		Folder = f,
+		CrystalFolder = crystalFolder,
+		Walls = walls,
+		SellPad = sellPad,
+		Infos = {},
+		Reserved = {
+			{ pos = center + Vector3.new(0, 0, 45), radius = 8 },
+			{ pos = sellPos, radius = 11 },
+			{ pos = homePos, radius = 9 },
+		},
+		Alive = true,
+	}
+	local spec: CrystalSpec = {
+		Colors = dim.CrystalColors,
+		RockColor = theme.Rock,
+		Health = dim.Health,
+		Gems = dim.Gems,
+		XP = dim.XP,
+		Zone = 0,
+		Dimension = d,
+	}
+	local function respawn(info: CrystalInfo): CFrame?
+		return arenaSpot(arena, info.Model)
+	end
+	for _ = 1, Settings.DimensionCrystals do
+		local info = buildCrystal(spec, rng:NextNumber() < Settings.GiantChance, crystalFolder, respawn)
+		info.Model:PivotTo(arenaSpot(arena, info.Model) :: CFrame)
+		info.Model.Parent = crystalFolder
+		table.insert(arena.Infos, info)
+	end
+	arenas[d] = arena
+	return arena
+end
+
+local function destroyArena(arena: Arena)
+	arena.Alive = false
+	for _, info in ipairs(arena.Infos) do
+		info.Alive = false
+		if info.Model.Parent ~= ServerStorage then -- broken ones clean themselves up
+			crystals[info.Model] = nil
+			info.Model:Destroy()
+		end
+	end
+	arena.SellPad:Destroy()
+	arena.Walls:Destroy()
+	arena.Folder:Destroy()
+	usedSlots[arena.Slot] = nil
+	arenas[arena.Number] = nil
+end
+
+local lastDimensionTrip: { [Player]: number } = {}
+
+local function enterDimension(player: Player, d: number)
+	local data = Data[player]
+	local char = player.Character
+	if not data or not char then
+		return
+	end
+	if d > Shared.DimensionsUnlocked(data.Level) then
+		notify(player, "🔒 Reach level " .. Shared.GetDimension(d).Level .. " to visit dimension " .. d .. "!", "bad")
+		return
+	end
+	local now = os.clock()
+	if now - (lastDimensionTrip[player] or -math.huge) < 1 then
+		return
+	end
+	lastDimensionTrip[player] = now
+	local arena = arenas[d] or buildArena(d)
+	if not arena then
+		notify(player, "Too many dimensions are open right now. Try again in a minute!", "bad")
+		return
+	end
+	arena.EmptySince = nil
+	dimensionOf[player] = d
+	player:SetAttribute("Dimension", d)
+	char:PivotTo(arenaSpawn(arena))
+end
+
+Remotes.EnterDimension.OnServerEvent:Connect(function(player, d)
+	if type(d) ~= "number" or d ~= math.floor(d) or d < 1 or d > 100000 then
+		return
+	end
+	enterDimension(player, d)
+end)
+
+-- Every couple of seconds: close empty islands and catch anyone who fell off
+task.spawn(function()
+	while true do
+		task.wait(2)
+		for d, arena in pairs(arenas) do
+			local visitors = 0
+			for player, playerDimension in pairs(dimensionOf) do
+				if playerDimension == d and player.Parent then
+					visitors += 1
+					local char = player.Character
+					local root = char and char:FindFirstChild("HumanoidRootPart")
+					if char and root and root:IsA("BasePart") and root.Position.Y < arena.Center.Y - 60 then
+						char:PivotTo(arenaSpawn(arena))
+					end
+				end
+			end
+			if visitors > 0 then
+				arena.EmptySince = nil
+			else
+				arena.EmptySince = arena.EmptySince or os.clock()
+				if os.clock() - (arena.EmptySince :: number) > Settings.DimensionCloseTime then
+					destroyArena(arena)
+				end
+			end
+		end
+	end
+end)
 
 --------------------------------------------------------------------------------
 -- MINING
@@ -1967,11 +2551,17 @@ local function breakCrystal(info: CrystalInfo)
 	Remotes.Effect:FireAllClients("break", info.Main.Position, info.Color, info.Giant)
 	info.Model.Parent = ServerStorage
 	task.delay(Settings.CrystalRespawnTime, function()
-		info.Model:PivotTo(findSpot(info.Zone, info.Model))
+		local spot = info.Respawn(info)
+		if not spot then -- its dimension island is gone
+			crystals[info.Model] = nil
+			info.Model:Destroy()
+			return
+		end
+		info.Model:PivotTo(spot)
 		info.Health = info.MaxHealth
 		updateBar(info)
 		info.Alive = true
-		info.Model.Parent = CrystalFolder
+		info.Model.Parent = info.Folder
 		Remotes.Effect:FireAllClients("spawn", info.Main.Position, info.Color)
 	end)
 end
@@ -1982,7 +2572,7 @@ Remotes.Mine.OnServerEvent:Connect(function(player, crystal)
 		return
 	end
 	local info = crystals[crystal]
-	if not info or not info.Alive or crystal.Parent ~= CrystalFolder then
+	if not info or not info.Alive or crystal.Parent ~= info.Folder then
 		return
 	end
 	local now = os.clock()
@@ -2001,6 +2591,9 @@ Remotes.Mine.OnServerEvent:Connect(function(player, crystal)
 	if info.Zone > data.Zone then
 		return
 	end
+	if info.Dimension and info.Dimension > Shared.DimensionsUnlocked(data.Level) then
+		return
+	end
 	local capacity = Shared.Backpacks[data.Backpack].Capacity
 	if data.Gems >= capacity then
 		if now - (lastFullWarning[player] or 0) > 1 then
@@ -2011,7 +2604,7 @@ Remotes.Mine.OnServerEvent:Connect(function(player, crystal)
 	end
 	lastMine[player] = now
 
-	local power = Shared.Pickaxes[data.Pickaxe].Power
+	local power = math.max(1, math.floor(Shared.Pickaxes[data.Pickaxe].Power * Shared.LevelPower(data.Level)))
 	info.Health -= power
 	Remotes.Effect:FireClient(player, "hit", info.Main.Position, power, crystal)
 
@@ -2021,7 +2614,8 @@ Remotes.Mine.OnServerEvent:Connect(function(player, crystal)
 		data.Gems += added
 		data.TotalGems += added
 		breakCrystal(info)
-		Remotes.Effect:FireClient(player, "reward", info.Main.Position, added)
+		Remotes.Effect:FireClient(player, "reward", info.Main.Position, added, info.XP)
+		addXP(player, data, info.XP)
 		sync(player)
 	else
 		updateBar(info)
@@ -2262,6 +2856,7 @@ local function onCharacter(player: Player, char: Model)
 		return
 	end
 	setUpCharacters[char] = true
+	leaveDimension(player) -- respawning always puts you back at the spawn
 	local hum = char:WaitForChild("Humanoid", 10) :: Humanoid?
 	if not hum then
 		return
@@ -2301,6 +2896,9 @@ local function onPlayerAdded(player: Player)
 	local coins = Instance.new("IntValue")
 	coins.Name = "Coins"
 	coins.Parent = stats
+	local level = Instance.new("IntValue")
+	level.Name = "Level"
+	level.Parent = stats
 	local rebirths = Instance.new("IntValue")
 	rebirths.Name = "Rebirths"
 	rebirths.Parent = stats
@@ -2326,6 +2924,8 @@ Players.PlayerRemoving:Connect(function(player)
 	lastTeleport[player] = nil
 	lastFullWarning[player] = nil
 	lastHatch[player] = nil
+	lastDimensionTrip[player] = nil
+	dimensionOf[player] = nil
 end)
 
 game:BindToClose(function()

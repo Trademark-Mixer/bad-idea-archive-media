@@ -26,7 +26,7 @@ local Format = Shared.Format
 
 local RemoteFolder = ReplicatedStorage:WaitForChild("Remotes")
 local R: { [string]: RemoteEvent } = {}
-for _, name in ipairs({ "Mine", "Buy", "Rebirth", "Teleport", "Sync", "Notify", "Effect", "OpenMenu" }) do
+for _, name in ipairs({ "Mine", "Buy", "Rebirth", "Teleport", "Sync", "Notify", "Effect", "OpenMenu", "EnterDimension" }) do
 	R[name] = RemoteFolder:WaitForChild(name) :: RemoteEvent
 end
 
@@ -56,6 +56,8 @@ type State = {
 	Pets: { number }, -- Pets[n] = how many of pet n you own
 	TotalGems: number,
 	Hatched: number,
+	Level: number,
+	XP: number,
 }
 local state: State? = nil
 local ownedPets: { [number]: number } = {} -- [pet number] = how many you own
@@ -112,6 +114,8 @@ local COLORS = {
 	Red = { Color3.fromRGB(255, 110, 110), Color3.fromRGB(205, 40, 60) },
 	Gray = { Color3.fromRGB(150, 155, 170), Color3.fromRGB(90, 95, 115) },
 	Cyan = { Color3.fromRGB(110, 240, 255), Color3.fromRGB(40, 140, 255) },
+	Pink = { Color3.fromRGB(255, 140, 225), Color3.fromRGB(200, 60, 200) },
+	Galaxy = { Color3.fromRGB(150, 110, 255), Color3.fromRGB(60, 40, 180) },
 }
 
 local function new(className: string, props: { [string]: any }): any
@@ -310,7 +314,7 @@ local hud = new("Frame", {
 	Name = "HUD",
 	AnchorPoint = Vector2.new(0, 0.5),
 	Position = UDim2.new(0, 16, 0.5, 0),
-	Size = UDim2.fromOffset(250, 330),
+	Size = UDim2.fromOffset(250, 450),
 	BackgroundTransparency = 1,
 	Parent = gui,
 })
@@ -351,8 +355,33 @@ local gemsText = label({
 })
 local gemsPop: UIScale = new("UIScale", { Parent = gemsPill })
 
+-- Level and XP bar
+local levelPill = new("Frame", { Size = UDim2.fromOffset(250, 48), BackgroundColor3 = DARK, LayoutOrder = 3, Parent = hud })
+round(levelPill, 14)
+outline(levelPill, 3)
+local levelFill = new("Frame", { Size = UDim2.fromScale(0, 1), BackgroundColor3 = WHITE, Parent = levelPill })
+round(levelFill, 14)
+gradient(levelFill, COLORS.Pink)
+local levelText = label({
+	Text = "⭐ Level 1",
+	Size = UDim2.new(0.5, -10, 0.62, 0),
+	Position = UDim2.new(0, 10, 0.5, 0),
+	AnchorPoint = Vector2.new(0, 0.5),
+	TextXAlignment = Enum.TextXAlignment.Left,
+	Parent = levelPill,
+})
+local xpText = label({
+	Text = "0 / 60 XP",
+	Size = UDim2.new(0.5, -14, 0.5, 0),
+	Position = UDim2.new(1, -10, 0.5, 0),
+	AnchorPoint = Vector2.new(1, 0.5),
+	TextXAlignment = Enum.TextXAlignment.Right,
+	Parent = levelPill,
+})
+local levelPop: UIScale = new("UIScale", { Parent = levelPill })
+
 -- Rebirths and boosts
-local boostPill = new("Frame", { Size = UDim2.fromOffset(250, 44), BackgroundColor3 = WHITE, LayoutOrder = 3, Parent = hud })
+local boostPill = new("Frame", { Size = UDim2.fromOffset(250, 44), BackgroundColor3 = WHITE, LayoutOrder = 4, Parent = hud })
 round(boostPill, 14)
 outline(boostPill, 3)
 gradient(boostPill, COLORS.Purple)
@@ -365,7 +394,7 @@ local boostText = label({
 })
 
 -- Menu buttons (2 rows of 2)
-local menuGrid = new("Frame", { Size = UDim2.fromOffset(250, 128), BackgroundTransparency = 1, LayoutOrder = 4, Parent = hud })
+local menuGrid = new("Frame", { Size = UDim2.fromOffset(250, 128), BackgroundTransparency = 1, LayoutOrder = 5, Parent = hud })
 new("UIGridLayout", {
 	CellSize = UDim2.fromOffset(119, 58),
 	CellPadding = UDim2.fromOffset(12, 12),
@@ -392,6 +421,17 @@ menuButton(1, "🛒", "Shop", COLORS.Green, "Shop")
 menuButton(2, "🐾", "Pets", COLORS.Gold, "Pets")
 menuButton(3, "🌀", "Teleport", COLORS.Blue, "Teleport")
 menuButton(4, "♻️", "Rebirth", COLORS.Purple, "Rebirth")
+button({
+	Size = UDim2.fromOffset(250, 56),
+	Text = "🌌 DIMENSIONS",
+	Colors = COLORS.Galaxy,
+	Radius = 16,
+	LayoutOrder = 6,
+	Parent = hud,
+	OnClick = function()
+		openWindow("Dimensions")
+	end,
+})
 
 --------------------------------------------------------------------------------
 -- TOASTS (little messages at the bottom), BANNERS AND WARNINGS
@@ -788,7 +828,7 @@ shop.OnOpen = refreshShop
 --------------------------------------------------------------------------------
 -- TELEPORT
 --------------------------------------------------------------------------------
-local teleport = makeWindow("Teleport", "🌀 TELEPORT", 460, 520, COLORS.Blue)
+local teleport = makeWindow("Teleport", "🌀 TELEPORT", 460, 590, COLORS.Blue)
 new("UIListLayout", {
 	Padding = UDim.new(0, 10),
 	HorizontalAlignment = Enum.HorizontalAlignment.Center,
@@ -833,6 +873,16 @@ local function refreshTeleport()
 	end
 end
 teleport.OnOpen = refreshTeleport
+button({
+	Size = UDim2.new(1, -10, 0, 60),
+	Text = "🌌 Dimensions...",
+	Colors = COLORS.Galaxy,
+	LayoutOrder = 100,
+	Parent = teleport.Body,
+	OnClick = function()
+		openWindow("Dimensions")
+	end,
+})
 
 --------------------------------------------------------------------------------
 -- REBIRTH
@@ -862,7 +912,7 @@ local function refreshRebirth()
 	end
 	local cost = Shared.RebirthCost(s.Rebirths)
 	rebirthInfo.Text = string.format(
-		"⭐ Rebirths: %d  →  %d\n💰 Coin boost: x%s  →  x%s\nCost: 💰 %s",
+		"♻️ Rebirths: %d  →  %d\n💰 Coin boost: x%s  →  x%s\nCost: 💰 %s",
 		s.Rebirths,
 		s.Rebirths + 1,
 		Shared.MultiplierText(Shared.CoinMultiplier(s.Rebirths)),
@@ -1043,6 +1093,98 @@ local function refreshPetsWindow()
 	)
 end
 petsWindow.OnOpen = refreshPetsWindow
+
+--------------------------------------------------------------------------------
+-- DIMENSIONS (3 more every level!)
+--------------------------------------------------------------------------------
+local dimWindow = makeWindow("Dimensions", "🌌 DIMENSIONS", 760, 560, COLORS.Galaxy)
+local dimInfo = label({ Text = "", Size = UDim2.new(1, 0, 0, 30), Parent = dimWindow.Body })
+local dimScroller = new("ScrollingFrame", {
+	Size = UDim2.new(1, 0, 1, -42),
+	Position = UDim2.new(0, 0, 0, 42),
+	BackgroundTransparency = 1,
+	BorderSizePixel = 0,
+	ScrollBarThickness = 8,
+	ScrollBarImageColor3 = WHITE,
+	CanvasSize = UDim2.new(),
+	AutomaticCanvasSize = Enum.AutomaticSize.Y,
+	ScrollingDirection = Enum.ScrollingDirection.Y,
+	Parent = dimWindow.Body,
+})
+new("UIGridLayout", {
+	CellSize = UDim2.fromOffset(166, 170),
+	CellPadding = UDim2.fromOffset(12, 12),
+	HorizontalAlignment = Enum.HorizontalAlignment.Center,
+	SortOrder = Enum.SortOrder.LayoutOrder,
+	Parent = dimScroller,
+})
+new("UIPadding", { PaddingTop = UDim.new(0, 6), PaddingBottom = UDim.new(0, 10), Parent = dimScroller })
+
+type DimCard = { Number: number, Label: TextLabel, Grad: UIGradient }
+local dimCards: { DimCard } = {}
+
+local function makeDimCard(d: number): DimCard
+	local dim = Shared.GetDimension(d)
+	local frame = new("Frame", { Name = "Dimension" .. d, BackgroundColor3 = WHITE, LayoutOrder = d, Parent = dimScroller })
+	round(frame, 16)
+	outline(frame, 3)
+	gradient(frame, { dim.Accent:Lerp(WHITE, 0.1), dim.Theme.Ground:Lerp(Color3.new(0, 0, 0), 0.4) })
+	label({ Text = dim.Emoji .. " #" .. d, Size = UDim2.new(1, -12, 0, 40), Position = UDim2.fromOffset(6, 6), Stroke = 3, Parent = frame })
+	label({ Text = dim.Name, Size = UDim2.new(1, -12, 0, 26), Position = UDim2.fromOffset(6, 48), Parent = frame })
+	label({
+		Text = "❤️ " .. Format(dim.Health) .. "   💎 " .. Format(dim.Gems),
+		Size = UDim2.new(1, -12, 0, 22),
+		Position = UDim2.fromOffset(6, 78),
+		TextColor3 = Color3.fromRGB(255, 240, 160),
+		Parent = frame,
+	})
+	local _, enterLabel, enterGrad = button({
+		Size = UDim2.new(1, -18, 0, 42),
+		Position = UDim2.new(0.5, 0, 1, -8),
+		AnchorPoint = Vector2.new(0.5, 1),
+		Text = "",
+		Colors = COLORS.Green,
+		Parent = frame,
+		OnClick = function()
+			local s = state
+			if s and d <= Shared.DimensionsUnlocked(s.Level) then
+				R.EnterDimension:FireServer(d)
+				closeWindow()
+			else
+				toast("🔒 Reach level " .. dim.Level .. " to visit dimension " .. d .. "!", "bad")
+			end
+		end,
+	})
+	return { Number = d, Label = enterLabel, Grad = enterGrad }
+end
+
+local function refreshDimensions()
+	local s = state
+	if not s then
+		return
+	end
+	local unlocked = Shared.DimensionsUnlocked(s.Level)
+	-- show every dimension you can visit, plus the ones the next level unlocks
+	local shown = Shared.DimensionsUnlocked(s.Level + 1)
+	while #dimCards < shown do
+		table.insert(dimCards, makeDimCard(#dimCards + 1))
+	end
+	local here = player:GetAttribute("Dimension")
+	for _, card in ipairs(dimCards) do
+		if card.Number == here then
+			card.Label.Text = "YOU ARE HERE"
+			setColors(card.Grad, COLORS.Blue)
+		elseif card.Number <= unlocked then
+			card.Label.Text = "ENTER"
+			setColors(card.Grad, COLORS.Green)
+		else
+			card.Label.Text = "🔒 Level " .. Shared.GetDimension(card.Number).Level
+			setColors(card.Grad, COLORS.Gray)
+		end
+	end
+	dimInfo.Text = string.format("⭐ Level %d: you can visit %d dimensions. Level up to unlock %d more!", s.Level, unlocked, Settings.DimensionsPerLevel)
+end
+dimWindow.OnOpen = refreshDimensions
 
 R.OpenMenu.OnClientEvent:Connect(function(name)
 	openWindow(name, true)
@@ -1458,8 +1600,11 @@ R.Effect.OnClientEvent:Connect(function(kind, a, b, c)
 			playSound("Boom", if giant then 1.2 else 1.8, if giant then 0.35 else 0.18)
 		end
 	elseif kind == "reward" then
-		local position: Vector3, gems: number = a, b
+		local position: Vector3, gems: number, xp: number? = a, b, c
 		worldText(position + Vector3.new(0, 2.5, 0), "+" .. Format(gems) .. " 💎", Color3.fromRGB(120, 240, 255), 38)
+		if xp then
+			worldText(position + Vector3.new(0, 0.5, 0), "+" .. Format(xp) .. " XP", Color3.fromRGB(255, 150, 230), 26)
+		end
 		flyIcons(position, "💎", gemsPill, gemsPop, math.clamp(math.floor(gems / 5) + 2, 2, 7))
 		playSound("Click", 2, 0.6)
 	elseif kind == "sold" then
@@ -1502,6 +1647,23 @@ R.Effect.OnClientEvent:Connect(function(kind, a, b, c)
 			showBanner("♻️ REBIRTH! ♻️", Color3.fromRGB(220, 160, 255))
 			playSound("Boom", 0.8, 0.5)
 			chime(8, 0.9)
+		end
+	elseif kind == "levelup" then
+		local who = Players:GetPlayerByUserId(a)
+		local char = who and who.Character
+		local root = char and char:FindFirstChild("HumanoidRootPart")
+		if root and root:IsA("BasePart") then
+			burst(root.Position, Color3.fromRGB(255, 150, 230), 40, 35, 1.2)
+			burst(root.Position, Color3.fromRGB(255, 230, 90), 25, 25, 1)
+		end
+		if who == player then
+			showBanner("⭐ LEVEL UP! LEVEL " .. tostring(b) .. " ⭐", Color3.fromRGB(255, 170, 235))
+			toast("🌌 " .. Settings.DimensionsPerLevel .. " new dimensions unlocked! Open DIMENSIONS to visit them.", "gold")
+			pop(levelPop, 1.25)
+			chime(8, 1)
+			if root and root:IsA("BasePart") then
+				confetti(root.Position + Vector3.new(0, 3, 0))
+			end
 		end
 	elseif kind == "hatch" then
 		task.spawn(playHatch, a, b)
@@ -1768,10 +1930,9 @@ end)
 --------------------------------------------------------------------------------
 local atmosphere = Lighting:WaitForChild("CrystalRushAtmosphere", 10) :: Atmosphere?
 local colorFx = Lighting:WaitForChild("CrystalRushColor", 10) :: ColorCorrectionEffect?
-local currentZone = -1
+local currentArea = ""
 
-local function applyMood(zoneIndex: number, instant: boolean?)
-	local mood = Shared.Zones[math.max(zoneIndex, 1)].Mood
+local function applyMood(mood, instant: boolean?)
 	local time = if instant then 0 else 2.5
 	local info = TweenInfo.new(time, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
 	TweenService:Create(Lighting, info, {
@@ -1918,7 +2079,7 @@ local function refreshAll()
 	local rebirths = s.Rebirths
 	local petBoost = Shared.GemMultiplier(ownedPets)
 	boostText.Text = string.format(
-		"⭐ %d Rebirths  •  x%s 💰  •  x%s 💎",
+		"♻️ %d Rebirths  •  x%s 💰  •  x%s 💎",
 		rebirths,
 		Shared.MultiplierText(Shared.CoinMultiplier(rebirths)),
 		Shared.MultiplierText(petBoost)
@@ -1926,10 +2087,15 @@ local function refreshAll()
 	local fill = math.clamp(s.Gems / s.Capacity, 0, 1)
 	tween(gemsFill, 0.25, { Size = UDim2.fromScale(fill, 1) })
 	setColors(gemsFillGrad, if fill >= 1 then COLORS.Gold else COLORS.Cyan)
+	local needed = Shared.XPNeeded(s.Level)
+	levelText.Text = "⭐ Level " .. s.Level
+	xpText.Text = Format(s.XP) .. " / " .. Format(needed) .. " XP"
+	tween(levelFill, 0.25, { Size = UDim2.fromScale(math.clamp(s.XP / needed, 0, 1), 1) })
 	refreshShop()
 	refreshTeleport()
 	refreshRebirth()
 	refreshPetsWindow()
+	refreshDimensions()
 	updateGates()
 end
 
@@ -1959,6 +2125,8 @@ R.Sync.OnClientEvent:Connect(function(newState: State)
 				toast("🛒 Spend coins in the Shop on pickaxes, backpacks and pets!", "good")
 				task.wait(3.5)
 				toast("🥚 Hatch eggs at the egg machine to find RARE pets!", "gold")
+				task.wait(3.5)
+				toast("🌌 Mine to level up and unlock new DIMENSIONS!", "info")
 			end)
 		end
 	end
@@ -1990,14 +2158,32 @@ task.spawn(function()
 	while true do
 		local root = myRoot()
 		if root then
-			local zoneIndex = Shared.ZoneAt(root.Position.Z)
-			if zoneIndex ~= currentZone then
-				local first = currentZone == -1
-				currentZone = zoneIndex
-				applyMood(zoneIndex, first)
-				if zoneIndex > 0 and not first then
-					local zone = Shared.Zones[zoneIndex]
-					showBanner(zone.Emoji .. " " .. string.upper(zone.Name), zone.Accent:Lerp(WHITE, 0.3))
+			local dimension = player:GetAttribute("Dimension")
+			local first = currentArea == ""
+			if type(dimension) == "number" then
+				-- in a dimension: use its sky
+				local area = "D" .. dimension
+				if area ~= currentArea then
+					currentArea = area
+					local dim = Shared.GetDimension(dimension)
+					applyMood(dim.Mood, first)
+					showBanner("🌌 DIMENSION " .. dimension .. ": " .. string.upper(dim.Name), dim.Accent:Lerp(WHITE, 0.3))
+					refreshDimensions()
+				end
+			else
+				local zoneIndex = Shared.ZoneAt(root.Position.Z)
+				local area = "Z" .. zoneIndex
+				if area ~= currentArea then
+					local wasDimension = string.sub(currentArea, 1, 1) == "D"
+					currentArea = area
+					applyMood(Shared.Zones[math.max(zoneIndex, 1)].Mood, first)
+					if zoneIndex > 0 and not first then
+						local zone = Shared.Zones[zoneIndex]
+						showBanner(zone.Emoji .. " " .. string.upper(zone.Name), zone.Accent:Lerp(WHITE, 0.3))
+					elseif wasDimension then
+						showBanner("🏠 BACK HOME", Color3.fromRGB(150, 235, 255))
+					end
+					refreshDimensions()
 				end
 			end
 			-- keep the pickaxe in your hand
