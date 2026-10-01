@@ -5,35 +5,53 @@ sell them for coins, and spend the coins in the shop.
 
 ## What's in the game
 
-- **5 zones** with natural-looking ground, hills, trees, rocks, lakes and their own sky:
-  🌻 Sunny Meadow → 💜 Crystal Caves → 🌋 Lava Volcano → ❄️ Frozen Peaks → 🌌 Galaxy Isles
+- **5 zones** with natural-looking ground, hills, leafy trees, pine trees, rocks, lakes and their own sky:
+  🌻 Sunny Meadow → 💜 Crystal Caves → 🌋 Lava Volcano → ❄️ Frozen Peaks → 🌌 Galaxy Isles.
+  Big stone arches with banners and lanterns stand at every zone entrance, and there's a portal
+  to the dimensions at the very end.
+- **Circles on the ground**: every shop is an open circle with its item floating above it. Step in
+  and its window opens, step out and it closes. There are circles for ⛏️ pickaxes, 🎒 backpacks,
+  🐾 pets, ⚡ gadgets, ♻️ rebirth, 🥚 every egg, 🌌 the dimension portal and the 🏃 obby.
+  Stand in a 💰 SELL circle and your gems sell by themselves.
 - **Realistic gems**: see-through crystals with pointy tips, growing out of rock. When you mine one,
   it breaks into dust, rock chips and glass shards, the gems fly into you, and a new crystal grows
   back out of the ground.
+- **🪣 Buried gems**: dirt piles with a gem poking out. Hold your shovel and dig them up for
+  lots of gems. You dig a real hole in the ground, and it fills up again later.
+- **👑 Diamond bosses**: one in every zone and every dimension, in its own arena. They float
+  around, look at you, and shoot crystal shards (a red circle shows where, so jump away!).
+  Beat one with your pickaxe for lots of coins, XP and **💠 Boss Shards**.
+- **💠 Boss Shards** are only from bosses. You spend them on the special pickaxes in the dimensions.
 - **✨ Golden crystals**: 2% of crystals are made of gold and sparkle. They give 10x gems and 5x XP.
 - **🏃 Sky obby** above the spawn: 3 checkpoints, lava, beams and pillars. Finish it to win a big pile
   of coins (as much as mining 80 crystals). It pays again every 4 minutes, and it remembers your best time.
-- **📜 Quests**: always one quest on the right side of the screen (mine crystals, sell, hatch eggs,
-  finish the obby, ...). Each one gives coins and XP, and the next one starts right away.
-- **🎁 Free gifts** for playing (after 1, 3, 5, 8, 12 ... minutes), some of them free eggs.
-- **📅 Daily rewards**: come back every day. The rewards get bigger for 7 days in a row.
+- **⚡ Gadget shop**: Spring Shoes, Gravity Coil and Rocket Boots (jump higher), Running Shoes,
+  Speed Coil and Turbo Boots (walk faster), Sprint Charm, Lucky Clover and Gem Magnet.
+  The faster you get, the more it costs. Turn each gadget on or off, and they turn off in the obby.
+- **🏃 Sprint**: hold **Shift** (on a phone, press the Sprint button).
+- **🎒🪣 Tools**: your pickaxe is number 1 and your shovel number 2 in the tool bar. Click one
+  again to put it away.
+- **📜 Quests**, **🎁 free gifts** for playing and **📅 daily rewards** (bigger for 7 days in a row).
 - **🎵 Music**: a calm music box plays in the background (turn it off on the right side).
   You can put real songs in too, see below.
-- **Shop** with 11 pickaxes, 10 backpacks and 8 pets. Your best 3 pets follow you around and boost your gems.
-- **🥚 Egg machines** (one at the spawn, one in each zone) hatch **21 rare pets**: Legendary pets
-  glow and have an aura, and the Galaxy Egg has a 0.1% **Secret** pet. Every machine shows its chances.
-- **🐾 Pets** window shows your whole collection. Pets you haven't found yet are black shadows.
+- **Shop** with 11 pickaxes, 10 backpacks and 8 pets. Your best 3 pets follow you by themselves.
+- **🥚 Eggs**: 2 eggs in every zone (a normal one and a better, more expensive one) and a special
+  egg in every dimension with pets you can only find there. Step in an egg's circle to see its
+  pets, their chances and what they do: pets you have shimmer green, the others gray.
+  **Click while an egg hatches** to make it go faster.
+- **🐾 Pets** give you more gems: a +30% pet makes every crystal give 30% more.
 - **⭐ Levels:** you earn XP for every crystal you mine. Each level makes your pickaxe 10% stronger.
-- **🌌 Dimensions:** floating islands you visit through the portal at the spawn. Level 1 opens
-  3 dimensions, level 2 opens 6, level 3 opens 9, and it never stops. There are 12 themes
-  (Candy World, Neon City, Ocean Reef, Jungle, …). After that they come back with new colors and
-  stronger crystals: Candy World II, Candy World III, and so on.
-  Normal dimensions have soft, natural colors. **Every 5th dimension is a ✨ SHINY dimension**:
-  it glows, sparkles and gives **2x gems**.
-- **Rebirths**: start over and earn more coins forever. You keep your pets.
+- **🌌 Dimensions:** valleys surrounded by huge mountains, visited through the portal at the spawn
+  (or at the end of the Galaxy Isles). Level 1 opens 3 dimensions, level 2 opens 6, level 3 opens 9,
+  and it never stops. There are 12 themes (Candy World, Neon City, Ocean Reef, Jungle, …), and they
+  come back with new colors and stronger crystals: Candy World II, Candy World III, and so on.
+  Every dimension has its own **💠 special shop** (a pickaxe for Boss Shards and a backpack for coins),
+  its own **egg**, a **boss** and buried gems, so you don't have to go home to buy things.
+  **Every 5th dimension is a ✨ SHINY dimension**: it glows, sparkles and gives **2x gems**.
+- **Rebirths**: start over and earn more coins forever. You keep your pets, gadgets and Boss Shards.
 - **Gates** between zones: walk up and press **E** to unlock the next zone. The iron bars slide up when you do.
 - **Giant crystals**, a health bar on every crystal, sounds, and a glowing line that leads you to the
-  closest sell pad you are allowed to use when your backpack is full. There is also a
+  closest sell circle you are allowed to use when your backpack is full. There is also a
   **🌀 Teleport to Sell** button.
 - **Progress saves automatically** once the game is published.
 - Works on computer, phone and tablet.
@@ -64,21 +82,29 @@ Use this if the file doesn't open for some reason.
    The names must be exactly the same, with capital letters.
 4. For the best graphics: click **Lighting** in the Explorer, then in Properties set **Technology** to **Future**.
 5. Click **Workspace** and turn **StreamingEnabled** off.
-6. For grass blades: open **Workspace**, click **Terrain** and turn on **Decoration**.
-7. Press **▶ Play**.
+6. For grass blades: open **Workspace**, click **Terrain**, turn on **Decoration** and set
+   **GrassLength** to `0.25`.
+7. Click **StarterPlayer** and turn **EnableMouseLockOption** off (so Shift is for sprinting).
+8. Press **▶ Play**.
 
 ## How to play
 
-- **Click** (or **tap**) a crystal to mine it. **Hold** the button to keep mining.
-- When the backpack is full, stand on a **💰 SELL** pad (or press **🌀 Teleport to Sell**).
+- Hold your **pickaxe** (press **1**) and **click** (or **tap**) a crystal to mine it.
+  **Hold** the button to keep mining.
+- Hold your **shovel** (press **2**) and click a dirt pile to dig up the buried gem.
+- When the backpack is full, stand in a **💰 SELL** circle (or press **🌀 Teleport to Sell**).
   You can only sell in zones you have unlocked, and in the dimension you are in.
-- Open the **🛒 Shop** to buy better pickaxes, bigger backpacks and pets.
-- At an **egg machine**, press **E** to hatch 1 egg or **R** to hatch 3. If you have a free egg,
-  **E** uses it.
-- Walk onto the **🏃 SKY OBBY** pad at the spawn and press **E** to start the obby.
+- Step into a circle to shop: **⛏️ pickaxes**, **🎒 backpacks**, **🐾 pets**, **⚡ gadgets**.
+  The **🛒 Shop** button on the left also works from anywhere.
+- Step into an **egg circle** to see the pets. Click **Hatch 1** or **Hatch 3** (or press **E** / **R**).
+  If you have a free egg, **Hatch 1** uses it.
+- Walk into the **👑 boss arena** in a zone and hit the diamond boss with your pickaxe.
+  Watch out for the red circles!
+- Step into the **🏃 SKY OBBY** circle at the spawn to start the obby.
+- Hold **Shift** to sprint.
 - Check the right side of the screen for your **quest**, **free gifts** and **daily reward**.
-- Click **🌌 DIMENSIONS** (or walk into the purple portal at the spawn) and pick a dimension.
-  The **🏠 HOME** portal on every island takes you back.
+- Step into the **🌌 portal** circle (or click **🌌 DIMENSIONS**) and pick a dimension.
+  Step into the **🏠 HOME** circle in a dimension to go back.
 - Walk to a gate and press **E** to unlock the next zone.
 - Use **🌀 Teleport** to jump between zones you've unlocked.
 - At **75K coins** you can **♻️ Rebirth** for a permanent coin boost.
@@ -121,6 +147,12 @@ Everything you'd want to tweak is in **`GameShared`** (in ReplicatedStorage):
 - `ShinyEvery = 5`: every 5th dimension is shiny. `GoldenChance = 0.02`: how often crystals are golden.
 - `ObbyRewardCrystals` and `ObbyCooldown`: how much the obby pays and how often
 - `Shared.Gifts`, `Shared.DailyRewards`, `Shared.QuestKinds`: the free gifts, daily rewards and quests
+- `Shared.Gadgets`: the gadgets, what they do and their prices
+- `SprintSpeed`, `JumpHeight`: how fast you sprint and how high you jump
+- `BossHealth`, `BossRewardCrystals`, `BossRespawnTime`, `BossDamage`: the diamond bosses
+- `DigSpotsPerZone`, `DigGems`, `DigRespawnTime`: the buried gems
+- `Shared.DimensionItems` and `Shared.DimensionPets`: the special pickaxes, backpacks, eggs and
+  pets of every dimension (`DimensionPickaxeShards` sets how many Boss Shards a special pickaxe costs)
 
 ## Add your own music
 
@@ -144,7 +176,7 @@ so you can try every item. Set it back to `0` before you publish.
 CrystalRush.rbxlx            ← ready-made place file (open this in Studio)
 default.project.json         ← Rojo project, used to build the .rbxlx
 src/shared/GameShared.luau   ← settings, items and 3D models (ModuleScript)
-src/server/Main.server.luau  ← map building, mining, shop, obby, quests, saving (Script)
+src/server/Main.server.luau  ← map, mining, digging, bosses, shops, obby, quests, saving (Script)
 src/client/Client.client.luau← screen UI, clicking, pets, effects, music (LocalScript)
 ```
 

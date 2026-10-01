@@ -26,7 +26,7 @@ local Format = Shared.Format
 
 local RemoteFolder = ReplicatedStorage:WaitForChild("Remotes")
 local R: { [string]: RemoteEvent } = {}
-for _, name in ipairs({ "Mine", "Buy", "Rebirth", "Teleport", "Sync", "Notify", "Effect", "OpenMenu", "EnterDimension", "GoSell", "Claim" }) do
+for _, name in ipairs({ "Mine", "Buy", "Rebirth", "Teleport", "Sync", "Notify", "Effect", "OpenMenu", "EnterDimension", "GoSell", "Claim", "Dig", "Hatch", "GadgetToggle" }) do
 	R[name] = RemoteFolder:WaitForChild(name) :: RemoteEvent
 end
 
@@ -44,9 +44,9 @@ local FxFolder = Instance.new("Folder")
 FxFolder.Name = "LocalEffects"
 FxFolder.Parent = Workspace
 
--- Hide the default tool bar (your pickaxe is always in your hand)
+-- The tool bar at the bottom: 1 = pickaxe, 2 = shovel (click again to put it away)
 pcall(function()
-	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
+	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, true)
 end)
 
 type State = {
@@ -71,6 +71,13 @@ type State = {
 	DailyStreak: number,
 	ObbyBest: number,
 	ObbyWait: number, -- seconds until the obby pays out again
+	DimPets: { { Index: number, Count: number } }, -- pets from dimension eggs
+	Shards: number, -- 💠 Boss Shards
+	BossesBeaten: number,
+	DimPickaxe: number,
+	DimBackpack: number,
+	Gadgets: { number },
+	GadgetsOff: { number },
 }
 local state: State? = nil
 local syncedAt = 0 -- when the last state arrived (os.clock)
@@ -517,6 +524,8 @@ new("UIGridLayout", {
 })
 
 local openWindow: (name: string, keepOpen: boolean?) -> ()
+local openShop: (category: string?) -> ()
+local refreshExtras: () -> ()
 
 local function menuButton(order: number, emoji: string, caption: string, colors: { Color3 }, windowName: string)
 	button({
@@ -527,7 +536,11 @@ local function menuButton(order: number, emoji: string, caption: string, colors:
 		LayoutOrder = order,
 		Parent = menuGrid,
 		OnClick = function()
-			openWindow(windowName)
+			if windowName == "Shop" then
+				openShop(nil)
+			else
+				openWindow(windowName)
+			end
 		end,
 	})
 end
@@ -843,7 +856,7 @@ end
 --------------------------------------------------------------------------------
 local toastHolder = new("Frame", {
 	AnchorPoint = Vector2.new(0.5, 1),
-	Position = UDim2.new(0.5, 0, 1, -24),
+	Position = UDim2.new(0.5, 0, 1, -96),
 	Size = UDim2.fromOffset(520, 230),
 	BackgroundTransparency = 1,
 	ZIndex = 3,
@@ -991,7 +1004,7 @@ end
 --------------------------------------------------------------------------------
 -- WINDOWS (Shop, Teleport, Rebirth)
 --------------------------------------------------------------------------------
-type Window = { Holder: Frame, Pop: UIScale, Body: Frame, OnOpen: (() -> ())? }
+type Window = { Holder: Frame, Pop: UIScale, Body: Frame, Title: TextLabel, OnOpen: (() -> ())? }
 local windows: { [string]: Window } = {}
 local openName: string? = nil
 
@@ -1080,7 +1093,7 @@ local function makeWindow(name: string, title: string, width: number, height: nu
 	round(header, 22)
 	outline(header, 3)
 	gradient(header, colors)
-	label({
+	local titleLabel = label({
 		Text = title,
 		Size = UDim2.new(1, -150, 0, 46),
 		Position = UDim2.new(0.5, 0, 0, 10),
@@ -1105,7 +1118,7 @@ local function makeWindow(name: string, title: string, width: number, height: nu
 		BackgroundTransparency = 1,
 		Parent = panel,
 	})
-	local window: Window = { Holder = holder, Pop = popScale, Body = body }
+	local window: Window = { Holder = holder, Pop = popScale, Body = body, Title = titleLabel }
 	windows[name] = window
 	return window
 end
@@ -1290,6 +1303,21 @@ for order, info in ipairs({ { "Pickaxe", "⛏️ Pickaxes" }, { "Backpack", "�
 end
 shop.OnOpen = refreshShop
 
+-- The shop circles open the shop on one kind of item (the HUD button shows all of them)
+local SHOP_TITLES = { Pickaxe = "⛏️ PICKAXES", Backpack = "🎒 BACKPACKS", Pet = "🐾 PET SHOP" }
+openShop = function(category: string?)
+	shopTabs.Visible = category == nil
+	scroller.Position = if category then UDim2.new() else UDim2.new(0, 0, 0, 62)
+	scroller.Size = if category then UDim2.fromScale(1, 1) else UDim2.new(1, 0, 1, -62)
+	shop.Title.Text = if category then SHOP_TITLES[category] else "🛒 SHOP"
+	if category then
+		currentTab = category
+	end
+	scroller.CanvasPosition = Vector2.zero
+	openWindow("Shop", true)
+	refreshShop()
+end
+
 --------------------------------------------------------------------------------
 -- TELEPORT
 --------------------------------------------------------------------------------
@@ -1360,7 +1388,7 @@ local rebirthInfo = label({
 	Parent = rebirth.Body,
 })
 label({
-	Text = "Rebirthing resets your coins, gems, pickaxe, backpack and zones.\nYou KEEP your pets and earn more coins forever!",
+	Text = "Rebirthing resets your coins, gems, pickaxes, backpacks and zones.\nYou KEEP your pets, gadgets and Boss Shards, and earn more coins forever!",
 	Size = UDim2.new(1, 0, 0, 56),
 	Position = UDim2.fromOffset(0, 128),
 	TextColor3 = Color3.fromRGB(210, 200, 235),
@@ -1429,11 +1457,19 @@ rebirth.OnOpen = refreshRebirth
 --------------------------------------------------------------------------------
 -- MY PETS (your pet collection)
 --------------------------------------------------------------------------------
-local petsWindow = makeWindow("Pets", "🐾 MY PETS", 760, 560, COLORS.Gold)
+local petsWindow = makeWindow("Pets", "🐾 MY PETS", 760, 580, COLORS.Gold)
 local petsInfo = label({ Text = "", Size = UDim2.new(1, 0, 0, 30), Parent = petsWindow.Body })
+label({
+	Text = "Pets give you more gems. A +30% pet makes every crystal give 30% more gems. Your best 3 pets are equipped by themselves!",
+	Size = UDim2.new(1, 0, 0, 22),
+	Position = UDim2.fromOffset(0, 32),
+	TextColor3 = Color3.fromRGB(215, 215, 235),
+	Stroke = 0,
+	Parent = petsWindow.Body,
+})
 local petScroller = new("ScrollingFrame", {
-	Size = UDim2.new(1, 0, 1, -42),
-	Position = UDim2.new(0, 0, 0, 42),
+	Size = UDim2.new(1, 0, 1, -62),
+	Position = UDim2.new(0, 0, 0, 62),
 	BackgroundTransparency = 1,
 	BorderSizePixel = 0,
 	ScrollBarThickness = 8,
@@ -1463,9 +1499,10 @@ type PetCard = {
 }
 local petCards: { PetCard } = {}
 
-for i, def in ipairs(Shared.Pets) do
+local function makePetCard(i: number)
+	local def = Shared.GetPet(i)
 	local color = Shared.RarityColor(def.Rarity)
-	local frame = new("Frame", { Name = "Pet" .. i, BackgroundColor3 = WHITE, LayoutOrder = i, Parent = petScroller })
+	local frame = new("Frame", { Name = "Pet" .. i, BackgroundColor3 = WHITE, LayoutOrder = if Shared.Pets[i] then i else 1000 + i % 100000, Parent = petScroller })
 	round(frame, 16)
 	outline(frame, 3)
 	gradient(frame, { color:Lerp(WHITE, 0.15), color:Lerp(Color3.new(0, 0, 0), 0.45) })
@@ -1520,15 +1557,30 @@ for i, def in ipairs(Shared.Pets) do
 		StatusGrad = statusGrad,
 	})
 end
+for i in ipairs(Shared.Pets) do
+	makePetCard(i)
+end
 
 local function refreshPetsWindow()
 	local s = state
 	if not s then
 		return
 	end
+	-- pets from dimension eggs get a card when you find them
+	for index in pairs(ownedPets) do
+		if not Shared.Pets[index] then
+			local known = false
+			for _, card in ipairs(petCards) do
+				known = known or card.Index == index
+			end
+			if not known and Shared.GetPet(index) then
+				makePetCard(index)
+			end
+		end
+	end
 	local found = 0
 	for _, card in ipairs(petCards) do
-		local def = Shared.Pets[card.Index]
+		local def = Shared.GetPet(card.Index)
 		local count = ownedPets[card.Index] or 0
 		local following = equippedPets[card.Index] or 0
 		if count > 0 then
@@ -2266,14 +2318,21 @@ local function playHatch(eggIndex: number, results: { HatchResult })
 			end
 		end
 	end)
+	-- click (or tap) to make it go faster
+	local hurry = false
+	local hurryClick = hatchOverlay.Activated:Connect(function()
+		hurry = true
+	end)
 	for k = 1, 6 do
-		task.wait(0.27)
+		task.wait(if hurry then 0.05 else 0.27)
 		if token ~= hatchToken then
 			wobble:Disconnect()
+			hurryClick:Disconnect()
 			return
 		end
 		playSound("Click", 0.7 + k * 0.15, 0.8)
 	end
+	hurryClick:Disconnect()
 	wobble:Disconnect()
 
 	-- ...and POP!
@@ -2283,7 +2342,7 @@ local function playHatch(eggIndex: number, results: { HatchResult })
 	local bestRank = 1
 	for i, slot in ipairs(slots) do
 		local result = results[i]
-		local def = Shared.Pets[result.Pet]
+		local def = Shared.GetPet(result.Pet)
 		local color = Shared.RarityColor(def.Rarity)
 		bestRank = math.max(bestRank, Shared.RarityRank(def.Rarity))
 		local egg = slot.Model
@@ -2348,7 +2407,7 @@ local function playHatch(eggIndex: number, results: { HatchResult })
 			end
 		end
 	end)
-	task.wait(0.6)
+	task.wait(0.35)
 	hatchHint.Visible = true
 	local clicked = false
 	local click = hatchOverlay.Activated:Connect(function()
@@ -2567,6 +2626,789 @@ R.Notify.OnClientEvent:Connect(function(message, kind)
 end)
 
 --------------------------------------------------------------------------------
+-- TOOL ANIMATIONS (a swing with the pickaxe, a scoop with the shovel)
+--------------------------------------------------------------------------------
+local playSwing: (kind: string) -> ()
+do
+	local shoulderHome: { [Motor6D]: CFrame } = setmetatable({}, { __mode = "k" }) :: any
+	local swingToken = 0
+	playSwing = function(kind: string)
+		local char = player.Character
+		local hum = char and char:FindFirstChildOfClass("Humanoid")
+		if not (char and hum) then
+			return
+		end
+		local r15 = hum.RigType == Enum.HumanoidRigType.R15
+		local holder = if r15 then char:FindFirstChild("RightUpperArm") else char:FindFirstChild("Torso")
+		local shoulder = holder and holder:FindFirstChild(if r15 then "RightShoulder" else "Right Shoulder")
+		if not (shoulder and shoulder:IsA("Motor6D")) then
+			return
+		end
+		local home = shoulderHome[shoulder] or shoulder.C0
+		shoulderHome[shoulder] = home
+		swingToken += 1
+		local token = swingToken
+		local started = os.clock()
+		local duration = if kind == "dig" then 0.3 else 0.22
+		local connection: RBXScriptConnection
+		connection = RunService.RenderStepped:Connect(function()
+			if token ~= swingToken or not shoulder.Parent then
+				connection:Disconnect()
+				return
+			end
+			local t = math.clamp((os.clock() - started) / duration, 0, 1)
+			local angle
+			if kind == "dig" then
+				-- push down into the ground, then scoop up
+				angle = if t < 0.4 then -0.9 * (t / 0.4) elseif t < 0.75 then -0.9 + 1.3 * ((t - 0.4) / 0.35) else 0.4 * (1 - (t - 0.75) / 0.25)
+			else
+				-- lift up, hit down hard, then come back
+				angle = if t < 0.35 then 0.95 * (t / 0.35) elseif t < 0.6 then 0.95 - 1.6 * ((t - 0.35) / 0.25) else -0.65 * (1 - (t - 0.6) / 0.4)
+			end
+			shoulder.C0 = home * (if r15 then CFrame.Angles(angle, 0, 0) else CFrame.Angles(0, 0, angle))
+			if t >= 1 then
+				shoulder.C0 = home
+				connection:Disconnect()
+			end
+		end)
+	end
+end
+
+--------------------------------------------------------------------------------
+-- SPRINTING, GADGETS AND 💠 BOSS SHARDS ON THE SCREEN
+--------------------------------------------------------------------------------
+do
+	hud.Size = UDim2.fromOffset(250, 510)
+	local shardsPill = new("Frame", { Name = "Shards", Size = UDim2.fromOffset(250, 44), BackgroundColor3 = WHITE, LayoutOrder = 4, Parent = hud })
+	round(shardsPill, 14)
+	outline(shardsPill, 3)
+	gradient(shardsPill, COLORS.Cyan)
+	local shardsText = label({
+		Text = "💠 0 Boss Shards",
+		Size = UDim2.new(1, -20, 0.62, 0),
+		Position = UDim2.fromScale(0.5, 0.5),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Parent = shardsPill,
+	})
+	local shardsPop: UIScale = new("UIScale", { Parent = shardsPill })
+	local lastShards = -1
+
+	-- Sprint: hold Shift, or tap the button (phones and tablets)
+	local sprintHeld = false
+	local sprintToggle = false
+	local sprintButton, sprintLabel, sprintGrad = button({
+		Size = UDim2.fromOffset(96, 96),
+		Position = UDim2.new(1, -24, 1, -200),
+		AnchorPoint = Vector2.new(1, 1),
+		Text = "🏃\nSprint",
+		Colors = COLORS.Gray,
+		Radius = 48,
+		Parent = gui,
+		OnClick = function()
+			sprintToggle = not sprintToggle
+		end,
+	})
+	sprintButton.Visible = UserInputService.TouchEnabled
+	autoScale(sprintButton)
+	UserInputService.InputBegan:Connect(function(input, processed)
+		if input.KeyCode == Enum.KeyCode.LeftShift or input.KeyCode == Enum.KeyCode.RightShift then
+			sprintHeld = true
+		elseif input.KeyCode == Enum.KeyCode.ButtonL3 and not processed then
+			sprintToggle = not sprintToggle
+		end
+	end)
+	UserInputService.InputEnded:Connect(function(input)
+		if input.KeyCode == Enum.KeyCode.LeftShift or input.KeyCode == Enum.KeyCode.RightShift then
+			sprintHeld = false
+		end
+	end)
+
+	local function toSet(list: { number }?): { [number]: boolean }
+		local set = {}
+		for _, n in ipairs(list or {}) do
+			set[n] = true
+		end
+		return set
+	end
+	local stats = Shared.GadgetStats({})
+	local statsFrom: any = nil
+	local fov = camera.FieldOfView
+	RunService.RenderStepped:Connect(function(dt)
+		local s = state
+		local char = player.Character
+		local hum = char and char:FindFirstChildOfClass("Humanoid")
+		if not (s and hum) then
+			return
+		end
+		if statsFrom ~= s then
+			statsFrom = s
+			stats = Shared.GadgetStats(toSet(s.Gadgets), toSet(s.GadgetsOff))
+		end
+		local inObby = player:GetAttribute("ObbyStart") ~= nil
+		local sprinting = (sprintHeld or sprintToggle) and hum.MoveDirection.Magnitude > 0.1
+		local walk = Settings.WalkSpeed + (if inObby then 0 else stats.Speed) + (if sprintHeld or sprintToggle then stats.Sprint else 0)
+		local jump = if inObby then Settings.JumpHeight else stats.Jump
+		if hum.WalkSpeed ~= walk then
+			hum.WalkSpeed = walk
+		end
+		if hum.JumpHeight ~= jump or hum.UseJumpPower then
+			hum.UseJumpPower = false
+			hum.JumpHeight = jump
+		end
+		-- the view gets a bit wider when you run fast
+		local wantFov = if sprinting then 78 else 70
+		fov += (wantFov - fov) * math.min(1, dt * 8)
+		if math.abs(camera.FieldOfView - fov) > 0.05 then
+			camera.FieldOfView = fov
+		end
+		sprintLabel.Text = if sprintToggle then "🏃\nON" else "🏃\nSprint"
+	end)
+
+	refreshExtras = function()
+		local s = state
+		if not s then
+			return
+		end
+		shardsText.Text = "💠 " .. Format(s.Shards or 0) .. " Boss Shards"
+		if lastShards >= 0 and (s.Shards or 0) > lastShards then
+			pop(shardsPop, 1.25)
+		end
+		lastShards = s.Shards or 0
+		setColors(sprintGrad, if sprintToggle then COLORS.Green else COLORS.Gray)
+		local window = openName and windows[openName]
+		if window and (openName == "Egg" or openName == "Gadgets" or openName == "DimShop") and window.OnOpen then
+			window.OnOpen()
+		end
+	end
+end
+
+--------------------------------------------------------------------------------
+-- EGG WINDOW (see the pets in an egg, and hatch it)
+--------------------------------------------------------------------------------
+local openEgg: (eggId: number) -> ()
+do
+	local eggWindow = makeWindow("Egg", "🥚 EGG", 800, 560, COLORS.Gold)
+	local eggInfo = label({ Text = "", Size = UDim2.new(1, 0, 0, 28), Parent = eggWindow.Body })
+	local petRow = new("Frame", { Size = UDim2.new(1, 0, 0, 286), Position = UDim2.fromOffset(0, 36), BackgroundTransparency = 1, Parent = eggWindow.Body })
+	new("UIListLayout", {
+		FillDirection = Enum.FillDirection.Horizontal,
+		HorizontalAlignment = Enum.HorizontalAlignment.Center,
+		Padding = UDim.new(0, 12),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		Parent = petRow,
+	})
+	label({
+		Text = "Pets give you more gems: a +30% pet makes every crystal give 30% more gems!\nYour best 3 pets are equipped by themselves.   ✅ Green = you have it",
+		Size = UDim2.new(1, 0, 0, 44),
+		Position = UDim2.fromOffset(0, 330),
+		TextColor3 = Color3.fromRGB(215, 215, 235),
+		Stroke = 0,
+		Parent = eggWindow.Body,
+	})
+	local currentEgg: number? = nil
+	type EggCard = { Index: number, Model: Model, Base: CFrame, Grad: UIGradient, Shine: UIGradient, Status: TextLabel, Stroke: UIStroke }
+	local eggCards: { EggCard } = {}
+
+	local function hatch(amount: number)
+		if currentEgg then
+			R.Hatch:FireServer(currentEgg, amount)
+		end
+	end
+	local _, oneLabel, oneGrad = button({
+		Size = UDim2.fromOffset(300, 64),
+		Position = UDim2.new(0.5, -10, 1, -4),
+		AnchorPoint = Vector2.new(1, 1),
+		Text = "",
+		Colors = COLORS.Green,
+		Radius = 18,
+		Parent = eggWindow.Body,
+		OnClick = function()
+			hatch(1)
+		end,
+	})
+	local _, threeLabel, threeGrad = button({
+		Size = UDim2.fromOffset(300, 64),
+		Position = UDim2.new(0.5, 10, 1, -4),
+		AnchorPoint = Vector2.new(0, 1),
+		Text = "",
+		Colors = COLORS.Green,
+		Radius = 18,
+		Parent = eggWindow.Body,
+		OnClick = function()
+			hatch(3)
+		end,
+	})
+
+	local function buildCards(egg)
+		for _, child in ipairs(petRow:GetChildren()) do
+			if child:IsA("Frame") then
+				child:Destroy()
+			end
+		end
+		table.clear(eggCards)
+		for k, entry in ipairs(egg.Pets) do
+			local def = Shared.GetPet(entry.Index)
+			local frame = new("Frame", { Name = "EggPet" .. k, Size = UDim2.fromOffset(142, 282), BackgroundColor3 = WHITE, LayoutOrder = k, Parent = petRow })
+			round(frame, 16)
+			local stroke = outline(frame, 4)
+			local grad = gradient(frame, COLORS.Gray)
+			-- a shiny stripe that slides over the card
+			local shineFrame = new("Frame", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = WHITE, BackgroundTransparency = 0, ZIndex = 2, Parent = frame })
+			round(shineFrame, 16)
+			local shine = new("UIGradient", {
+				Rotation = 25,
+				Transparency = NumberSequence.new({
+					NumberSequenceKeypoint.new(0, 1),
+					NumberSequenceKeypoint.new(0.42, 1),
+					NumberSequenceKeypoint.new(0.5, 0.65),
+					NumberSequenceKeypoint.new(0.58, 1),
+					NumberSequenceKeypoint.new(1, 1),
+				}),
+				Parent = shineFrame,
+			})
+			local viewport = new("ViewportFrame", {
+				Size = UDim2.new(1, -14, 0, 112),
+				Position = UDim2.fromOffset(7, 7),
+				BackgroundColor3 = Color3.new(0, 0, 0),
+				BackgroundTransparency = 0.7,
+				Ambient = Color3.fromRGB(200, 200, 210),
+				LightColor = WHITE,
+				LightDirection = Vector3.new(-1, -1, -1),
+				ZIndex = 3,
+				Parent = frame,
+			})
+			round(viewport, 12)
+			local cam = new("Camera", { FieldOfView = 32, Parent = viewport })
+			viewport.CurrentCamera = cam
+			local m = Shared.BuildPet(entry.Index)
+			m.Parent = viewport
+			fitCamera(cam, m, Vector3.new(0.35, 0.25, -1))
+			local function line(text: string, y: number, h: number, color: Color3)
+				return label({ Text = text, Size = UDim2.new(1, -12, 0, h), Position = UDim2.fromOffset(6, y), TextColor3 = color, ZIndex = 3, Parent = frame })
+			end
+			line(def.Name, 124, 26, WHITE)
+			line(string.upper(def.Rarity), 152, 20, Shared.RarityColor(def.Rarity))
+			line("🎲 " .. string.format("%g", entry.Chance) .. "%", 176, 24, Color3.fromRGB(255, 240, 170))
+			line("💎 " .. Shared.BonusText(def.Bonus) .. " gems", 204, 22, Color3.fromRGB(150, 235, 255))
+			local status = line("", 240, 26, WHITE)
+			table.insert(eggCards, { Index = entry.Index, Model = m, Base = m:GetPivot(), Grad = grad, Shine = shine, Status = status, Stroke = stroke })
+		end
+	end
+
+	local function refresh()
+		local s = state
+		local egg = currentEgg and Shared.GetEgg(currentEgg)
+		if not (s and egg) then
+			return
+		end
+		eggWindow.Title.Text = "🥚 " .. string.upper(egg.Name)
+		eggInfo.Text = "💰 " .. Format(egg.Price) .. " per egg" .. (if s.FreeEggs > 0 then "   •   🎁 You have " .. s.FreeEggs .. " free " .. (if s.FreeEggs == 1 then "egg" else "eggs") .. "!" else "")
+		for _, card in ipairs(eggCards) do
+			local count = ownedPets[card.Index] or 0
+			if count > 0 then
+				setColors(card.Grad, COLORS.Green)
+				card.Stroke.Color = Color3.fromRGB(120, 255, 140)
+				card.Status.Text = "✅ You have " .. count
+			else
+				setColors(card.Grad, COLORS.Gray)
+				card.Stroke.Color = OUTLINE
+				card.Status.Text = "❔ Not found yet"
+			end
+		end
+		local free = s.FreeEggs > 0
+		oneLabel.Text = if free then "🥚 Hatch 1  (🎁 FREE)  [E]" else "🥚 Hatch 1  💰 " .. Format(egg.Price) .. "  [E]"
+		threeLabel.Text = "🥚🥚🥚 Hatch 3  💰 " .. Format(egg.Price * 3) .. "  [R]"
+		setColors(oneGrad, if free or s.Coins >= egg.Price then COLORS.Green else COLORS.Red)
+		setColors(threeGrad, if s.Coins >= egg.Price * 3 then COLORS.Green else COLORS.Red)
+	end
+	eggWindow.OnOpen = refresh
+
+	openEgg = function(eggId: number)
+		local egg = Shared.GetEgg(eggId)
+		if not egg then
+			return
+		end
+		if currentEgg ~= eggId then
+			currentEgg = eggId
+			buildCards(egg)
+		end
+		openWindow("Egg", true)
+		refresh()
+	end
+
+	UserInputService.InputBegan:Connect(function(input, processed)
+		if processed or openName ~= "Egg" then
+			return
+		end
+		if input.KeyCode == Enum.KeyCode.E then
+			hatch(1)
+		elseif input.KeyCode == Enum.KeyCode.R then
+			hatch(3)
+		end
+	end)
+
+	RunService.RenderStepped:Connect(function()
+		if openName ~= "Egg" then
+			return
+		end
+		local t = os.clock()
+		for k, card in ipairs(eggCards) do
+			placeModel(card.Model, CFrame.Angles(0, math.sin(t * 1.4 + k) * 0.5, 0) * card.Base)
+			card.Shine.Offset = Vector2.new(((t * 0.5 + k * 0.2) % 2) - 1, 0)
+		end
+	end)
+end
+
+--------------------------------------------------------------------------------
+-- GADGET SHOP
+--------------------------------------------------------------------------------
+do
+	local gadgetWindow = makeWindow("Gadgets", "⚡ GADGET SHOP", 780, 560, COLORS.Purple)
+	label({
+		Text = "Gadgets are yours forever. Click an owned gadget to turn it ON or OFF. (They turn off in the obby.)",
+		Size = UDim2.new(1, 0, 0, 24),
+		TextColor3 = Color3.fromRGB(220, 215, 240),
+		Stroke = 0,
+		Parent = gadgetWindow.Body,
+	})
+	local grid = new("ScrollingFrame", {
+		Size = UDim2.new(1, 0, 1, -34),
+		Position = UDim2.fromOffset(0, 34),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		ScrollBarThickness = 8,
+		ScrollBarImageColor3 = WHITE,
+		CanvasSize = UDim2.new(),
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		Parent = gadgetWindow.Body,
+	})
+	new("UIGridLayout", { CellSize = UDim2.fromOffset(166, 228), CellPadding = UDim2.fromOffset(12, 12), HorizontalAlignment = Enum.HorizontalAlignment.Center, SortOrder = Enum.SortOrder.LayoutOrder, Parent = grid })
+	new("UIPadding", { PaddingTop = UDim.new(0, 6), PaddingBottom = UDim.new(0, 10), Parent = grid })
+	type GadgetCard = { Index: number, Label: TextLabel, Grad: UIGradient, Model: Model, Base: CFrame }
+	local gadgetCards: { GadgetCard } = {}
+	for i, def in ipairs(Shared.Gadgets) do
+		local frame = new("Frame", { Name = "Gadget" .. i, BackgroundColor3 = WHITE, LayoutOrder = i, Parent = grid })
+		round(frame, 16)
+		outline(frame, 3)
+		gradient(frame, { def.Color:Lerp(WHITE, 0.1), def.Color:Lerp(Color3.new(0, 0, 0), 0.55) })
+		local viewport = new("ViewportFrame", {
+			Size = UDim2.new(1, -16, 0, 100),
+			Position = UDim2.fromOffset(8, 8),
+			BackgroundColor3 = Color3.new(0, 0, 0),
+			BackgroundTransparency = 0.72,
+			Ambient = Color3.fromRGB(190, 190, 200),
+			LightColor = WHITE,
+			LightDirection = Vector3.new(-1, -1, -1),
+			Parent = frame,
+		})
+		round(viewport, 12)
+		local cam = new("Camera", { FieldOfView = 34, Parent = viewport })
+		viewport.CurrentCamera = cam
+		local m = Shared.BuildGadget(i)
+		m.Parent = viewport
+		fitCamera(cam, m, Vector3.new(0.8, 0.35, -0.6))
+		label({ Text = def.Name, Size = UDim2.new(1, -12, 0, 26), Position = UDim2.fromOffset(6, 112), Parent = frame })
+		label({ Text = Shared.GadgetText(def), Size = UDim2.new(1, -12, 0, 22), Position = UDim2.fromOffset(6, 140), TextColor3 = Color3.fromRGB(255, 240, 160), Parent = frame })
+		local _, buyLabel, buyGrad = button({
+			Size = UDim2.new(1, -18, 0, 42),
+			Position = UDim2.new(0.5, 0, 1, -8),
+			AnchorPoint = Vector2.new(0.5, 1),
+			Text = "",
+			Colors = COLORS.Green,
+			Parent = frame,
+			OnClick = function()
+				local s = state
+				if s and table.find(s.Gadgets or {}, i) then
+					R.GadgetToggle:FireServer(i)
+				else
+					R.Buy:FireServer("Gadget", i)
+				end
+			end,
+		})
+		table.insert(gadgetCards, { Index = i, Label = buyLabel, Grad = buyGrad, Model = m, Base = m:GetPivot() })
+	end
+	gadgetWindow.OnOpen = function()
+		local s = state
+		if not s then
+			return
+		end
+		for _, card in ipairs(gadgetCards) do
+			local def = Shared.Gadgets[card.Index]
+			if table.find(s.Gadgets or {}, card.Index) then
+				local off = table.find(s.GadgetsOff or {}, card.Index) ~= nil
+				card.Label.Text = if off then "⭕ OFF" else "✅ ON"
+				setColors(card.Grad, if off then COLORS.Gray else COLORS.Blue)
+			else
+				card.Label.Text = "💰 " .. Format(def.Price)
+				setColors(card.Grad, if s.Coins >= def.Price then COLORS.Green else COLORS.Red)
+			end
+		end
+	end
+	RunService.RenderStepped:Connect(function()
+		if openName ~= "Gadgets" then
+			return
+		end
+		local t = os.clock()
+		for _, card in ipairs(gadgetCards) do
+			placeModel(card.Model, CFrame.Angles(0, t * 0.9, 0) * card.Base)
+		end
+	end)
+end
+
+--------------------------------------------------------------------------------
+-- SPECIAL SHOP IN EVERY DIMENSION
+--------------------------------------------------------------------------------
+local openDimShop: (d: number) -> ()
+do
+	local window = makeWindow("DimShop", "💠 SPECIAL SHOP", 700, 520, COLORS.Cyan)
+	local info = label({ Text = "", Size = UDim2.new(1, 0, 0, 28), Parent = window.Body })
+	label({
+		Text = "These are only sold in this dimension! Beat the 👑 diamond bosses to get 💠 Boss Shards.",
+		Size = UDim2.new(1, 0, 0, 22),
+		Position = UDim2.fromOffset(0, 30),
+		TextColor3 = Color3.fromRGB(215, 230, 240),
+		Stroke = 0,
+		Parent = window.Body,
+	})
+	local row = new("Frame", { Size = UDim2.new(1, 0, 1, -64), Position = UDim2.fromOffset(0, 64), BackgroundTransparency = 1, Parent = window.Body })
+	new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, HorizontalAlignment = Enum.HorizontalAlignment.Center, Padding = UDim.new(0, 20), Parent = row })
+	local shopDim: number? = nil
+	type DimCard = { Frame: Frame, Viewport: ViewportFrame, Camera: Camera, Model: Model?, Name: TextLabel, Stat: TextLabel, Label: TextLabel, Grad: UIGradient }
+	local function makeDimCard(kind: string): DimCard
+		local frame = new("Frame", { Size = UDim2.fromOffset(300, 370), BackgroundColor3 = WHITE, Parent = row })
+		round(frame, 18)
+		outline(frame, 3)
+		gradient(frame, COLORS.Galaxy)
+		local viewport = new("ViewportFrame", {
+			Size = UDim2.new(1, -20, 0, 170),
+			Position = UDim2.fromOffset(10, 10),
+			BackgroundColor3 = Color3.new(0, 0, 0),
+			BackgroundTransparency = 0.7,
+			Ambient = Color3.fromRGB(190, 190, 200),
+			LightColor = WHITE,
+			LightDirection = Vector3.new(-1, -1, -1),
+			Parent = frame,
+		})
+		round(viewport, 14)
+		local cam = new("Camera", { FieldOfView = 34, Parent = viewport })
+		viewport.CurrentCamera = cam
+		local nameLabel = label({ Text = "", Size = UDim2.new(1, -16, 0, 32), Position = UDim2.fromOffset(8, 188), Parent = frame })
+		local stat = label({ Text = "", Size = UDim2.new(1, -16, 0, 26), Position = UDim2.fromOffset(8, 224), TextColor3 = Color3.fromRGB(255, 240, 160), Parent = frame })
+		local _, buyLabel, buyGrad = button({
+			Size = UDim2.new(1, -24, 0, 56),
+			Position = UDim2.new(0.5, 0, 1, -10),
+			AnchorPoint = Vector2.new(0.5, 1),
+			Text = "",
+			Colors = COLORS.Green,
+			Radius = 16,
+			Parent = frame,
+			OnClick = function()
+				if shopDim then
+					R.Buy:FireServer(kind, shopDim)
+				end
+			end,
+		})
+		return { Frame = frame, Viewport = viewport, Camera = cam, Name = nameLabel, Stat = stat, Label = buyLabel, Grad = buyGrad }
+	end
+	local pickCard = makeDimCard("DimPickaxe")
+	local packCard = makeDimCard("DimBackpack")
+	local function setModel(card: DimCard, m: Model, direction: Vector3)
+		if card.Model then
+			card.Model:Destroy()
+		end
+		card.Model = m
+		m.Parent = card.Viewport
+		fitCamera(card.Camera, m, direction)
+	end
+	local function refresh()
+		local s = state
+		local d = shopDim
+		if not (s and d) then
+			return
+		end
+		local pick = Shared.DimensionPickaxe(d)
+		local pack = Shared.DimensionBackpack(d)
+		window.Title.Text = "💠 SPECIAL SHOP  •  DIMENSION " .. d
+		info.Text = "💠 You have " .. Format(s.Shards or 0) .. " Boss Shards    💰 " .. Format(s.Coins) .. " coins"
+		pickCard.Name.Text = pick.Name
+		pickCard.Stat.Text = "⛏️ Power " .. Format(pick.Power)
+		packCard.Name.Text = pack.Name
+		packCard.Stat.Text = "🎒 Holds " .. Format(pack.Capacity)
+		local bestPick = Shared.BestPickaxe(s)
+		local bestPack = Shared.BestBackpack(s)
+		if pick.Power <= bestPick.Power then
+			pickCard.Label.Text = if s.DimPickaxe == d then "EQUIPPED" else "You have a better one"
+			setColors(pickCard.Grad, COLORS.Gray)
+		else
+			pickCard.Label.Text = "💠 " .. pick.Shards .. " Boss Shards"
+			setColors(pickCard.Grad, if (s.Shards or 0) >= pick.Shards then COLORS.Green else COLORS.Red)
+		end
+		if pack.Capacity <= bestPack.Capacity then
+			packCard.Label.Text = if s.DimBackpack == d then "EQUIPPED" else "You have a bigger one"
+			setColors(packCard.Grad, COLORS.Gray)
+		else
+			packCard.Label.Text = "💰 " .. Format(pack.Price)
+			setColors(packCard.Grad, if s.Coins >= pack.Price then COLORS.Green else COLORS.Red)
+		end
+	end
+	window.OnOpen = refresh
+	openDimShop = function(d: number)
+		if shopDim ~= d then
+			shopDim = d
+			setModel(pickCard, Shared.BuildPickaxe(Shared.DimensionPickaxe(d)), Vector3.new(1, 0.2, 0.25))
+			setModel(packCard, Shared.BuildBackpack(Shared.DimensionBackpack(d)), Vector3.new(0.45, 0.3, 1))
+		end
+		openWindow("DimShop", true)
+		refresh()
+	end
+	RunService.RenderStepped:Connect(function()
+		if openName ~= "DimShop" then
+			return
+		end
+		local t = os.clock()
+		for _, card in ipairs({ pickCard, packCard }) do
+			local m = card.Model
+			if m then
+				placeModel(m, CFrame.Angles(0, t * 0.9, 0) * CFrame.new())
+			end
+		end
+	end)
+end
+
+--------------------------------------------------------------------------------
+-- CIRCLES ON THE GROUND (step in one and its window opens)
+--------------------------------------------------------------------------------
+do
+	local inside: BasePart? = nil
+	local openedWindow: string? = nil
+	local function enter(circle: BasePart)
+		local action = circle:GetAttribute("Action")
+		local arg = circle:GetAttribute("Arg")
+		local window: string? = nil
+		if action == "Pickaxes" then
+			openShop("Pickaxe")
+			window = "Shop"
+		elseif action == "Backpacks" then
+			openShop("Backpack")
+			window = "Shop"
+		elseif action == "Pets" then
+			openShop("Pet")
+			window = "Shop"
+		elseif action == "Shop" then
+			openShop(nil)
+			window = "Shop"
+		elseif action == "Gadgets" or action == "Rebirth" or action == "Dimensions" then
+			openWindow(action, true)
+			window = action
+		elseif action == "Egg" and type(arg) == "number" then
+			openEgg(arg)
+			window = "Egg"
+		elseif action == "DimShop" and type(arg) == "number" then
+			openDimShop(arg)
+			window = "DimShop"
+		elseif action == "Home" then
+			R.Teleport:FireServer(0)
+		end
+		if window then
+			playSound("Click", 1.2, 0.5)
+		end
+		openedWindow = window
+	end
+	task.spawn(function()
+		while true do
+			task.wait(0.1)
+			local root = myRoot()
+			local found: BasePart? = nil
+			if root then
+				for _, circle in ipairs(CollectionService:GetTagged("ActionCircle")) do
+					if circle:IsA("BasePart") and circle.Parent then
+						local radius = circle:GetAttribute("Radius")
+						local flat = Vector3.new(root.Position.X - circle.Position.X, 0, root.Position.Z - circle.Position.Z)
+						if type(radius) == "number" and flat.Magnitude < radius and math.abs(root.Position.Y - circle.Position.Y) < 7 then
+							found = circle
+							break
+						end
+					end
+				end
+			end
+			if found ~= inside then
+				-- walking out of a circle closes the window it opened
+				if openedWindow and openName == openedWindow then
+					closeWindow()
+				end
+				openedWindow = nil
+				inside = found
+				if found then
+					enter(found)
+				end
+			end
+		end
+	end)
+end
+
+--------------------------------------------------------------------------------
+-- BOSSES (they float around smoothly and look at you) AND THEIR ATTACKS
+--------------------------------------------------------------------------------
+do
+	type BossView = { Pos: Vector3, Yaw: number }
+	local views: { [Model]: BossView } = setmetatable({}, { __mode = "k" }) :: any
+	local bossModels: { [Model]: boolean } = {}
+	local function track(inst: Instance)
+		if inst:IsA("Model") then
+			bossModels[inst] = true
+		end
+	end
+	for _, inst in ipairs(CollectionService:GetTagged("Boss")) do
+		track(inst)
+	end
+	CollectionService:GetInstanceAddedSignal("Boss"):Connect(track)
+	CollectionService:GetInstanceRemovedSignal("Boss"):Connect(function(inst)
+		bossModels[inst :: Model] = nil
+	end)
+	RunService.RenderStepped:Connect(function(dt)
+		local root = myRoot()
+		local t = os.clock()
+		for m in pairs(bossModels) do
+			local target = m:GetAttribute("BossPos")
+			if m.Parent and typeof(target) == "Vector3" then
+				local view = views[m]
+				if not view then
+					view = { Pos = target, Yaw = 0 }
+					views[m] = view
+				end
+				view.Pos = view.Pos:Lerp(target, math.min(1, dt * 5))
+				local pos = view.Pos + Vector3.new(0, math.sin(t * 2) * 0.6, 0)
+				if root and (root.Position - pos).Magnitude < 70 then
+					local want = math.atan2(-(root.Position.X - pos.X), -(root.Position.Z - pos.Z))
+					local diff = (want - view.Yaw + math.pi) % (math.pi * 2) - math.pi
+					view.Yaw += diff * math.min(1, dt * 4)
+				else
+					view.Yaw += dt * 0.5
+				end
+				placeModel(m, CFrame.new(pos) * CFrame.Angles(0, view.Yaw, 0))
+			end
+		end
+	end)
+
+	-- a red circle shows where the attack will land (jump away!)
+	local function warningCircle(spot: Vector3, time: number)
+		local ring = new("Part", {
+			Name = "BossWarning",
+			Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new(0.2, 1, 1),
+			CFrame = CFrame.new(spot + Vector3.new(0, 0.25, 0)) * CFrame.Angles(0, 0, math.rad(90)),
+			Color = Color3.fromRGB(255, 60, 60),
+			Material = Enum.Material.Neon,
+			Transparency = 0.4,
+			Anchored = true,
+			CanCollide = false,
+			CanTouch = false,
+			CastShadow = false,
+			Parent = FxFolder,
+		})
+		tween(ring, time, { Size = Vector3.new(0.2, 10, 10), Transparency = 0.6 })
+		Debris:AddItem(ring, time + 0.05)
+	end
+
+	R.Effect.OnClientEvent:Connect(function(kind, a, b, c, d)
+		if kind == "bossattack" then
+			local m: Model?, from: Vector3, spot: Vector3 = a, b, c
+			local view = m and views[m]
+			local start = if view then view.Pos else from
+			warningCircle(spot, 0.8)
+			local shard = new("Part", {
+				Name = "BossShard",
+				Size = Vector3.new(1, 2.2, 1),
+				CFrame = CFrame.new(start),
+				Color = if m and m.PrimaryPart then m.PrimaryPart.Color else Color3.fromRGB(150, 220, 255),
+				Material = Enum.Material.Glass,
+				Reflectance = 0.3,
+				Anchored = true,
+				CanCollide = false,
+				CanTouch = false,
+				Parent = FxFolder,
+			})
+			local began = os.clock()
+			local connection: RBXScriptConnection
+			connection = RunService.RenderStepped:Connect(function()
+				local k = math.clamp((os.clock() - began) / 0.8, 0, 1)
+				local function along(x: number): Vector3
+					return start:Lerp(spot, x) + Vector3.new(0, math.sin(x * math.pi) * 6, 0)
+				end
+				local pos = along(k)
+				local ahead = along(math.min(k + 0.05, 1)) - pos
+				-- point the shard the way it flies
+				shard.CFrame = if ahead.Magnitude > 0.01 then CFrame.lookAt(pos, pos + ahead) * CFrame.Angles(math.rad(90), 0, 0) else CFrame.new(pos)
+				if k >= 1 then
+					connection:Disconnect()
+					shard:Destroy()
+					burst(spot, Color3.fromRGB(255, 120, 120), 18, 22, 0.7)
+					chips(spot, Color3.fromRGB(120, 110, 100), 4)
+					local position = rootPosition()
+					if position and (position - spot).Magnitude < 40 then
+						playSound("Boom", 2, 0.25)
+					end
+				end
+			end)
+		elseif kind == "bossouch" then
+			local flash = new("Frame", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.fromRGB(255, 40, 40), BackgroundTransparency = 0.6, ZIndex = 30, Parent = fxGui })
+			tween(flash, 0.4, { BackgroundTransparency = 1 })
+			Debris:AddItem(flash, 0.5)
+			playSound("Hit", 0.8, 0.6)
+		elseif kind == "bosshit" then
+			local position: Vector3, damage: number = a, b
+			local m: Model? = c
+			local view = m and views[m]
+			local at = if view then view.Pos else position
+			burst(at, Color3.new(1, 1, 1), 8, 18, 0.5)
+			worldText(at + Vector3.new(0, 3, 0), "-" .. Format(damage), Color3.fromRGB(255, 120, 120), 34)
+			playSound("Hit", 1.2 + math.random() * 0.3, 0.5)
+		elseif kind == "bossdefeat" then
+			local position: Vector3, color: Color3 = a, b
+			burst(position, color, 60, 50, 1.6)
+			burst(position, Color3.new(1, 1, 1), 30, 35, 1)
+			shards(position, color, 20, false)
+			dust(position - Vector3.new(0, 4, 0), Color3.fromRGB(175, 170, 162), 16, 2.5)
+			local near = rootPosition()
+			if near and (near - position).Magnitude < 120 then
+				playSound("Boom", 0.8, 0.6)
+			end
+		elseif kind == "bossreward" then
+			local name: string, coins: number, gotShards: number, xp: number = a, b, c, d
+			showBanner("👑 YOU BEAT THE " .. string.upper(name) .. "!", Color3.fromRGB(255, 215, 110))
+			toast("💠 +" .. gotShards .. " Boss Shards   💰 +" .. Format(coins) .. "   ⭐ +" .. Format(xp) .. " XP", "gold")
+			local position = rootPosition()
+			if position then
+				flyIcons(position, "💰", coinsPill, coinsPop, 10)
+			end
+			celebrate(10, 0.9)
+		elseif kind == "bossspawn" then
+			local position: Vector3, color: Color3 = a, b
+			local near = rootPosition()
+			if near and (near - position).Magnitude < 90 then
+				burst(position, color, 30, 25, 1)
+				toast("👑 The diamond boss is back!", "info")
+			end
+		elseif kind == "dig" then
+			local position: Vector3, damage: number = a, b
+			dust(position, Color3.fromRGB(140, 110, 80), 4, 1.1)
+			chips(position + Vector3.new(0, 0.5, 0), Color3.fromRGB(110, 84, 60), 3)
+			worldText(position + Vector3.new(0, 2, 0), "-" .. Format(damage), WHITE, 22)
+			playSound("Hit", 0.9 + math.random() * 0.2, 0.4)
+		elseif kind == "dugout" then
+			local position: Vector3, color: Color3 = a, b
+			dust(position, Color3.fromRGB(140, 110, 80), 14, 2)
+			chips(position + Vector3.new(0, 0.5, 0), Color3.fromRGB(110, 84, 60), 8)
+			burst(position + Vector3.new(0, 1, 0), color, 20, 20, 0.8)
+			local near = rootPosition()
+			if near and (near - position).Magnitude < 60 then
+				playSound("Splash", 0.6, 0.3)
+			end
+		end
+	end)
+end
+
+--------------------------------------------------------------------------------
 -- MINING (click / tap / hold on crystals)
 --------------------------------------------------------------------------------
 do
@@ -2583,7 +3425,7 @@ do
 		local result = Workspace:Raycast(ray.Origin, ray.Direction * 400, rayParams)
 		if result then
 			local m = result.Instance.Parent
-			if m and m:IsA("Model") and m:GetAttribute("IsCrystal") then
+			if m and m:IsA("Model") and (m:GetAttribute("IsCrystal") or m:GetAttribute("IsBoss") or m:GetAttribute("IsDigSpot")) then
 				return m
 			end
 		end
@@ -2601,18 +3443,13 @@ do
 
 	local lastSwing = 0
 	local lastFarHint = 0
+	local lastToolHint = 0
 	local swings = 0
 
-	local function swing()
+	local function heldTool(): string?
 		local char = player.Character
 		local tool = char and char:FindFirstChildOfClass("Tool")
-		if tool then
-			local anim = Instance.new("StringValue")
-			anim.Name = "toolanim"
-			anim.Value = "Slash"
-			anim.Parent = tool
-			Debris:AddItem(anim, 1)
-		end
+		return if tool then tool.Name else nil
 	end
 
 	local function tryMine(point: Vector2, isViewportPoint: boolean)
@@ -2624,15 +3461,30 @@ do
 		if not m then
 			return
 		end
+		local digSpot = m:GetAttribute("IsDigSpot") == true
+		local tool = heldTool()
+		local needed = if digSpot then "Shovel" else "Pickaxe"
+		if tool ~= needed then
+			if now - lastToolHint > 2.5 then
+				lastToolHint = now
+				if digSpot then
+					toast("🪣 Hold your SHOVEL (press 2) to dig up buried gems!", "info")
+				else
+					toast("⛏️ Hold your PICKAXE (press 1) to mine!", "info")
+				end
+			end
+			return
+		end
 		if not inRange(m) then
 			if now - lastFarHint > 2.5 then
 				lastFarHint = now
-				toast("🏃 Walk closer to mine that crystal!", "info")
+				toast("🏃 Walk closer!", "info")
 			end
 			return
 		end
 		local s = state
-		if s and s.Gems >= s.Capacity then
+		local isBoss = m:GetAttribute("IsBoss") == true
+		if s and s.Gems >= s.Capacity and not isBoss then
 			backpackFull()
 			return
 		end
@@ -2641,8 +3493,13 @@ do
 			return
 		end
 		lastSwing = now
-		R.Mine:FireServer(m)
-		swing()
+		if digSpot then
+			R.Dig:FireServer(m)
+			playSwing("dig")
+		else
+			R.Mine:FireServer(m)
+			playSwing("swing")
+		end
 		swings += 1
 		if swings == 6 then
 			toast("💡 Tip: hold the mouse button down to keep mining!", "info")
@@ -2894,16 +3751,11 @@ updateGate = function(gate: Instance, animate: boolean?)
 		barrier.Transparency = 1
 	end
 	setBars(gate, unlocked, animate == true)
-	local beam = gate:FindFirstChild("Beam")
-	local signGui = beam and beam:FindFirstChild("Sign")
-	if signGui then
-		local title = signGui:FindFirstChild("Title")
-		local subtitle = signGui:FindFirstChild("Subtitle")
-		if title and title:IsA("TextLabel") then
-			title.Text = (if unlocked then zone.Emoji .. " " else "🔒 ") .. string.upper(zone.Name)
-		end
-		if subtitle and subtitle:IsA("TextLabel") then
-			subtitle.Text = if unlocked then "Unlocked!" else "💰 " .. Format(zone.Price) .. " to unlock"
+	for _, d in ipairs(gate:GetDescendants()) do
+		if d:IsA("TextLabel") and d.Name == "Title" then
+			d.Text = (if unlocked then zone.Emoji .. " " else "🔒 ") .. string.upper(zone.Name)
+		elseif d:IsA("TextLabel") and d.Name == "Subtitle" then
+			d.Text = if unlocked then "Unlocked!" else "💰 " .. Format(zone.Price) .. " to unlock"
 		end
 	end
 	local pp = gate:FindFirstChildWhichIsA("ProximityPrompt", true)
@@ -3024,13 +3876,7 @@ local function refreshAll()
 	refreshGifts()
 	refreshDaily()
 	updateGates()
-	-- egg machines say "FREE" when you have a free egg
-	for _, pp in ipairs(CollectionService:GetTagged("HatchOnePrompt")) do
-		if pp:IsA("ProximityPrompt") then
-			local price = pp:GetAttribute("Price")
-			pp.ActionText = if s.FreeEggs > 0 then "Hatch 1  (🎁 FREE egg!)" else "Hatch 1  (💰 " .. Format(if type(price) == "number" then price else 0) .. ")"
-		end
-	end
+	refreshExtras()
 end
 
 R.Sync.OnClientEvent:Connect(function(newState: State)
@@ -3041,6 +3887,9 @@ R.Sync.OnClientEvent:Connect(function(newState: State)
 		if count > 0 then
 			ownedPets[index] = count
 		end
+	end
+	for _, entry in ipairs(newState.DimPets or {}) do
+		ownedPets[entry.Index] = entry.Count
 	end
 	equippedPets = {}
 	for _, index in ipairs(Shared.GetEquippedPets(ownedPets)) do
@@ -3139,16 +3988,6 @@ task.spawn(function()
 					refreshDimensions()
 				end
 			end
-			-- keep the pickaxe in your hand
-			local char = player.Character
-			local hum = char and char:FindFirstChildOfClass("Humanoid")
-			local backpack = player:FindFirstChildOfClass("Backpack")
-			if char and hum and hum.Health > 0 and backpack and not char:FindFirstChildOfClass("Tool") then
-				local tool = backpack:FindFirstChild("Pickaxe")
-				if tool and tool:IsA("Tool") then
-					hum:EquipTool(tool)
-				end
-			end
 		end
 		updateGuide()
 		task.wait(0.3)
@@ -3171,7 +4010,7 @@ task.spawn(function()
 				local map = Workspace:FindFirstChild("Map")
 				obbySign = map and map:FindFirstChild("ObbySign", true)
 			end
-			local subtitle = obbySign and obbySign:FindFirstChild("Subtitle")
+			local subtitle = obbySign and obbySign:FindFirstChild("Subtitle", true)
 			if subtitle and subtitle:IsA("TextLabel") then
 				local wait = obbyWait()
 				subtitle.Text = if wait > 0 then "Reward again in " .. clockText(wait) else "Win 💰 " .. Format(Shared.ObbyReward(s)) .. "!"

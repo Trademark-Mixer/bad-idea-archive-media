@@ -41,7 +41,7 @@ do
 	end
 	local folder = Instance.new("Folder")
 	folder.Name = "Remotes"
-	for _, name in ipairs({ "Mine", "Buy", "Rebirth", "Teleport", "Sync", "Notify", "Effect", "OpenMenu", "EnterDimension", "GoSell", "Claim" }) do
+	for _, name in ipairs({ "Mine", "Buy", "Rebirth", "Teleport", "Sync", "Notify", "Effect", "OpenMenu", "EnterDimension", "GoSell", "Claim", "Dig", "Hatch", "GadgetToggle" }) do
 		local remote = Instance.new("RemoteEvent")
 		remote.Name = name
 		remote.Parent = folder
@@ -71,6 +71,8 @@ local SellFolder = folder("SellPads")
 local PetFolder = folder("Pets")
 local WallFolder = folder("Walls")
 local DimensionFolder = folder("Dimensions")
+local DigFolder = folder("DigSpots")
+local BossFolder = folder("Bosses")
 
 -- New parts and models go here unless something else is given
 -- (dimension islands switch this to their own folder while they are built)
@@ -213,6 +215,143 @@ local function prompt(parent: Instance, action: string, object: string, hold: nu
 	pp.RequiresLineOfSight = false
 	pp.Parent = parent
 	return pp
+end
+
+-- A nicer floating sign: a dark panel with a colored border, an icon, a title and a subtitle
+local function fancySign(parent: Instance, icon: string, title: string, subtitle: string?, accent: Color3, width: number, offsetY: number): BillboardGui
+	local bb = Instance.new("BillboardGui")
+	bb.Name = "Sign"
+	bb.Size = UDim2.fromScale(width, width * 0.3)
+	bb.StudsOffset = Vector3.new(0, offsetY, 0)
+	bb.LightInfluence = 0
+	bb.MaxDistance = 160
+	bb.ResetOnSpawn = false
+	local panel = Instance.new("Frame")
+	panel.Name = "Panel"
+	panel.Size = UDim2.fromScale(1, 1)
+	panel.BackgroundColor3 = Color3.new(1, 1, 1)
+	panel.BackgroundTransparency = 0.08
+	panel.Parent = bb
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0.28, 0)
+	corner.Parent = panel
+	local border = Instance.new("UIStroke")
+	border.Thickness = 3
+	border.Color = accent
+	border.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	border.Parent = panel
+	local shade = Instance.new("UIGradient")
+	shade.Color = ColorSequence.new(accent:Lerp(Color3.fromRGB(20, 22, 32), 0.55), Color3.fromRGB(20, 22, 32))
+	shade.Rotation = 90
+	shade.Parent = panel
+	local function text(name: string, value: string, x: number, y: number, w: number, h: number, color: Color3, align: Enum.TextXAlignment)
+		local lbl = Instance.new("TextLabel")
+		lbl.Name = name
+		lbl.BackgroundTransparency = 1
+		lbl.Position = UDim2.fromScale(x, y)
+		lbl.Size = UDim2.fromScale(w, h)
+		lbl.Font = Enum.Font.FredokaOne
+		lbl.TextScaled = true
+		lbl.TextXAlignment = align
+		lbl.TextColor3 = color
+		lbl.Text = value
+		lbl.Parent = panel
+		local stroke = Instance.new("UIStroke")
+		stroke.Thickness = 2
+		stroke.Color = Color3.fromRGB(12, 12, 20)
+		stroke.Parent = lbl
+		return lbl
+	end
+	text("Icon", icon, 0.03, 0.12, 0.22, 0.76, Color3.new(1, 1, 1), Enum.TextXAlignment.Center)
+	text("Title", title, 0.27, if subtitle then 0.1 else 0.2, 0.69, if subtitle then 0.5 else 0.6, accent:Lerp(Color3.new(1, 1, 1), 0.45), Enum.TextXAlignment.Left)
+	if subtitle then
+		text("Subtitle", subtitle, 0.27, 0.6, 0.69, 0.3, Color3.fromRGB(225, 228, 240), Enum.TextXAlignment.Left)
+	end
+	bb.Parent = parent
+	return bb
+end
+
+-- Words carved into a stone (or painted on wood): a SurfaceGui on one face of a part
+local function carvedText(parent: BasePart, face: Enum.NormalId, title: string, subtitle: string?, color: Color3)
+	local gui = Instance.new("SurfaceGui")
+	gui.Name = "Sign"
+	gui.Face = face
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	gui.PixelsPerStud = 30
+	gui.LightInfluence = 0.4
+	gui.MaxDistance = 250
+	local function text(name: string, value: string, y: number, h: number, textColor: Color3)
+		local lbl = Instance.new("TextLabel")
+		lbl.Name = name
+		lbl.BackgroundTransparency = 1
+		lbl.Position = UDim2.fromScale(0.04, y)
+		lbl.Size = UDim2.fromScale(0.92, h)
+		lbl.Font = Enum.Font.FredokaOne
+		lbl.TextScaled = true
+		lbl.TextColor3 = textColor
+		lbl.Text = value
+		lbl.Parent = gui
+		local stroke = Instance.new("UIStroke")
+		stroke.Thickness = 3
+		stroke.Color = Color3.fromRGB(30, 26, 22)
+		stroke.Parent = lbl
+	end
+	text("Title", title, if subtitle then 0.06 else 0.15, if subtitle then 0.56 else 0.7, color)
+	if subtitle then
+		text("Subtitle", subtitle, 0.62, 0.3, Color3.fromRGB(245, 240, 230))
+	end
+	gui.Parent = parent
+	return gui
+end
+
+-- A glowing circle on the ground. Step inside it to use it: the shop opens, you sell, ...
+-- action tells the player's screen what to open (Shop, Backpacks, Pets, Gadgets, Egg, ...)
+local function actionCircle(pos: Vector3, radius: number, color: Color3, action: string, arg: any?, parent: Instance?): BasePart
+	local m = model("Circle", parent)
+	local upright = CFrame.Angles(0, 0, rad(90))
+	local floor = P({
+		Name = "CircleFloor",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(0.3, radius * 2, radius * 2),
+		CFrame = CFrame.new(pos + Vector3.new(0, 0.18, 0)) * upright,
+		Color = color,
+		Transparency = 0.72,
+		CanCollide = false,
+		CastShadow = false,
+		Parent = m,
+	})
+	local segments = math.max(24, math.floor(radius * 4))
+	for k = 0, segments - 1 do
+		local a = (k + 0.5) / segments * math.pi * 2
+		P({
+			Name = "Ring",
+			Size = Vector3.new(0.55, 0.26, radius * 2 * math.pi / segments + 0.1),
+			CFrame = CFrame.new(pos + Vector3.new(math.cos(a) * radius, 0.22, math.sin(a) * radius)) * CFrame.Angles(0, -a, 0),
+			Color = color:Lerp(Color3.new(1, 1, 1), 0.25),
+			Material = Enum.Material.Neon,
+			Transparency = 0.2,
+			CanCollide = false,
+			CastShadow = false,
+			Parent = m,
+		})
+	end
+	particles(floor, {
+		Color = color:Lerp(Color3.new(1, 1, 1), 0.4),
+		Size = 0.22,
+		Rate = 5,
+		Lifetime = NumberRange.new(1.5, 2.5),
+		Speed = NumberRange.new(1, 2),
+		Spread = Vector2.new(5, 5),
+		Direction = Enum.NormalId.Right,
+		LightEmission = 0.5,
+	})
+	floor:SetAttribute("Action", action)
+	if arg ~= nil then
+		floor:SetAttribute("Arg", arg)
+	end
+	floor:SetAttribute("Radius", radius)
+	floor:AddTag("ActionCircle")
+	return floor
 end
 
 --------------------------------------------------------------------------------
@@ -361,7 +500,16 @@ local function freeSpot(zoneIndex: number, radius: number): Vector3?
 	return nil
 end
 
+-- Where the boss arena of each zone is
+local function bossArenaCenter(i: number): Vector3
+	return Vector3.new(48, 0, (Shared.ZoneStart(i) + Shared.ZoneEnd(i)) / 2 - 20)
+end
+local BOSS_ARENA_RADIUS = 21
+
 local function setupTerrain()
+	for i = 1, #Shared.Zones do
+		reserve(i, bossArenaCenter(i), BOSS_ARENA_RADIUS + 5)
+	end
 	local colors = {
 		[Enum.Material.Grass] = Color3.fromRGB(86, 122, 58),
 		[Enum.Material.LeafyGrass] = Color3.fromRGB(74, 106, 48),
@@ -393,7 +541,18 @@ local function setupTerrain()
 	Terrain:FillCylinder(CFrame.new(0, -2, 4), 4, 22, Enum.Material.Cobblestone)
 	fillBlock(0, -2, -30, 9, 4, 50, Enum.Material.Ground)
 	fillBlock(0, -2, 33, 9, 4, 22, Enum.Material.Ground)
-	for _, target in ipairs({ Vector3.new(-34, 0, 0), Vector3.new(33, 0, 0), Vector3.new(-34, 0, -34), Vector3.new(34, 0, -32), Vector3.new(-36, 0, 32), Vector3.new(34, 0, 32) }) do
+	for _, target in ipairs({
+		Vector3.new(-24, 0, 4),
+		Vector3.new(24, 0, 14),
+		Vector3.new(24, 0, -10),
+		Vector3.new(42, 0, 2),
+		Vector3.new(-42, 0, -12),
+		Vector3.new(-36, 0, -36),
+		Vector3.new(-36, 0, 32),
+		Vector3.new(34, 0, 32),
+		Vector3.new(30, 0, -34),
+		Vector3.new(48, 0, -34),
+	}) do
 		local from = Vector3.new(0, 0, 4)
 		local mid = (from + target) / 2
 		local length = (target - from).Magnitude
@@ -501,7 +660,7 @@ local function setupTerrain()
 	-- A frozen lake in the Frozen Peaks
 	do
 		local zs, ze = Shared.ZoneStart(4), Shared.ZoneEnd(4)
-		local lake = Vector3.new(55, 0, (zs + ze) / 2 - 20)
+		local lake = Vector3.new(-50, 0, (zs + ze) / 2 + 25)
 		Terrain:FillCylinder(CFrame.new(lake + Vector3.new(0, -3, 0)), 8, 18, Enum.Material.Glacier)
 		reserve(4, lake, 20)
 		for _ = 1, 8 do
@@ -518,9 +677,18 @@ local function setupTerrain()
 		for _ = 1, 10 do
 			local pos = Vector3.new(rng:NextNumber(-60, 60), 0, rng:NextNumber(ze + 10, zs - 35))
 			local radius = rng:NextNumber(2.5, 5)
-			Terrain:FillBall(pos + Vector3.new(0, rng:NextNumber(-2, 0), 0), radius, Enum.Material.Slate)
-			reserve(5, pos, radius + 2)
+			if not isReserved(5, pos, radius) then
+				Terrain:FillBall(pos + Vector3.new(0, rng:NextNumber(-2, 0), 0), radius, Enum.Material.Slate)
+				reserve(5, pos, radius + 2)
+			end
 		end
+	end
+
+	-- Flat ground where the bosses live
+	for i, zone in ipairs(Shared.Zones) do
+		local c = bossArenaCenter(i)
+		Terrain:FillCylinder(CFrame.new(c.X, 16, c.Z), 32, BOSS_ARENA_RADIUS + 3, Enum.Material.Air)
+		Terrain:FillCylinder(CFrame.new(c.X, -3, c.Z), 6, BOSS_ARENA_RADIUS + 3, zone.Ground)
 	end
 end
 
@@ -550,82 +718,102 @@ local LEAF_COLORS = {
 	Color3.fromRGB(62, 96, 44),
 	Color3.fromRGB(74, 108, 50),
 	Color3.fromRGB(56, 86, 40),
-	Color3.fromRGB(86, 116, 56),
+	Color3.fromRGB(88, 118, 56),
+	Color3.fromRGB(48, 78, 38),
 }
 
 function Decor.Tree(pos: Vector3, scale: number)
 	local m = model("Tree")
-	local bark = Color3.fromRGB(88, 66, 50)
+	local bark = Color3.fromRGB(88, 66, 50):Lerp(Color3.fromRGB(70, 58, 50), rng:NextNumber())
 	local trunkH = rng:NextNumber(7, 10) * scale
 	local top = pos + Vector3.new(rng:NextNumber(-0.6, 0.6), trunkH, rng:NextNumber(-0.6, 0.6))
 	rod(pos + Vector3.new(0, -0.5, 0), top, 1.3 * scale, { Name = "Trunk", Color = bark, Material = Enum.Material.Wood, Parent = m })
-	P({
-		Name = "Roots",
-		Shape = Enum.PartType.Cylinder,
-		Size = Vector3.new(1, 2.4 * scale, 2.4 * scale),
-		CFrame = CFrame.new(pos + Vector3.new(0, 0.2, 0)) * CFrame.Angles(0, 0, rad(90)),
-		Color = bark,
-		Material = Enum.Material.Wood,
-		Parent = m,
-	})
-	for k = 1, 3 do
-		local yaw = rng:NextNumber(0, math.pi * 2)
-		local tilt = rad(rng:NextNumber(35, 55))
-		local from = pos + Vector3.new(0, trunkH * rng:NextNumber(0.6, 0.8), 0)
-		local dir = Vector3.new(math.cos(yaw) * math.sin(tilt), math.cos(tilt), math.sin(yaw) * math.sin(tilt))
-		rod(from, from + dir * 3.6 * scale, 0.55 * scale, { Name = "Branch" .. k, Color = bark, Material = Enum.Material.Wood, CanCollide = false, Parent = m })
+	-- roots spreading into the ground
+	for k = 1, 4 do
+		local a = k / 4 * math.pi * 2 + rng:NextNumber(-0.4, 0.4)
+		local out = Vector3.new(math.cos(a), 0, math.sin(a))
+		rod(pos + Vector3.new(0, 1.1 * scale, 0), pos + out * 1.9 * scale + Vector3.new(0, -0.2, 0), 0.55 * scale, {
+			Name = "Root",
+			Color = bark,
+			Material = Enum.Material.Wood,
+			CanCollide = false,
+			Parent = m,
+		})
 	end
-	local crown = top + Vector3.new(0, 1.4 * scale, 0)
-	for _ = 1, rng:NextInteger(7, 10) do
-		local offset = Vector3.new(rng:NextNumber(-3, 3), rng:NextNumber(-1.6, 1.8), rng:NextNumber(-3, 3)) * scale
+	for k = 1, 4 do
+		local yaw = rng:NextNumber(0, math.pi * 2)
+		local tilt = rad(rng:NextNumber(35, 60))
+		local from = pos + Vector3.new(0, trunkH * rng:NextNumber(0.55, 0.85), 0)
+		local dir = Vector3.new(math.cos(yaw) * math.sin(tilt), math.cos(tilt), math.sin(yaw) * math.sin(tilt))
+		rod(from, from + dir * 3.8 * scale, 0.5 * scale, { Name = "Branch" .. k, Color = bark, Material = Enum.Material.Wood, CanCollide = false, Parent = m })
+	end
+	-- a leafy crown made of many clumps of leaves (big ones inside, small ones on the edge)
+	local crown = top + Vector3.new(0, 1.6 * scale, 0)
+	for k = 1, rng:NextInteger(12, 16) do
+		local outer = k > 8
+		local dir = Vector3.new(rng:NextNumber(-1, 1), rng:NextNumber(-0.5, 0.8), rng:NextNumber(-1, 1))
+		if dir.Magnitude < 0.01 then
+			dir = Vector3.yAxis
+		end
+		local offset = dir.Unit * (if outer then rng:NextNumber(3, 4) else rng:NextNumber(0.5, 2.5)) * scale
 		P({
 			Name = "Leaves",
 			Shape = Enum.PartType.Ball,
-			Size = Vector3.one * rng:NextNumber(3.6, 6) * scale,
+			Size = Vector3.one * (if outer then rng:NextNumber(2.2, 3.4) else rng:NextNumber(4, 5.8)) * scale,
 			CFrame = CFrame.new(crown + offset),
 			Color = LEAF_COLORS[rng:NextInteger(1, #LEAF_COLORS)],
-			Material = Enum.Material.Grass,
+			Material = Enum.Material.LeafyGrass,
 			CanCollide = false,
 			Parent = m,
 		})
 	end
 end
 
+-- A pine tree: rings of sloped wedges make round, pointy layers of needles
 function Decor.Pine(pos: Vector3, scale: number, snowy: boolean?)
 	local m = model("PineTree")
-	local height = rng:NextNumber(12, 16) * scale
-	rod(pos + Vector3.new(0, -0.5, 0), pos + Vector3.new(0, height * 0.75, 0), 0.9 * scale, {
+	local height = rng:NextNumber(13, 17) * scale
+	rod(pos + Vector3.new(0, -0.5, 0), pos + Vector3.new(0, height * 0.7, 0), 0.9 * scale, {
 		Name = "Trunk",
 		Color = Color3.fromRGB(80, 58, 44),
 		Material = Enum.Material.Wood,
 		Parent = m,
 	})
-	local layers = 7
+	local layers = 5
 	for k = 0, layers - 1 do
 		local t = k / (layers - 1)
-		local w = (7.5 - t * 6.3) * scale
-		local y = (3 + t * (height - 4.5)) * 1
-		local cf = CFrame.new(pos + Vector3.new(0, y, 0)) * CFrame.Angles(0, rad(45 + k * 23), 0)
-		P({
-			Name = "Needles",
-			Size = Vector3.new(w, 1.8 * scale, w),
-			CFrame = cf,
-			Color = Color3.fromRGB(38, 66, 44),
-			Material = Enum.Material.Grass,
-			CanCollide = false,
-			Parent = m,
-		})
-		if snowy then
+		local radius = (4.6 - t * 3.2) * scale
+		local h = (3.4 - t * 0.6) * scale
+		local baseY = (2.2 + t * (height - 5.5))
+		local needles = Color3.fromRGB(38, 66, 44):Lerp(Color3.fromRGB(56, 88, 56), t * 0.6)
+		local useSnow = snowy and k >= 1
+		for j = 0, 7 do
+			local a = j / 8 * math.pi * 2 + k * 0.4
+			local out = Vector3.new(math.cos(a), 0, math.sin(a))
+			local center = pos + Vector3.new(0, baseY + h / 2, 0) + out * radius / 2
 			P({
-				Name = "Snow",
-				Size = Vector3.new(w * 0.85, 0.4 * scale, w * 0.85),
-				CFrame = cf * CFrame.new(0, 1 * scale, 0),
-				Color = Color3.fromRGB(240, 244, 250),
-				Material = Enum.Material.Snow,
+				Class = "WedgePart",
+				Name = "Needles",
+				Size = Vector3.new(radius * 0.86, h, radius),
+				CFrame = CFrame.lookAt(center, center + out),
+				Color = if useSnow then needles:Lerp(Color3.fromRGB(240, 244, 250), 0.55) else needles,
+				Material = if useSnow then Enum.Material.Snow else Enum.Material.LeafyGrass,
 				CanCollide = false,
 				Parent = m,
 			})
 		end
+	end
+	if snowy then
+		P({
+			Name = "SnowTop",
+			Shape = Enum.PartType.Ball,
+			Size = Vector3.one * 1.4 * scale,
+			CFrame = CFrame.new(pos + Vector3.new(0, height - 0.2, 0)),
+			Color = Color3.fromRGB(240, 244, 250),
+			Material = Enum.Material.Snow,
+			CanCollide = false,
+			Parent = m,
+		})
 	end
 end
 
@@ -702,33 +890,64 @@ function Decor.Log(pos: Vector3, scale: number)
 	})
 end
 
+-- A park lamp: stone foot, iron pole and a round frosted glass globe
 function Decor.Lamp(pos: Vector3)
 	local m = model("Lamp")
-	local iron = Color3.fromRGB(38, 38, 42)
-	rod(pos, pos + Vector3.new(0, 9, 0), 0.45, { Name = "Pole", Color = iron, Material = Enum.Material.Metal, Parent = m })
-	P({ Name = "Cap", Size = Vector3.new(1.8, 0.3, 1.8), CFrame = CFrame.new(pos + Vector3.new(0, 10.45, 0)), Color = iron, Material = Enum.Material.Metal, Parent = m })
+	local iron = Color3.fromRGB(32, 34, 38)
+	local upright = CFrame.Angles(0, 0, rad(90))
+	P({ Name = "Base", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.8, 1.7, 1.7), CFrame = CFrame.new(pos + Vector3.new(0, 0.4, 0)) * upright, Color = Color3.fromRGB(120, 116, 110), Material = Enum.Material.Slate, Parent = m })
+	P({ Name = "Foot", Shape = Enum.PartType.Cylinder, Size = Vector3.new(1, 0.95, 0.95), CFrame = CFrame.new(pos + Vector3.new(0, 1.3, 0)) * upright, Color = iron, Material = Enum.Material.Metal, Parent = m })
+	rod(pos + Vector3.new(0, 1.3, 0), pos + Vector3.new(0, 8.7, 0), 0.34, { Name = "Pole", Color = iron, Material = Enum.Material.Metal, Parent = m })
+	for _, y in ipairs({ 2.3, 7.9 }) do
+		P({ Name = "PoleRing", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.25, 0.6, 0.6), CFrame = CFrame.new(pos + Vector3.new(0, y, 0)) * upright, Color = iron, Material = Enum.Material.Metal, Parent = m })
+	end
+	P({ Name = "Neck", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.5, 0.8, 0.8), CFrame = CFrame.new(pos + Vector3.new(0, 8.95, 0)) * upright, Color = iron, Material = Enum.Material.Metal, Parent = m })
 	P({
-		Name = "Glass",
-		Size = Vector3.new(1.4, 1.5, 1.4),
-		CFrame = CFrame.new(pos + Vector3.new(0, 9.6, 0)),
-		Color = Color3.fromRGB(255, 236, 200),
+		Name = "Globe",
+		Shape = Enum.PartType.Ball,
+		Size = Vector3.one * 1.9,
+		CFrame = CFrame.new(pos + Vector3.new(0, 10.05, 0)),
+		Color = Color3.fromRGB(255, 246, 228),
 		Material = Enum.Material.Glass,
-		Transparency = 0.4,
+		Transparency = 0.3,
 		CanCollide = false,
 		Parent = m,
 	})
 	local bulb = P({
 		Name = "Bulb",
 		Shape = Enum.PartType.Ball,
-		Size = Vector3.one * 0.6,
-		CFrame = CFrame.new(pos + Vector3.new(0, 9.6, 0)),
-		Color = Color3.fromRGB(255, 214, 150),
+		Size = Vector3.one * 0.7,
+		CFrame = CFrame.new(pos + Vector3.new(0, 10.05, 0)),
+		Color = Color3.fromRGB(255, 222, 165),
 		Material = Enum.Material.Neon,
 		CanCollide = false,
 		CastShadow = false,
 		Parent = m,
 	})
-	light(bulb, Color3.fromRGB(255, 205, 150), 16, 1.1)
+	P({ Name = "Cap", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.3, 0.95, 0.95), CFrame = CFrame.new(pos + Vector3.new(0, 11.05, 0)) * upright, Color = iron, Material = Enum.Material.Metal, Parent = m })
+	P({ Name = "Finial", Shape = Enum.PartType.Ball, Size = Vector3.one * 0.38, CFrame = CFrame.new(pos + Vector3.new(0, 11.35, 0)), Color = iron, Material = Enum.Material.Metal, Parent = m })
+	light(bulb, Color3.fromRGB(255, 210, 160), 18, 1.1)
+end
+
+-- A lantern on a wall. cf is on the wall surface, with -Z pointing out of the wall.
+function Decor.Lantern(cf: CFrame, parent: Instance?)
+	local m = model("Lantern", parent)
+	local iron = Color3.fromRGB(32, 32, 36)
+	P({ Name = "Bracket", Size = Vector3.new(0.25, 0.25, 1.6), CFrame = cf * CFrame.new(0, 1.2, -0.8), Color = iron, Material = Enum.Material.Metal, Parent = m })
+	P({ Name = "WallPlate", Size = Vector3.new(0.9, 1.6, 0.15), CFrame = cf * CFrame.new(0, 0.9, -0.07), Color = iron, Material = Enum.Material.Metal, Parent = m })
+	local body = cf * CFrame.new(0, 0, -1.6)
+	P({ Name = "Hook", Size = Vector3.new(0.1, 0.45, 0.1), CFrame = body * CFrame.new(0, 1.05, 0), Color = iron, Material = Enum.Material.Metal, Parent = m })
+	P({ Name = "Top", Size = Vector3.new(1.05, 0.16, 1.05), CFrame = body * CFrame.new(0, 0.72, 0), Color = iron, Material = Enum.Material.Metal, Parent = m })
+	P({ Name = "Roof", Size = Vector3.new(0.75, 0.14, 0.75), CFrame = body * CFrame.new(0, 0.86, 0), Color = iron, Material = Enum.Material.Metal, Parent = m })
+	P({ Name = "Bottom", Size = Vector3.new(0.95, 0.16, 0.95), CFrame = body * CFrame.new(0, -0.66, 0), Color = iron, Material = Enum.Material.Metal, Parent = m })
+	for _, x in ipairs({ -0.42, 0.42 }) do
+		for _, z in ipairs({ -0.42, 0.42 }) do
+			P({ Name = "Post", Size = Vector3.new(0.1, 1.3, 0.1), CFrame = body * CFrame.new(x, 0.03, z), Color = iron, Material = Enum.Material.Metal, CanCollide = false, Parent = m })
+		end
+	end
+	P({ Name = "Glass", Size = Vector3.new(0.82, 1.24, 0.82), CFrame = body, Color = Color3.fromRGB(255, 225, 170), Material = Enum.Material.Glass, Transparency = 0.35, CanCollide = false, Parent = m })
+	local flame = P({ Name = "Flame", Shape = Enum.PartType.Ball, Size = Vector3.new(0.35, 0.35, 0.35), CFrame = body * CFrame.new(0, -0.1, 0), Color = Color3.fromRGB(255, 190, 110), Material = Enum.Material.Neon, CanCollide = false, CastShadow = false, Parent = m })
+	light(flame, Color3.fromRGB(255, 180, 110), 16, 1.1)
 end
 
 function Decor.Bench(pos: Vector3, yaw: number)
@@ -1024,58 +1243,82 @@ function Decor.Pillar(pos: Vector3, scale: number, color: Color3)
 	light(lamp, color, 16, if decorShiny then 1.8 else 0.7)
 end
 
--- Big stone arch with a sign (used for zone entrances)
+-- Big stone arch (used for zone entrances): stone blocks, banners, lanterns,
+-- a keystone and battlements, with the name carved into the stone
 local function buildArch(z: number, zone, parent: Instance, title: string, subtitle: string?)
-	local stone = zone.RockColor:Lerp(Color3.fromRGB(150, 145, 138), 0.55)
+	local stone = zone.RockColor:Lerp(Color3.fromRGB(160, 155, 148), 0.55)
+	local dark = stone:Lerp(Color3.new(0, 0, 0), 0.25)
+	local gold = Color3.fromRGB(205, 170, 80)
 	for _, side in ipairs({ -1, 1 }) do
-		P({
-			Name = "Pillar",
-			Size = Vector3.new(8, 36, 8),
-			CFrame = CFrame.new(side * 24, 18, z),
-			Color = stone,
-			Material = Enum.Material.Cobblestone,
-			Parent = parent,
-		})
-		P({
-			Name = "PillarCap",
-			Size = Vector3.new(9.5, 2, 9.5),
-			CFrame = CFrame.new(side * 24, 43, z),
-			Color = stone:Lerp(Color3.new(0, 0, 0), 0.15),
+		local x = side * 24
+		P({ Name = "Plinth", Size = Vector3.new(10.5, 3, 10.5), CFrame = CFrame.new(x, 1.5, z), Color = dark, Material = Enum.Material.Slate, Parent = parent })
+		P({ Name = "PillarCore", Size = Vector3.new(7.2, 34, 7.2), CFrame = CFrame.new(x, 19, z), Color = dark, Material = Enum.Material.Slate, Parent = parent })
+		-- stone blocks with mortar lines between them
+		for k = 0, 5 do
+			P({
+				Name = "Block",
+				Size = Vector3.new(8, 5.1, 8),
+				CFrame = CFrame.new(x + rng:NextNumber(-0.06, 0.06), 5.6 + k * 5.5, z + rng:NextNumber(-0.06, 0.06)),
+				Color = stone:Lerp(dark, rng:NextNumber(0, 0.35)),
+				Material = Enum.Material.Cobblestone,
+				Parent = parent,
+			})
+		end
+		P({ Name = "Capital", Size = Vector3.new(9.6, 1.4, 9.6), CFrame = CFrame.new(x, 37, z), Color = stone, Material = Enum.Material.Slate, Parent = parent })
+		-- banners in the zone's color on both sides
+		for _, face in ipairs({ -1, 1 }) do
+			local bz = z + face * 4.12
+			P({ Name = "BannerRod", Shape = Enum.PartType.Cylinder, Size = Vector3.new(4.2, 0.2, 0.2), CFrame = CFrame.new(x, 33.3, bz + face * 0.15), Color = gold, Material = Enum.Material.Metal, Parent = parent })
+			P({ Name = "Banner", Size = Vector3.new(3.4, 11, 0.12), CFrame = CFrame.new(x, 27.6, bz + face * 0.1), Color = zone.Accent:Lerp(Color3.new(0, 0, 0), 0.3), Material = Enum.Material.Fabric, Parent = parent })
+			P({ Name = "BannerTrim", Size = Vector3.new(3.5, 0.35, 0.14), CFrame = CFrame.new(x, 22.3, bz + face * 0.12), Color = gold, Material = Enum.Material.Fabric, Parent = parent })
+			P({ Name = "BannerTip", Size = Vector3.new(1.7, 1.7, 0.12), CFrame = CFrame.new(x, 21.9, bz + face * 0.1) * CFrame.Angles(0, 0, rad(45)), Color = zone.Accent:Lerp(Color3.new(0, 0, 0), 0.3), Material = Enum.Material.Fabric, Parent = parent })
+			Decor.Lantern(CFrame.lookAt(Vector3.new(x - side * 4, 13, bz), Vector3.new(x - side * 4, 13, bz) + Vector3.new(0, 0, face)), parent)
+		end
+	end
+	local beam = P({ Name = "Beam", Size = Vector3.new(58, 6, 9), CFrame = CFrame.new(0, 40.5, z), Color = stone, Material = Enum.Material.Cobblestone, Parent = parent })
+	P({ Name = "Cornice", Size = Vector3.new(60, 1, 10), CFrame = CFrame.new(0, 44, z), Color = dark, Material = Enum.Material.Slate, Parent = parent })
+	P({ Name = "BeamBottom", Size = Vector3.new(41, 0.8, 9.4), CFrame = CFrame.new(0, 37.2, z), Color = dark, Material = Enum.Material.Slate, Parent = parent })
+	-- battlements on top, with a gem crest in the middle
+	for k = -4, 4 do
+		if k ~= 0 then
+			P({ Name = "Merlon", Size = Vector3.new(3.4, 2.6, 9.4), CFrame = CFrame.new(k * 6.5, 45.8, z), Color = stone:Lerp(dark, rng:NextNumber(0, 0.3)), Material = Enum.Material.Cobblestone, Parent = parent })
+		end
+	end
+	P({ Name = "Crest", Size = Vector3.new(6, 5.5, 9.6), CFrame = CFrame.new(0, 47, z), Color = stone:Lerp(Color3.new(1, 1, 1), 0.1), Material = Enum.Material.Slate, Parent = parent })
+	for _, face in ipairs({ -1, 1 }) do
+		P({ Name = "CrestGem", Size = Vector3.new(2.2, 2.2, 0.7), CFrame = CFrame.new(0, 47.4, z + face * 4.9) * CFrame.Angles(0, 0, rad(45)), Color = zone.CrystalColors[1], Material = Enum.Material.Glass, Reflectance = 0.3, Parent = parent })
+	end
+	-- the name, carved into a stone plate on both sides of the arch
+	local signColor = zone.Accent:Lerp(Color3.fromRGB(255, 230, 160), 0.5)
+	for _, info in ipairs({ { -1, Enum.NormalId.Front }, { 1, Enum.NormalId.Back } }) do
+		local plate = P({
+			Name = "NamePlate",
+			Size = Vector3.new(32, 4.6, 0.3),
+			CFrame = CFrame.new(0, 40.5, z + info[1] * 4.62),
+			Color = dark:Lerp(Color3.new(0, 0, 0), 0.2),
 			Material = Enum.Material.Slate,
 			Parent = parent,
 		})
-		local torch = P({
-			Name = "Torch",
-			Size = Vector3.new(1, 1, 1),
-			CFrame = CFrame.new(side * 24, 26, z + 4.6),
-			Color = Color3.fromRGB(60, 45, 35),
-			Material = Enum.Material.Wood,
-			CanCollide = false,
-			Parent = parent,
-		})
-		local fire = Instance.new("Fire")
-		fire.Size = 3
-		fire.Heat = 6
-		fire.Parent = torch
-		light(torch, Color3.fromRGB(255, 170, 90), 18, 1.2)
+		carvedText(plate, info[2], title, subtitle, signColor)
 	end
-	local beam = P({
-		Name = "Beam",
-		Size = Vector3.new(58, 6, 9),
-		CFrame = CFrame.new(0, 39, z),
-		Color = stone,
-		Material = Enum.Material.Cobblestone,
-		Parent = parent,
-	})
-	sign(beam, title, subtitle, zone.Accent:Lerp(Color3.new(1, 1, 1), 0.45), 34, 9, 9)
 	return beam
 end
 
 --------------------------------------------------------------------------------
--- SELL PADS
+-- SELL CIRCLES (stand inside to sell your gems)
 --------------------------------------------------------------------------------
 type SellPad = { Model: Model, Pad: BasePart, Radius: number, Zone: number, Dimension: number? }
 local sellPads: { SellPad } = {}
+
+-- A big gold coin (floats over sell circles)
+local function buildCoin(parent: Instance, cf: CFrame, size: number): BasePart
+	local gold = Color3.fromRGB(230, 185, 70)
+	local turn = CFrame.Angles(0, rad(90), 0)
+	local coin = P({ Name = "Coin", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.45, size, size) * 1, CFrame = cf * turn, Color = gold, Material = Enum.Material.Metal, Reflectance = 0.25, CanCollide = false, Parent = parent })
+	P({ Name = "CoinRim", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.55, size * 0.8, size * 0.8), CFrame = cf * turn, Color = gold:Lerp(Color3.new(0, 0, 0), 0.2), Material = Enum.Material.Metal, Reflectance = 0.2, CanCollide = false, Parent = parent })
+	P({ Name = "CoinStar", Size = Vector3.new(size * 0.32, size * 0.32, 0.62), CFrame = cf * CFrame.Angles(0, 0, rad(45)), Color = Color3.fromRGB(255, 225, 120), Material = Enum.Material.Metal, Reflectance = 0.3, CanCollide = false, Parent = parent })
+	return coin
+end
 
 -- zone = the zone you need to have unlocked; dimension = the island it is on (if any)
 local function buildSellPad(pos: Vector3, size: number, zone: number, dimension: number?)
@@ -1085,202 +1328,94 @@ local function buildSellPad(pos: Vector3, size: number, zone: number, dimension:
 	if dimension then
 		m:SetAttribute("Dimension", dimension)
 	end
-	local upright = CFrame.Angles(0, 0, rad(90))
-	local gold = Color3.fromRGB(205, 165, 70)
-	P({
-		Name = "Trim",
-		Shape = Enum.PartType.Cylinder,
-		Size = Vector3.new(0.5, size + 1.2, size + 1.2),
-		CFrame = CFrame.new(pos + Vector3.new(0, 0.25, 0)) * upright,
-		Color = gold,
-		Material = Enum.Material.Metal,
-		Reflectance = 0.15,
-		Parent = m,
-	})
+	local radius = size / 2
+	local gold = Color3.fromRGB(240, 190, 60)
 	local pad = P({
 		Name = "Pad",
 		Shape = Enum.PartType.Cylinder,
-		Size = Vector3.new(0.7, size, size),
-		CFrame = CFrame.new(pos + Vector3.new(0, 0.35, 0)) * upright,
-		Color = Color3.fromRGB(120, 86, 58),
-		Material = Enum.Material.WoodPlanks,
+		Size = Vector3.new(0.3, size + 0.6, size + 0.6),
+		CFrame = CFrame.new(pos + Vector3.new(0, 0.05, 0)) * CFrame.Angles(0, 0, rad(90)),
+		Color = Color3.fromRGB(150, 142, 128),
+		Material = Enum.Material.Pavement,
 		Parent = m,
 	})
-	-- piles of gold coins in the middle
-	for k = 1, 7 do
-		local a = k / 7 * math.pi * 2
-		local r = if k == 1 then 0 else rng:NextNumber(1, 2.4)
-		local h = rng:NextNumber(0.4, 1.4)
+	actionCircle(pos, radius, gold, "Sell", nil, m)
+	-- piles of coins and a sack in the middle
+	local sack = P({ Name = "Sack", Shape = Enum.PartType.Ball, Size = Vector3.new(2.6, 2.3, 2.6), CFrame = CFrame.new(pos + Vector3.new(0, 1.15, 0)), Color = Color3.fromRGB(190, 160, 110), Material = Enum.Material.Fabric, Parent = m })
+	P({ Name = "SackNeck", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.6, 1, 1), CFrame = CFrame.new(pos + Vector3.new(0, 2.45, 0)) * CFrame.Angles(0, 0, rad(90)), Color = Color3.fromRGB(175, 145, 98), Material = Enum.Material.Fabric, Parent = m })
+	P({ Name = "SackRope", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.2, 1.1, 1.1), CFrame = CFrame.new(pos + Vector3.new(0, 2.3, 0)) * CFrame.Angles(0, 0, rad(90)), Color = Color3.fromRGB(120, 60, 40), Material = Enum.Material.Fabric, Parent = m })
+	for k = 1, 6 do
+		local a = k / 6 * math.pi * 2
+		local r = rng:NextNumber(1.8, 2.6)
+		local h = rng:NextNumber(0.3, 1)
 		P({
 			Name = "Coins",
 			Shape = Enum.PartType.Cylinder,
-			Size = Vector3.new(h, 1.3, 1.3),
-			CFrame = CFrame.new(pos + Vector3.new(math.cos(a) * r, 0.7 + h / 2, math.sin(a) * r)) * upright,
-			Color = gold,
+			Size = Vector3.new(h, 1.1, 1.1),
+			CFrame = CFrame.new(pos + Vector3.new(math.cos(a) * r, 0.2 + h / 2, math.sin(a) * r)) * CFrame.Angles(0, 0, rad(90)),
+			Color = Color3.fromRGB(230, 185, 70),
 			Material = Enum.Material.Metal,
-			Reflectance = 0.3,
+			Reflectance = 0.25,
 			CanCollide = false,
 			Parent = m,
 		})
 	end
-	local post = P({
-		Name = "SignPost",
-		Size = Vector3.new(0.5, 6, 0.5),
-		CFrame = CFrame.new(pos + Vector3.new(size / 2 + 0.8, 3, 0)),
-		Color = Color3.fromRGB(95, 70, 50),
-		Material = Enum.Material.Wood,
-		Parent = m,
-	})
-	sign(post, "💰 SELL", "Stand on the pad to sell", Color3.fromRGB(255, 215, 110), 11, 3.8, 4.5)
-	particles(pad, {
-		Color = Color3.fromRGB(255, 215, 120),
-		Size = 0.25,
-		Rate = 4,
-		Lifetime = NumberRange.new(1, 2),
-		Speed = NumberRange.new(1, 2),
-		Direction = Enum.NormalId.Right,
-		LightEmission = 0.6,
-	})
+	local holder = model("FloatingCoin", m)
+	local coin = buildCoin(holder, CFrame.new(pos + Vector3.new(0, 6.5, 0)), 3)
+	holder.PrimaryPart = coin
+	spin(holder, 1.2, 0.4)
+	light(sack, gold, 14, 0.6)
+	fancySign(coin, "💰", "SELL", "Step in the circle to sell", gold, 10, 3.2)
 	local target = Instance.new("Attachment")
 	target.Name = "GuideTarget"
+	target.Position = Vector3.new(0.5, 0, 0)
 	target.Parent = pad
-
 	-- the selling itself happens in the SELLING loop further down
-	table.insert(sellPads, { Model = m, Pad = pad, Radius = size / 2, Zone = zone, Dimension = dimension })
+	table.insert(sellPads, { Model = m, Pad = pad, Radius = radius, Zone = zone, Dimension = dimension })
 	return m
 end
 
 --------------------------------------------------------------------------------
--- EGG MACHINES
+-- EGG MACHINES (stand in the circle to see the pets and hatch)
 --------------------------------------------------------------------------------
 local hatchEgg -- defined later
+local eggMachines: { [number]: Vector3 } = {} -- where each egg machine stands
 
--- A floating board that shows the chance of every pet in an egg
-local function oddsBoard(parent: Instance, egg)
-	local rows = #egg.Pets
-	local rowHeight = 1 / (rows + 1.4)
-	local bb = Instance.new("BillboardGui")
-	bb.Name = "Odds"
-	bb.Size = UDim2.fromScale(8.5, (rows + 1.4) * 1.05)
-	bb.StudsOffset = Vector3.new(8, 4.5, 0)
-	bb.LightInfluence = 0
-	bb.MaxDistance = 60
-	local frame = Instance.new("Frame")
-	frame.Size = UDim2.fromScale(1, 1)
-	frame.BackgroundColor3 = Color3.fromRGB(25, 25, 32)
-	frame.BackgroundTransparency = 0.25
-	frame.Parent = bb
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0.08, 0)
-	corner.Parent = frame
-	local stroke = Instance.new("UIStroke")
-	stroke.Thickness = 2
-	stroke.Color = egg.Spots
-	stroke.Parent = frame
-	local function row(text: string, y: number, height: number, color: Color3)
-		local lbl = Instance.new("TextLabel")
-		lbl.BackgroundTransparency = 1
-		lbl.Position = UDim2.fromScale(0.06, y)
-		lbl.Size = UDim2.fromScale(0.88, height)
-		lbl.Font = Enum.Font.FredokaOne
-		lbl.TextScaled = true
-		lbl.TextColor3 = color
-		lbl.Text = text
-		lbl.Parent = frame
-		local textStroke = Instance.new("UIStroke")
-		textStroke.Thickness = 2
-		textStroke.Parent = lbl
-	end
-	row("🎲 Chances", rowHeight * 0.15, rowHeight * 1.05, Color3.new(1, 1, 1))
-	for k, entry in ipairs(egg.Pets) do
-		local def = Shared.Pets[entry.Index]
-		row(def.Name .. "  " .. string.format("%g", entry.Chance) .. "%", rowHeight * (k + 0.3), rowHeight * 0.85, Shared.RarityColor(def.Rarity))
-	end
-	bb.Parent = parent
-end
-
-local function buildEggMachine(eggIndex: number, pos: Vector3)
-	local egg = Shared.Eggs[eggIndex]
-	local m = model("EggMachine" .. eggIndex)
+local function buildEggMachine(eggId: number, pos: Vector3, parent: Instance?)
+	local egg = Shared.GetEgg(eggId)
+	local m = model("EggMachine" .. eggId, parent)
 	m.ModelStreamingMode = Enum.ModelStreamingMode.Persistent
-	local stone = Color3.fromRGB(118, 112, 108)
+	local stone = Color3.fromRGB(122, 116, 110)
+	local gold = Color3.fromRGB(205, 165, 75)
 	local upright = CFrame.Angles(0, 0, rad(90))
-	P({
-		Name = "Ring",
-		Shape = Enum.PartType.Cylinder,
-		Size = Vector3.new(0.4, 15, 15),
-		CFrame = CFrame.new(pos + Vector3.new(0, 0.2, 0)) * upright,
-		Color = Color3.fromRGB(190, 155, 75),
-		Material = Enum.Material.Metal,
-		Parent = m,
-	})
-	P({
-		Name = "Base",
-		Shape = Enum.PartType.Cylinder,
-		Size = Vector3.new(0.8, 13, 13),
-		CFrame = CFrame.new(pos + Vector3.new(0, 0.4, 0)) * upright,
-		Color = stone,
-		Material = Enum.Material.Cobblestone,
-		Parent = m,
-	})
-	local pillar = P({
-		Name = "Pillar",
-		Shape = Enum.PartType.Cylinder,
-		Size = Vector3.new(4, 5, 5),
-		CFrame = CFrame.new(pos + Vector3.new(0, 2.8, 0)) * upright,
-		Color = stone,
-		Material = Enum.Material.Marble,
-		Parent = m,
-	})
-	local top = P({
-		Name = "Top",
-		Shape = Enum.PartType.Cylinder,
-		Size = Vector3.new(0.4, 6, 6),
-		CFrame = CFrame.new(pos + Vector3.new(0, 4.95, 0)) * upright,
-		Color = Color3.fromRGB(190, 155, 75),
-		Material = Enum.Material.Metal,
-		Parent = m,
-	})
-	particles(top, {
-		Color = egg.Spots,
-		Size = 0.3,
-		Rate = 5,
-		Lifetime = NumberRange.new(1, 2),
-		Speed = NumberRange.new(1.5, 3),
-		Direction = Enum.NormalId.Right,
-		LightEmission = 0.6,
-	})
+	local accent = egg.Cap or egg.Spots
+	actionCircle(pos, 8, accent:Lerp(Color3.fromRGB(255, 240, 200), 0.3), "Egg", eggId, m)
+	P({ Name = "Base", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.8, 7, 7), CFrame = CFrame.new(pos + Vector3.new(0, 0.4, 0)) * upright, Color = stone, Material = Enum.Material.Cobblestone, Parent = m })
+	P({ Name = "Trim", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.3, 7.5, 7.5), CFrame = CFrame.new(pos + Vector3.new(0, 0.85, 0)) * upright, Color = gold, Material = Enum.Material.Metal, Parent = m })
+	P({ Name = "Column", Shape = Enum.PartType.Cylinder, Size = Vector3.new(3.4, 3.6, 3.6), CFrame = CFrame.new(pos + Vector3.new(0, 2.6, 0)) * upright, Color = Color3.fromRGB(225, 220, 212), Material = Enum.Material.Marble, Parent = m })
+	for k = 0, 7 do
+		local a = k / 8 * math.pi * 2
+		P({ Name = "Flute", Size = Vector3.new(0.35, 3.4, 0.35), CFrame = CFrame.new(pos + Vector3.new(math.cos(a) * 1.82, 2.6, math.sin(a) * 1.82)), Color = Color3.fromRGB(205, 200, 192), Material = Enum.Material.Marble, Parent = m })
+	end
+	local top = P({ Name = "Top", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.5, 5, 5), CFrame = CFrame.new(pos + Vector3.new(0, 4.5, 0)) * upright, Color = gold, Material = Enum.Material.Metal, Reflectance = 0.15, Parent = m })
+	-- little gems around the top plate
+	for k = 0, 5 do
+		local a = k / 6 * math.pi * 2
+		P({ Name = "TopGem", Size = Vector3.new(0.5, 0.5, 0.5), CFrame = CFrame.new(pos + Vector3.new(math.cos(a) * 2.25, 4.85, math.sin(a) * 2.25)) * CFrame.Angles(rad(45), a, rad(45)), Color = egg.Spots, Material = Enum.Material.Glass, Reflectance = 0.3, Parent = m })
+	end
+	particles(top, { Color = accent, Size = 0.3, Rate = 4, Lifetime = NumberRange.new(1, 2), Speed = NumberRange.new(1.5, 3), Direction = Enum.NormalId.Right, LightEmission = 0.5 })
 
 	-- the big egg floating on top
-	local eggModel = Shared.BuildEgg(eggIndex)
+	local eggModel = Shared.BuildEgg(eggId)
 	eggModel.Name = "Egg"
-	eggModel:PivotTo(CFrame.new(pos + Vector3.new(0, 8.6, 0)))
+	eggModel:PivotTo(CFrame.new(pos + Vector3.new(0, 8.2, 0)))
 	eggModel.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
 	eggModel.Parent = m
 	spin(eggModel, 0.6, 0.5)
-	light(eggModel.PrimaryPart :: Instance, egg.Spots, 14, 0.8)
-
-	sign(pillar, "🥚 " .. string.upper(egg.Name), "💰 " .. Format(egg.Price) .. " per egg", egg.Spots:Lerp(Color3.new(1, 1, 1), 0.5), 16, 5, 12)
-	oddsBoard(top, egg)
-
-	-- two buttons: hatch 1 egg (E) or 3 eggs (R)
-	local spotOne = P({ Name = "HatchOne", Size = Vector3.new(1, 1, 1), CFrame = CFrame.new(pos + Vector3.new(0, 4.5, 0)), Transparency = 1, CanCollide = false, Parent = m })
-	local spotThree = P({ Name = "HatchThree", Size = Vector3.new(1, 1, 1), CFrame = CFrame.new(pos + Vector3.new(0, 1.8, 0)), Transparency = 1, CanCollide = false, Parent = m })
-	local one = prompt(spotOne, "Hatch 1  (💰 " .. Format(egg.Price) .. ")", egg.Name, 0.3)
-	local three = prompt(spotThree, "Hatch 3  (💰 " .. Format(egg.Price * 3) .. ")", egg.Name, 0.3)
-	three.KeyboardKeyCode = Enum.KeyCode.R
-	three.GamepadKeyCode = Enum.KeyCode.ButtonY
-	for _, pp in ipairs({ one, three }) do
-		pp.MaxActivationDistance = 13
-	end
-	one:AddTag("HatchOnePrompt")
-	one:SetAttribute("Price", egg.Price)
-	one.Triggered:Connect(function(player)
-		hatchEgg(player, eggIndex, 1)
-	end)
-	three.Triggered:Connect(function(player)
-		hatchEgg(player, eggIndex, 3)
-	end)
+	light(eggModel.PrimaryPart :: Instance, accent, 14, 0.7)
+	local price = if egg.Price then "💰 " .. Format(egg.Price) else ""
+	fancySign(top, "🥚", string.upper(egg.Name), price .. "  •  Step in the circle", accent, 12, 9.5)
+	eggMachines[eggId] = pos
 	return m
 end
 
@@ -1292,9 +1427,9 @@ local function eggMachineSpots(zoneIndex: number): { [number]: Vector3 }
 		if egg.Zone == zoneIndex then
 			k += 1
 			if zoneIndex == 1 then
-				spots[eggIndex] = Vector3.new(34 + (k - 1) * 16, 0, -32)
+				spots[eggIndex] = Vector3.new(30 + (k - 1) * 18, 0, -34)
 			else
-				spots[eggIndex] = Vector3.new(26 + (k - 1) * 16, 0, Shared.ZoneStart(zoneIndex) - 16)
+				spots[eggIndex] = Vector3.new(26 + (k - 1) * 18, 0, Shared.ZoneStart(zoneIndex) - 18)
 			end
 		end
 	end
@@ -1445,8 +1580,97 @@ local function buildObby()
 end
 
 --------------------------------------------------------------------------------
+-- SHOP CIRCLES: a round stone floor, a glowing circle and the item floating above it
+--------------------------------------------------------------------------------
+local function buildShopCircle(pos: Vector3, radius: number, color: Color3, action: string, arg: any?, display: Model?, icon: string, title: string, subtitle: string, parent: Instance?): Model
+	local m = model("Shop_" .. action, parent)
+	m.ModelStreamingMode = Enum.ModelStreamingMode.Persistent
+	P({
+		Name = "Floor",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(0.3, radius * 2 + 0.8, radius * 2 + 0.8),
+		CFrame = CFrame.new(pos + Vector3.new(0, 0.05, 0)) * CFrame.Angles(0, 0, rad(90)),
+		Color = Color3.fromRGB(152, 146, 136),
+		Material = Enum.Material.Pavement,
+		Parent = m,
+	})
+	actionCircle(pos, radius, color, action, arg, m)
+	local anchor = P({ Name = "SignAnchor", Size = Vector3.one, CFrame = CFrame.new(pos + Vector3.new(0, 5, 0)), Transparency = 1, CanCollide = false, Parent = m })
+	if display then
+		display:PivotTo(CFrame.new(pos + Vector3.new(0, 4.2, 0)) * CFrame.Angles(0, 0, rad(-18)))
+		display.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
+		display.Parent = m
+		spin(display, 0.9, 0.45)
+	end
+	light(anchor, color, 14, 0.6)
+	fancySign(anchor, icon, title, subtitle, color, 11, 3.6)
+	return m
+end
+
+-- A stone ring with a magic swirl. Step in the circle to pick a dimension.
+local function buildPortal(pos: Vector3, parent: Instance)
+	local portal = model("DimensionPortal", parent)
+	P({
+		Name = "Platform",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(0.8, 17, 17),
+		CFrame = CFrame.new(pos + Vector3.new(0, 0.4, 0)) * CFrame.Angles(0, 0, rad(90)),
+		Color = Color3.fromRGB(96, 92, 100),
+		Material = Enum.Material.Slate,
+		Parent = portal,
+	})
+	local ringCenter = pos + Vector3.new(0, 8.5, 0)
+	for k = 0, 19 do
+		local a = k / 20 * math.pi * 2
+		P({
+			Name = "Ring",
+			Size = Vector3.new(2.8, 1.6, 1.8),
+			CFrame = CFrame.new(ringCenter + Vector3.new(math.cos(a) * 7, math.sin(a) * 7, 0)) * CFrame.Angles(0, 0, a + math.pi / 2),
+			Color = if k % 5 == 0 then Color3.fromRGB(140, 90, 210) else Color3.fromRGB(105, 100, 108),
+			Material = if k % 5 == 0 then Enum.Material.Glass else Enum.Material.Slate,
+			Parent = portal,
+		})
+	end
+	local swirl = P({
+		Name = "Swirl",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(0.3, 13, 13),
+		CFrame = CFrame.new(ringCenter) * CFrame.Angles(0, rad(90), 0),
+		Color = Color3.fromRGB(150, 110, 255),
+		Material = Enum.Material.ForceField,
+		CanCollide = false,
+		Parent = portal,
+	})
+	light(swirl, Color3.fromRGB(160, 120, 255), 24, 1.2)
+	particles(swirl, {
+		Color = Color3.fromRGB(190, 160, 255),
+		Size = 0.35,
+		Rate = 15,
+		Lifetime = NumberRange.new(1, 2),
+		Speed = NumberRange.new(2, 4),
+		Direction = Enum.NormalId.Right,
+		Spread = Vector2.new(60, 60),
+	})
+	actionCircle(pos, 8, Color3.fromRGB(160, 120, 255), "Dimensions", nil, portal)
+	fancySign(swirl, "🌌", "DIMENSIONS", "Step in to pick one!", Color3.fromRGB(175, 140, 255), 12, 10)
+	return portal
+end
+
+--------------------------------------------------------------------------------
 -- THE HUB (spawn area)
 --------------------------------------------------------------------------------
+-- Where everything at the spawn is
+local HUB = {
+	Sell = Vector3.new(-24, 0, 4),
+	Pickaxes = Vector3.new(24, 0, 14),
+	Backpacks = Vector3.new(24, 0, -10),
+	Pets = Vector3.new(42, 0, 2),
+	Gadgets = Vector3.new(-42, 0, -12),
+	Rebirth = Vector3.new(-36, 0, -36),
+	Portal = Vector3.new(-36, 0, 32),
+	Obby = Vector3.new(34, 0, 32),
+}
+
 local function buildHub()
 	local hub = model("Hub")
 	local stone = Color3.fromRGB(132, 128, 122)
@@ -1475,7 +1699,7 @@ local function buildHub()
 		Parent = hub,
 	})
 
-	-- Fountain with a big gem statue
+	-- Fountain with a crystal statue on top
 	local marble = Color3.fromRGB(205, 202, 196)
 	for k = 0, 17 do
 		local a = k / 18 * math.pi * 2
@@ -1484,6 +1708,14 @@ local function buildHub()
 			Size = Vector3.new(3.4, 2.2, 1.2),
 			CFrame = CFrame.new(math.cos(a) * 9.4, 1.1, 2 + math.sin(a) * 9.4) * CFrame.Angles(0, -a + math.pi / 2, 0),
 			Color = marble,
+			Material = Enum.Material.Marble,
+			Parent = hub,
+		})
+		P({
+			Name = "BasinTop",
+			Size = Vector3.new(3.5, 0.3, 1.5),
+			CFrame = CFrame.new(math.cos(a) * 9.4, 2.35, 2 + math.sin(a) * 9.4) * CFrame.Angles(0, -a + math.pi / 2, 0),
+			Color = marble:Lerp(Color3.new(1, 1, 1), 0.2),
 			Material = Enum.Material.Marble,
 			Parent = hub,
 		})
@@ -1523,223 +1755,101 @@ local function buildHub()
 		LightEmission = 0.1,
 		Transparency = 0.35,
 	})
-	local statue = P({
-		Name = "HubCrystal",
-		Size = Vector3.new(3, 7, 3),
-		CFrame = CFrame.new(0, 13, 2) * CFrame.Angles(0, 0, rad(45)) * CFrame.Angles(rad(45), 0, 0),
-		Color = Color3.fromRGB(70, 160, 190),
-		Material = Enum.Material.Glass,
-		Transparency = 0.05,
-		Reflectance = 0.3,
-		CanCollide = false,
+	local previous = buildParent
+	buildParent = hub
+	Decor.Spire(Vector3.new(0, 6.6, 2), 1.15, Color3.fromRGB(80, 170, 200))
+	buildParent = previous
+	-- a stone plate with the name of the game, facing the spawn
+	local plaque = P({
+		Name = "Plaque",
+		Size = Vector3.new(12, 2.8, 0.4),
+		CFrame = CFrame.new(0, 1.5, 12.15),
+		Color = Color3.fromRGB(70, 66, 64),
+		Material = Enum.Material.Slate,
 		Parent = hub,
 	})
-	spin(statue, 0.5, 1)
-	light(statue, Color3.fromRGB(120, 200, 230), 18, 0.8)
-	sign(statue, "💎 CRYSTAL RUSH 💎", "Mine • Sell • Upgrade", Color3.fromRGB(190, 230, 245), 30, 8, 8)
+	carvedText(plaque, Enum.NormalId.Back, "💎 CRYSTAL RUSH 💎", "Mine  •  Sell  •  Upgrade", Color3.fromRGB(255, 215, 120))
 	for k = 0, 3 do
 		local a = k / 4 * math.pi * 2 + math.pi / 4
 		Decor.Bench(Vector3.new(math.cos(a) * 15, 0, 2 + math.sin(a) * 15), -a - math.pi / 2)
 	end
 
-	-- Sell pad
-	buildSellPad(Vector3.new(-34, 0, 0), 16, 1)
-
-	-- Shop stall
+	-- Selling, shops, rebirth, the portal and the obby: all circles you step into
+	buildSellPad(HUB.Sell, 14, 1)
+	buildShopCircle(HUB.Pickaxes, 6.5, Color3.fromRGB(225, 165, 70), "Pickaxes", nil, Shared.BuildPickaxe(5), "⛏️", "PICKAXES", "Mine faster", hub)
+	buildShopCircle(HUB.Backpacks, 6.5, Color3.fromRGB(80, 150, 235), "Backpacks", nil, Shared.BuildBackpack(5), "🎒", "BACKPACKS", "Carry more gems", hub)
+	local puppy = Shared.BuildPet(1)
+	puppy:ScaleTo(1.5)
+	buildShopCircle(HUB.Pets, 6.5, Color3.fromRGB(240, 130, 190), "Pets", nil, puppy, "🐾", "PET SHOP", "Pets give more gems", hub)
+	local coil = Shared.BuildGadget(5)
+	coil:ScaleTo(1.4)
+	buildShopCircle(HUB.Gadgets, 6.5, Color3.fromRGB(165, 110, 240), "Gadgets", nil, coil, "⚡", "GADGETS", "Run faster, jump higher", hub)
 	do
-		local shop = model("Shop", hub)
-		local wood = Color3.fromRGB(128, 92, 62)
-		local counter = P({
-			Name = "Counter",
-			Size = Vector3.new(4, 3.5, 12),
-			CFrame = CFrame.new(31, 1.75, 0),
-			Color = wood,
-			Material = Enum.Material.WoodPlanks,
-			Parent = shop,
-		})
-		for _, corner in ipairs({ Vector3.new(29.5, 0, -6), Vector3.new(29.5, 0, 6), Vector3.new(36.5, 0, -6), Vector3.new(36.5, 0, 6) }) do
-			P({
-				Name = "Post",
-				Size = Vector3.new(0.8, 10, 0.8),
-				CFrame = CFrame.new(corner + Vector3.new(0, 5, 0)),
-				Color = wood,
-				Material = Enum.Material.Wood,
-				Parent = shop,
-			})
-		end
-		for i = -3, 3 do
-			P({
-				Name = "Awning",
-				Size = Vector3.new(9, 0.3, 1.8),
-				CFrame = CFrame.new(33, 10.4, i * 1.8) * CFrame.Angles(0, 0, rad(-12)),
-				Color = if i % 2 == 0 then Color3.fromRGB(165, 55, 50) else Color3.fromRGB(225, 215, 195),
-				Material = Enum.Material.Fabric,
-				Parent = shop,
-			})
-		end
-		for k = 1, 3 do
-			P({
-				Name = "Crate",
-				Size = Vector3.new(2.2, 2.2, 2.2),
-				CFrame = CFrame.new(35, 1.1, -4 + k * 2.4) * CFrame.Angles(0, rng:NextNumber(-0.3, 0.3), 0),
-				Color = Color3.fromRGB(150, 115, 75),
-				Material = Enum.Material.WoodPlanks,
-				Parent = shop,
-			})
-		end
-		local display = Shared.BuildPickaxe(5)
-		display:PivotTo(CFrame.new(31, 5.8, 0) * CFrame.Angles(0, 0, rad(-20)))
-		display.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
-		display.Parent = shop
-		spin(display, 0.8, 0.3)
-		sign(counter, "🛒 SHOP", "Pickaxes • Backpacks • Pets", Color3.fromRGB(170, 235, 160), 16, 5, 11)
-		local pp = prompt(counter, "Open Shop", "Shop", 0)
-		pp.Triggered:Connect(function(player)
-			Remotes.OpenMenu:FireClient(player, "Shop")
-		end)
-	end
-
-	-- Rebirth altar
-	do
-		local altar = model("RebirthAltar", hub)
-		P({
-			Name = "Platform",
-			Shape = Enum.PartType.Cylinder,
-			Size = Vector3.new(1.2, 14, 14),
-			CFrame = CFrame.new(-34, 0.6, -34) * CFrame.Angles(0, 0, rad(90)),
-			Color = Color3.fromRGB(96, 92, 100),
-			Material = Enum.Material.Slate,
-			Parent = altar,
-		})
-		local obelisk = P({
-			Name = "Obelisk",
-			Size = Vector3.new(3, 9, 3),
-			CFrame = CFrame.new(-34, 5.7, -34) * CFrame.Angles(0, rad(45), 0),
-			Color = Color3.fromRGB(70, 66, 76),
-			Material = Enum.Material.Marble,
-			Parent = altar,
-		})
-		local gem = P({
+		local gem = model("RebirthGem")
+		local crystal = P({
 			Name = "Gem",
-			Size = Vector3.new(2, 3, 2),
-			CFrame = CFrame.new(-34, 12.5, -34) * CFrame.Angles(rad(45), 0, rad(45)),
+			Size = Vector3.new(2.2, 3.4, 2.2),
+			CFrame = CFrame.new(0, 0, 0) * CFrame.Angles(rad(45), 0, rad(45)),
 			Color = Color3.fromRGB(130, 70, 190),
 			Material = Enum.Material.Glass,
 			Reflectance = 0.25,
 			CanCollide = false,
-			Parent = altar,
+			Parent = gem,
 		})
-		spin(gem, 1, 0.6)
-		light(gem, Color3.fromRGB(170, 110, 230), 16, 0.9)
-		sign(obelisk, "♻️ REBIRTH", "Start over, earn MORE coins", Color3.fromRGB(215, 185, 245), 16, 5, 9)
-		local pp = prompt(obelisk, "Rebirth", "Rebirth Altar", 0)
-		pp.Triggered:Connect(function(player)
-			Remotes.OpenMenu:FireClient(player, "Rebirth")
-		end)
+		gem.PrimaryPart = crystal
+		light(crystal, Color3.fromRGB(170, 110, 230), 14, 0.8)
+		buildShopCircle(HUB.Rebirth, 6.5, Color3.fromRGB(185, 115, 235), "Rebirth", nil, gem, "♻️", "REBIRTH", "Start over, earn MORE coins", hub)
+	end
+	buildPortal(HUB.Portal, hub)
+	do
+		local obby = model("ObbyEntrance", hub)
+		P({
+			Name = "Floor",
+			Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new(0.3, 13, 13),
+			CFrame = CFrame.new(HUB.Obby + Vector3.new(0, 0.05, 0)) * CFrame.Angles(0, 0, rad(90)),
+			Color = Color3.fromRGB(152, 146, 136),
+			Material = Enum.Material.Pavement,
+			Parent = obby,
+		})
+		actionCircle(HUB.Obby, 6, Color3.fromRGB(235, 95, 85), "Obby", nil, obby)
+		local post = P({
+			Name = "SignPost",
+			Size = Vector3.new(0.5, 7, 0.5),
+			CFrame = CFrame.new(HUB.Obby + Vector3.new(0, 3.5, -7)),
+			Color = Color3.fromRGB(95, 70, 50),
+			Material = Enum.Material.Wood,
+			Parent = obby,
+		})
+		local board = fancySign(post, "🏃", "SKY OBBY", "Win 💰 coins!", Color3.fromRGB(240, 120, 100), 11, 5)
+		board.Name = "ObbySign"
 	end
 
-	-- Lamps along the path
-	for _, z in ipairs({ 44, 22, -18, -44 }) do
-		Decor.Lamp(Vector3.new(-6.5, 0, z))
-		Decor.Lamp(Vector3.new(6.5, 0, z))
-	end
-
+	-- Eggs at the spawn
 	local busy = {
 		{ Vector3.new(0, 0, 2), 24 }, -- fountain square
 		{ Vector3.new(0, 0, 32), 11 }, -- spawn
-		{ Vector3.new(-34, 0, 0), 12 }, -- sell pad
-		{ Vector3.new(33, 0, 0), 10 }, -- shop
-		{ Vector3.new(-34, 0, -34), 10 }, -- rebirth altar
 		{ Vector3.new(60, 0, 38), 15 }, -- pond
-		{ Vector3.new(34, 0, 32), 10 }, -- obby entrance
 	}
+	for _, pos in pairs(HUB) do
+		table.insert(busy, { pos, 11 })
+	end
 	for eggIndex, pos in pairs(eggMachineSpots(1)) do
 		buildEggMachine(eggIndex, pos)
 		table.insert(busy, { pos, 11 })
 	end
 
-	-- Dimension portal (stone ring with a magic swirl)
-	do
-		local portalPos = Vector3.new(-36, 0, 32)
-		table.insert(busy, { portalPos, 12 })
-		local portal = model("DimensionPortal", hub)
-		P({
-			Name = "Platform",
-			Shape = Enum.PartType.Cylinder,
-			Size = Vector3.new(0.8, 16, 16),
-			CFrame = CFrame.new(portalPos + Vector3.new(0, 0.4, 0)) * CFrame.Angles(0, 0, rad(90)),
-			Color = Color3.fromRGB(96, 92, 100),
-			Material = Enum.Material.Slate,
-			Parent = portal,
-		})
-		local ringCenter = portalPos + Vector3.new(0, 8.5, 0)
-		for k = 0, 19 do
-			local a = k / 20 * math.pi * 2
-			P({
-				Name = "Ring",
-				Size = Vector3.new(2.8, 1.6, 1.8),
-				CFrame = CFrame.new(ringCenter + Vector3.new(math.cos(a) * 7, math.sin(a) * 7, 0)) * CFrame.Angles(0, 0, a + math.pi / 2),
-				Color = if k % 5 == 0 then Color3.fromRGB(140, 90, 210) else Color3.fromRGB(105, 100, 108),
-				Material = if k % 5 == 0 then Enum.Material.Glass else Enum.Material.Slate,
-				Parent = portal,
-			})
-		end
-		local swirl = P({
-			Name = "Swirl",
-			Shape = Enum.PartType.Cylinder,
-			Size = Vector3.new(0.3, 13, 13),
-			CFrame = CFrame.new(ringCenter) * CFrame.Angles(0, rad(90), 0),
-			Color = Color3.fromRGB(150, 110, 255),
-			Material = Enum.Material.ForceField,
-			CanCollide = false,
-			Parent = portal,
-		})
-		light(swirl, Color3.fromRGB(160, 120, 255), 24, 1.4)
-		particles(swirl, {
-			Color = Color3.fromRGB(190, 160, 255),
-			Size = 0.35,
-			Rate = 15,
-			Lifetime = NumberRange.new(1, 2),
-			Speed = NumberRange.new(2, 4),
-			Direction = Enum.NormalId.Right,
-			Spread = Vector2.new(60, 60),
-		})
-		sign(swirl, "🌌 DIMENSIONS", "Level up to unlock more!", Color3.fromRGB(205, 185, 250), 18, 5.5, 10)
-		local pp = prompt(swirl, "Choose a Dimension", "Dimension Portal", 0)
-		pp.MaxActivationDistance = 16
-		pp.Triggered:Connect(function(player)
-			Remotes.OpenMenu:FireClient(player, "Dimensions")
-		end)
+	-- Lamps along the path, flower boxes around the fountain
+	for _, z in ipairs({ 44, 22, -18, -44 }) do
+		Decor.Lamp(Vector3.new(-6.5, 0, z))
+		Decor.Lamp(Vector3.new(6.5, 0, z))
 	end
-
-	-- Sky obby entrance
-	do
-		local obbyPos = Vector3.new(34, 0, 32)
-		local entrance = model("ObbyEntrance", hub)
-		local pad = P({
-			Name = "Pad",
-			Shape = Enum.PartType.Cylinder,
-			Size = Vector3.new(0.8, 12, 12),
-			CFrame = CFrame.new(obbyPos + Vector3.new(0, 0.4, 0)) * CFrame.Angles(0, 0, rad(90)),
-			Color = stone,
-			Material = Enum.Material.Cobblestone,
-			Parent = entrance,
-		})
-		local post = P({
-			Name = "SignPost",
-			Size = Vector3.new(0.6, 8, 0.6),
-			CFrame = CFrame.new(obbyPos + Vector3.new(0, 4, -5)),
-			Color = Color3.fromRGB(95, 70, 50),
-			Material = Enum.Material.Wood,
-			Parent = entrance,
-		})
-		local board = sign(post, "🏃 SKY OBBY", "Win 💰 coins!", Color3.fromRGB(255, 220, 140), 14, 4.6, 5.5)
-		board.Name = "ObbySign"
-		local pp = prompt(pad, "Start Obby", "Sky Obby", 0)
-		pp.MaxActivationDistance = 12
-		pp.Triggered:Connect(function(player)
-			startObby(player)
-		end)
+	for _, pos in ipairs({ Vector3.new(-12, 0, 38), Vector3.new(12, 0, 38), Vector3.new(-12, 0, 25), Vector3.new(12, 0, 25) }) do
+		do
+			P({ Name = "Planter", Size = Vector3.new(4, 1.4, 4), CFrame = CFrame.new(pos + Vector3.new(0, 0.7, 0)), Color = Color3.fromRGB(140, 134, 126), Material = Enum.Material.Cobblestone, Parent = hub })
+			P({ Name = "Soil", Size = Vector3.new(3.4, 0.2, 3.4), CFrame = CFrame.new(pos + Vector3.new(0, 1.42, 0)), Color = Color3.fromRGB(80, 60, 45), Material = Enum.Material.Ground, Parent = hub })
+			Decor.Flowers(pos + Vector3.new(0, 1.4, 0))
+		end
 	end
 
 	local function hubSpot(minX: number, maxX: number, radius: number): Vector3?
@@ -1759,7 +1869,7 @@ local function buildHub()
 		return nil
 	end
 	for _ = 1, 16 do
-		local pos = hubSpot(52, 76, 4)
+		local pos = hubSpot(54, 76, 4)
 		if pos then
 			Decor.Tree(pos, rng:NextNumber(0.9, 1.3))
 		end
@@ -1787,6 +1897,7 @@ end
 -- GATES (locked zone entrances)
 --------------------------------------------------------------------------------
 local unlockZone -- defined later
+local buildBossArena -- defined later
 
 local function buildGate(i: number)
 	local zone = Shared.Zones[i]
@@ -1865,7 +1976,13 @@ local function buildZone(i: number)
 			buildEggMachine(eggIndex, pos)
 			reserve(i, pos, 12)
 		end
+		-- a shop, so you don't have to walk back to the spawn
+		local shopPos = Vector3.new(-46, 0, zs - 18)
+		local display = Shared.BuildPickaxe(math.min(i * 2 + 1, #Shared.Pickaxes))
+		buildShopCircle(shopPos, 6, zone.Accent, "Shop", nil, display, "🛒", "SHOP", "Pickaxes • Backpacks • Pets", MapFolder)
+		reserve(i, shopPos, 10)
 	end
+	buildBossArena(i)
 
 	local function decorAt(minRadius: number): Vector3?
 		local pos = freeSpot(i, minRadius)
@@ -2064,11 +2181,14 @@ local function buildZone(i: number)
 			Speed = NumberRange.new(0, 0.3),
 			Spread = Vector2.new(180, 180),
 		})
-		-- The end of the world
-		local finale = buildArch(ze + 8, zone, MapFolder, "🏆 YOU MADE IT!", "Rebirth to go even further")
+		-- The end of the world, with a portal to the dimensions
+		local finale = buildArch(ze + 8, zone, MapFolder, "🏆 YOU MADE IT!", "Step in the portal to visit the dimensions")
 		finale.Name = "FinalArch"
 		reserve(i, Vector3.new(-24, 0, ze + 8), 6)
 		reserve(i, Vector3.new(24, 0, ze + 8), 6)
+		local portalPos = Vector3.new(0, 0, ze + 30)
+		buildPortal(portalPos, MapFolder)
+		reserve(i, portalPos, 14)
 	end
 end
 
@@ -2100,6 +2220,8 @@ end
 
 local addXP -- defined later
 local endObby -- defined later
+
+local digSpots: { [Instance]: any } = {} -- buried gems (see DIGGING)
 
 --------------------------------------------------------------------------------
 -- CRYSTALS
@@ -2168,6 +2290,11 @@ local function findSpot(zoneIndex: number, ignore: Model?): CFrame
 	for _ = 1, 40 do
 		local pos = anySpot(zoneIndex)
 		local ok = not isReserved(zoneIndex, pos, 4)
+		for _, spot in pairs(digSpots) do
+			if ok and spot.Alive and (spot.Pos - Vector3.new(pos.X, spot.Pos.Y, pos.Z)).Magnitude < 7 then
+				ok = false
+			end
+		end
 		if ok then
 			for m, info in pairs(crystals) do
 				if m ~= ignore and info.Zone == zoneIndex and info.Alive then
@@ -2256,10 +2383,10 @@ local function buildCrystal(spec: CrystalSpec, giant: boolean, folder: Instance,
 			Name = name .. "Tip",
 			Size = Vector3.one * width * 0.82,
 			CFrame = root * CFrame.new(0, height, 0) * CORNER_UP,
-			Color = color,
+			Color = color:Lerp(Color3.new(1, 1, 1), 0.12),
 			Material = Enum.Material.Glass,
-			Transparency = 0.12,
-			Reflectance = 0.2,
+			Transparency = 0.1,
+			Reflectance = 0.25,
 			Parent = m,
 		})
 		table.insert(gemParts, body)
@@ -2268,6 +2395,38 @@ local function buildCrystal(spec: CrystalSpec, giant: boolean, folder: Instance,
 	end
 
 	local main = prism("Main", CFrame.new(0, 0.6 * s, 0) * CFrame.Angles(rad(rng:NextNumber(-6, 6)), rad(45), rad(rng:NextNumber(-6, 6))), 1.7 * s, 5.2 * s)
+	-- a lighter crystal inside the big one, so it looks deep and see-through
+	local inner = P({
+		Name = "Inner",
+		Size = Vector3.new(0.9 * s, 4.4 * s, 0.9 * s),
+		CFrame = main.CFrame * CFrame.Angles(0, rad(45), 0),
+		Color = color:Lerp(Color3.new(1, 1, 1), 0.45),
+		Material = Enum.Material.Glass,
+		Transparency = 0.45,
+		CanCollide = false,
+		CanQuery = true,
+		Parent = m,
+	})
+	table.insert(gemParts, inner)
+	-- tiny crystals and pebbles around the bottom
+	for k = 1, 2 do
+		local a = rng:NextNumber(0, math.pi * 2)
+		prism("Small", CFrame.new(math.cos(a) * 2.1 * s, 0.25 * s, math.sin(a) * 2.1 * s) * CFrame.Angles(rng:NextNumber(-0.5, 0.5), a, rng:NextNumber(-0.5, 0.5)), 0.45 * s, rng:NextNumber(0.8, 1.3) * s)
+	end
+	for _ = 1, 3 do
+		local a = rng:NextNumber(0, math.pi * 2)
+		local r = rng:NextNumber(2.4, 3) * s
+		P({
+			Name = "Pebble",
+			Size = Vector3.new(rng:NextNumber(0.4, 0.8), rng:NextNumber(0.3, 0.5), rng:NextNumber(0.4, 0.8)) * s,
+			CFrame = CFrame.new(math.cos(a) * r, 0.15, math.sin(a) * r) * CFrame.Angles(0, rng:NextNumber(0, math.pi), rng:NextNumber(-0.3, 0.3)),
+			Color = spec.RockColor:Lerp(Color3.new(1, 1, 1), rng:NextNumber(0, 0.15)),
+			Material = Enum.Material.Rock,
+			CanCollide = false,
+			CanQuery = true,
+			Parent = m,
+		})
+	end
 	local sides = rng:NextInteger(3, 4)
 	for k = 1, sides do
 		local a = k / sides * math.pi * 2 + rng:NextNumber(-0.3, 0.3)
@@ -2424,6 +2583,12 @@ type PlayerData = {
 	QuestTarget: number,
 	QuestProgress: number,
 	QuestsDone: number,
+	Shards: number, -- 💠 Boss Shards (only from bosses)
+	BossesBeaten: number,
+	DimPickaxe: number, -- the dimension of your special pickaxe (0 = none)
+	DimBackpack: number, -- the dimension of your special backpack (0 = none)
+	Gadgets: { number }, -- the gadgets you own
+	GadgetsOff: { number }, -- the gadgets you turned off
 }
 
 local store: DataStore? = nil
@@ -2464,7 +2629,26 @@ local function defaultData(): PlayerData
 		QuestTarget = Shared.QuestKinds[Shared.QuestOrder[1]].Target(0),
 		QuestProgress = 0,
 		QuestsDone = 0,
+		Shards = 0,
+		BossesBeaten = 0,
+		DimPickaxe = 0,
+		DimBackpack = 0,
+		Gadgets = {},
+		GadgetsOff = {},
 	}
+end
+
+-- Turns a list like { 1, 4 } into { [1] = true, [4] = true }
+local function toSet(list: { number }): { [number]: boolean }
+	local set = {}
+	for _, n in ipairs(list) do
+		set[n] = true
+	end
+	return set
+end
+
+local function gadgetStats(data: PlayerData)
+	return Shared.GadgetStats(toSet(data.Gadgets), toSet(data.GadgetsOff))
 end
 
 -- Gives you the next quest
@@ -2493,7 +2677,7 @@ local function loadData(player: Player): (PlayerData, boolean)
 				if type(saved.PetCounts) == "table" then
 					for key, count in pairs(saved.PetCounts) do
 						local index = tonumber(key)
-						if index and Shared.Pets[index] and type(count) == "number" and count >= 1 then
+						if index and Shared.GetPet(index) and type(count) == "number" and count >= 1 then
 							data.Pets[index] = math.floor(count)
 						end
 					end
@@ -2515,7 +2699,19 @@ local function loadData(player: Player): (PlayerData, boolean)
 	data.Coins = math.max(0, math.floor(data.Coins))
 	data.Level = math.max(1, math.floor(data.Level))
 	data.XP = math.max(0, data.XP)
-	data.Gems = math.clamp(math.floor(data.Gems), 0, Shared.Backpacks[data.Backpack].Capacity)
+	data.Shards = math.max(0, math.floor(data.Shards))
+	data.DimPickaxe = math.max(0, math.floor(data.DimPickaxe))
+	data.DimBackpack = math.max(0, math.floor(data.DimBackpack))
+	for _, key in ipairs({ "Gadgets", "GadgetsOff" }) do
+		local clean = {}
+		for _, n in ipairs((data :: any)[key]) do
+			if type(n) == "number" and Shared.Gadgets[n] and not table.find(clean, n) then
+				table.insert(clean, n)
+			end
+		end
+		(data :: any)[key] = clean
+	end
+	data.Gems = math.clamp(math.floor(data.Gems), 0, Shared.BestBackpack(data).Capacity)
 	data.FreeEggs = math.max(0, math.floor(data.FreeEggs))
 	data.QuestsDone = math.max(0, math.floor(data.QuestsDone))
 	if not Shared.QuestKinds[data.QuestKind] or data.QuestTarget < 1 then
@@ -2584,13 +2780,18 @@ local function sync(player: Player)
 	end
 	-- Pets[n] = how many of pet n you own
 	local pets = table.create(#Shared.Pets, 0)
+	local dimPets = {}
 	for index, count in pairs(data.Pets) do
-		pets[index] = count
+		if Shared.Pets[index] then
+			pets[index] = count
+		else
+			table.insert(dimPets, { Index = index, Count = count })
+		end
 	end
 	Remotes.Sync:FireClient(player, {
 		Coins = data.Coins,
 		Gems = data.Gems,
-		Capacity = Shared.Backpacks[data.Backpack].Capacity,
+		Capacity = Shared.BestBackpack(data).Capacity,
 		Rebirths = data.Rebirths,
 		Pickaxe = data.Pickaxe,
 		Backpack = data.Backpack,
@@ -2609,6 +2810,13 @@ local function sync(player: Player)
 		DailyStreak = dailyStreak(data),
 		ObbyBest = data.ObbyBest,
 		ObbyWait = math.max(0, data.ObbyLast + Settings.ObbyCooldown - os.time()),
+		DimPets = dimPets,
+		Shards = data.Shards,
+		BossesBeaten = data.BossesBeaten,
+		DimPickaxe = data.DimPickaxe,
+		DimBackpack = data.DimBackpack,
+		Gadgets = data.Gadgets,
+		GadgetsOff = data.GadgetsOff,
 	})
 	local stats = player:FindFirstChild("leaderstats")
 	if stats then
@@ -2722,15 +2930,14 @@ local function weld(a: BasePart, b: BasePart)
 	w.Parent = a
 end
 
-local function makePickaxeTool(index: number): Tool
-	local def = Shared.Pickaxes[index]
+-- Turns a model (pickaxe, shovel) into a tool you hold in your hand
+local function makeTool(built: Model, name: string, tooltip: string, grip: CFrame): Tool
 	local tool = Instance.new("Tool")
-	tool.Name = "Pickaxe"
-	tool.ToolTip = def.Name
+	tool.Name = name
+	tool.ToolTip = tooltip
 	tool.CanBeDropped = false
 	tool.RequiresHandle = true
-	tool.Grip = CFrame.new(0, -1.4, 0)
-	local built = Shared.BuildPickaxe(index)
+	tool.Grip = grip
 	local handle = built.PrimaryPart :: BasePart
 	for _, child in ipairs(built:GetChildren()) do
 		if child:IsA("BasePart") then
@@ -2745,30 +2952,70 @@ local function makePickaxeTool(index: number): Tool
 			child.Parent = tool
 		end
 	end
+	for _, child in ipairs(built:GetDescendants()) do
+		if child:IsA("Light") then
+			child.Parent = handle
+		end
+	end
 	built:Destroy()
 	return tool
 end
 
-local function givePickaxe(player: Player)
+local function removeTool(player: Player, name: string): boolean
+	local wasEquipped = false
+	for _, container in ipairs({ player:FindFirstChildOfClass("Backpack"), player.Character } :: { Instance? }) do
+		if container then
+			for _, child in ipairs(container:GetChildren()) do
+				if child:IsA("Tool") and child.Name == name then
+					wasEquipped = wasEquipped or container == player.Character
+					child:Destroy()
+				end
+			end
+		end
+	end
+	return wasEquipped
+end
+
+-- Gives you your best pickaxe (your normal one or a dimension's special one)
+local function givePickaxe(player: Player, equip: boolean?)
 	local data = Data[player]
 	local char = player.Character
 	local backpack = player:FindFirstChildOfClass("Backpack")
 	if not (data and char and backpack) then
 		return
 	end
-	for _, container in ipairs({ backpack, char } :: { Instance }) do
-		for _, child in ipairs(container:GetChildren()) do
-			if child:IsA("Tool") and child.Name == "Pickaxe" then
-				child:Destroy()
-			end
-		end
-	end
-	local tool = makePickaxeTool(data.Pickaxe)
+	local wasEquipped = removeTool(player, "Pickaxe")
+	local def = Shared.BestPickaxe(data)
+	local tool = makeTool(Shared.BuildPickaxe(def), "Pickaxe", def.Name, CFrame.new(0, -1.4, 0))
 	tool.Parent = backpack
 	local hum = char:FindFirstChildOfClass("Humanoid")
-	if hum and hum.Health > 0 then
+	if (equip or wasEquipped) and hum and hum.Health > 0 then
 		hum:EquipTool(tool)
 	end
+end
+
+local function giveShovel(player: Player)
+	local backpack = player:FindFirstChildOfClass("Backpack")
+	if not backpack then
+		return
+	end
+	removeTool(player, "Shovel")
+	local tool = makeTool(Shared.BuildShovel(), "Shovel", "Shovel: dig up buried gems", CFrame.new(0, -1.2, 0))
+	tool.Parent = backpack
+end
+
+-- Walk speed and jump height from your gadgets (gadgets are off in the obby)
+local function applyMovement(player: Player, plain: boolean?)
+	local data = Data[player]
+	local char = player.Character
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	if not (data and hum) then
+		return
+	end
+	local stats = gadgetStats(data)
+	hum.UseJumpPower = false
+	hum.WalkSpeed = Settings.WalkSpeed + (if plain then 0 else stats.Speed)
+	hum.JumpHeight = if plain then Settings.JumpHeight else stats.Jump
 end
 
 local function updateBackpack(player: Player)
@@ -2785,7 +3032,8 @@ local function updateBackpack(player: Player)
 	if not (torso and torso:IsA("BasePart")) then
 		return
 	end
-	local bag = Shared.BuildBackpack(data.Backpack)
+	local best = Shared.BestBackpack(data)
+	local bag = Shared.BuildBackpack(if best.Dimension then best else data.Backpack)
 	bag.Name = "GemBackpack"
 	local body = bag.PrimaryPart :: BasePart
 	bag:PivotTo(torso.CFrame * CFrame.new(0, 0, torso.Size.Z / 2 + body.Size.Z / 2))
@@ -2822,7 +3070,7 @@ local function refreshPets(player: Player)
 		pet.Name = player.Name .. "_" .. pet.Name
 		pet:SetAttribute("Owner", player.UserId)
 		pet:SetAttribute("Slot", slot)
-		pet:SetAttribute("Scale", Shared.Pets[index].Size or 1)
+		pet:SetAttribute("Scale", Shared.GetPet(index).Size or 1)
 		pet.ModelStreamingMode = Enum.ModelStreamingMode.Persistent
 		if root and root:IsA("BasePart") then
 			pet:PivotTo(root.CFrame * CFrame.new(0, 0, 5))
@@ -2832,7 +3080,642 @@ local function refreshPets(player: Player)
 end
 
 --------------------------------------------------------------------------------
--- DIMENSIONS (floating islands that are built when someone visits them)
+-- DIGGING (buried gems: dig them up with your shovel!)
+--------------------------------------------------------------------------------
+type DigSpot = {
+	Model: Model,
+	Mound: { BasePart },
+	MoundSizes: { Vector3 },
+	Zone: number,
+	Dimension: number?,
+	Health: number,
+	MaxHealth: number,
+	Gems: number,
+	XP: number,
+	Color: Color3,
+	Pos: Vector3,
+	Alive: boolean,
+	Removed: boolean,
+	OnTerrain: boolean,
+	Place: () -> Vector3?,
+	Fill: Frame,
+	Label: TextLabel,
+	Billboard: BillboardGui,
+}
+
+local function updateDigBar(spot: DigSpot)
+	local frac = math.clamp(spot.Health / spot.MaxHealth, 0, 1)
+	spot.Fill.Size = UDim2.fromScale(frac, 1)
+	spot.Label.Text = "⛏️ " .. Format(math.max(spot.Health, 0)) .. " / " .. Format(spot.MaxHealth)
+	spot.Billboard.Enabled = spot.Health < spot.MaxHealth
+	-- the dirt pile gets smaller while you dig
+	for k, part in ipairs(spot.Mound) do
+		local size = spot.MoundSizes[k]
+		part.Size = Vector3.new(size.X, size.Y * (0.35 + 0.65 * frac), size.Z)
+	end
+end
+
+local function buildDigSpot(zoneIndex: number, dimension: number?, health: number, gems: number, xp: number, color: Color3, place: () -> Vector3?, onTerrain: boolean): DigSpot?
+	local pos = place()
+	if not pos then
+		return nil
+	end
+	local m = Instance.new("Model")
+	m.Name = "BuriedGem"
+	m.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
+	local dirt = Color3.fromRGB(110, 84, 60)
+	local mound, sizes = {}, {}
+	for k = 1, 3 do
+		local size = Vector3.new(rng:NextNumber(2.6, 3.4), rng:NextNumber(1.1, 1.6), rng:NextNumber(2.6, 3.4)) * (if k == 1 then 1.2 else 0.85)
+		local piece = P({
+			Name = "Dirt",
+			Shape = Enum.PartType.Ball,
+			Size = size,
+			CFrame = CFrame.new(rng:NextNumber(-0.8, 0.8), 0, rng:NextNumber(-0.8, 0.8)),
+			Color = dirt:Lerp(Color3.new(0, 0, 0), rng:NextNumber(0, 0.2)),
+			Material = Enum.Material.Ground,
+			CanCollide = false,
+			CanQuery = true,
+			Parent = m,
+		})
+		local mesh = Instance.new("SpecialMesh")
+		mesh.MeshType = Enum.MeshType.Sphere
+		mesh.Parent = piece
+		table.insert(mound, piece)
+		table.insert(sizes, size)
+	end
+	-- the tip of a gem sticking out, with a little glint
+	local gem = P({
+		Name = "GemTip",
+		Size = Vector3.new(0.6, 1.3, 0.6),
+		CFrame = CFrame.new(0.3, 0.6, -0.2) * CFrame.Angles(rad(15), rad(45), rad(-12)),
+		Color = color,
+		Material = Enum.Material.Glass,
+		Reflectance = 0.3,
+		CanCollide = false,
+		CanQuery = true,
+		Parent = m,
+	})
+	particles(gem, { Color = Color3.fromRGB(255, 245, 210), Size = 0.4, Rate = 2, Lifetime = NumberRange.new(0.4, 0.8), Speed = NumberRange.new(0, 0.2), Spread = Vector2.new(180, 180) })
+	for k = 1, 3 do
+		local a = k * 2.1
+		P({
+			Name = "Pebble",
+			Size = Vector3.new(0.5, 0.35, 0.45),
+			CFrame = CFrame.new(math.cos(a) * 1.9, -0.1, math.sin(a) * 1.9) * CFrame.Angles(0, a, 0.2),
+			Color = Color3.fromRGB(120, 115, 108),
+			Material = Enum.Material.Rock,
+			CanCollide = false,
+			CanQuery = true,
+			Parent = m,
+		})
+	end
+	m.PrimaryPart = mound[1]
+	local bb = Instance.new("BillboardGui")
+	bb.Name = "DigBar"
+	bb.Size = UDim2.fromOffset(120, 22)
+	bb.StudsOffset = Vector3.new(0, 3, 0)
+	bb.AlwaysOnTop = true
+	bb.LightInfluence = 0
+	bb.MaxDistance = 60
+	bb.Enabled = false
+	local back = Instance.new("Frame")
+	back.Size = UDim2.fromScale(1, 1)
+	back.BackgroundColor3 = Color3.fromRGB(30, 24, 20)
+	back.BackgroundTransparency = 0.15
+	back.Parent = bb
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0.5, 0)
+	corner.Parent = back
+	local fill = Instance.new("Frame")
+	fill.Size = UDim2.fromScale(1, 1)
+	fill.BackgroundColor3 = Color3.fromRGB(205, 150, 80)
+	fill.Parent = back
+	corner:Clone().Parent = fill
+	local label = Instance.new("TextLabel")
+	label.BackgroundTransparency = 1
+	label.Size = UDim2.fromScale(1, 0.9)
+	label.Font = Enum.Font.GothamBold
+	label.TextScaled = true
+	label.TextColor3 = Color3.new(1, 1, 1)
+	label.Parent = back
+	bb.Parent = mound[1]
+	m:SetAttribute("IsDigSpot", true)
+	m:SetAttribute("Zone", zoneIndex)
+	m:SetAttribute("Radius", 2)
+	m:PivotTo(CFrame.new(pos))
+	m.Parent = DigFolder
+	local spot: DigSpot = {
+		Model = m,
+		Mound = mound,
+		MoundSizes = sizes,
+		Zone = zoneIndex,
+		Dimension = dimension,
+		Health = health,
+		MaxHealth = health,
+		Gems = gems,
+		XP = xp,
+		Color = color,
+		Pos = pos,
+		Alive = true,
+		Removed = false,
+		OnTerrain = onTerrain,
+		Place = place,
+		Fill = fill,
+		Label = label,
+		Billboard = bb,
+	}
+	digSpots[m] = spot
+	updateDigBar(spot)
+	return spot
+end
+
+-- A free spot for a buried gem: away from crystals and other buried gems
+local function digSpotFree(pos: Vector3): boolean
+	for _, other in pairs(digSpots) do
+		if other.Alive and (other.Pos - pos).Magnitude < 14 then
+			return false
+		end
+	end
+	for _, info in pairs(crystals) do
+		if info.Alive and (info.Model:GetPivot().Position - pos).Magnitude < 7 then
+			return false
+		end
+	end
+	return true
+end
+
+local function spawnZoneDigSpots(i: number)
+	local zone = Shared.Zones[i]
+	local function place(): Vector3?
+		for _ = 1, 30 do
+			local pos = freeSpot(i, 4)
+			if pos and digSpotFree(pos) then
+				return onGround(pos)
+			end
+		end
+		return nil
+	end
+	for _ = 1, Settings.DigSpotsPerZone do
+		buildDigSpot(i, nil, zone.Health * Settings.DigHealth, zone.Gems * Settings.DigGems, i * 2, zone.CrystalColors[rng:NextInteger(1, #zone.CrystalColors)], place, true)
+	end
+end
+
+local function removeDigSpot(spot: DigSpot)
+	spot.Removed = true
+	spot.Alive = false
+	digSpots[spot.Model] = nil
+	spot.Model:Destroy()
+end
+
+local function digOut(spot: DigSpot, player: Player, data: PlayerData)
+	spot.Alive = false
+	local pos = spot.Pos
+	local capacity = Shared.BestBackpack(data).Capacity
+	local gems = math.floor(spot.Gems * Shared.GemMultiplier(data.Pets) * gadgetStats(data).Gems)
+	local added = math.min(gems, capacity - data.Gems)
+	data.Gems += added
+	data.TotalGems += added
+	Remotes.Effect:FireAllClients("dugout", pos, spot.Color)
+	Remotes.Effect:FireClient(player, "reward", pos + Vector3.new(0, 1, 0), added, spot.XP, false, spot.Color)
+	addXP(player, data, spot.XP)
+	questProgress(player, data, "mine", 1)
+	sync(player)
+	-- a real hole in the ground (it fills up again later)
+	local restore: (() -> ())? = nil
+	if spot.OnTerrain then
+		local region = Region3.new(pos - Vector3.new(4, 5, 4), pos + Vector3.new(4, 3, 4)):ExpandToGrid(4)
+		local ok, materials, occupancies = pcall(function()
+			return Terrain:ReadVoxels(region, 4)
+		end)
+		if ok then
+			Terrain:FillBall(pos - Vector3.new(0, 0.8, 0), 2.6, Enum.Material.Air)
+			restore = function()
+				pcall(function()
+					Terrain:WriteVoxels(region, 4, materials, occupancies)
+				end)
+			end
+		end
+	end
+	spot.Model.Parent = ServerStorage
+	task.delay(Settings.DigRespawnTime, function()
+		if restore then
+			restore()
+		end
+		if spot.Removed then
+			return
+		end
+		local newPos = spot.Place()
+		if not newPos then
+			removeDigSpot(spot)
+			return
+		end
+		spot.Pos = newPos
+		spot.Health = spot.MaxHealth
+		updateDigBar(spot)
+		spot.Model:PivotTo(CFrame.new(newPos))
+		spot.Alive = true
+		spot.Model.Parent = DigFolder
+	end)
+end
+
+local lastDig: { [Player]: number } = {}
+Remotes.Dig.OnServerEvent:Connect(function(player, target)
+	local data = Data[player]
+	if not data or typeof(target) ~= "Instance" then
+		return
+	end
+	local spot = digSpots[target]
+	if not spot or not spot.Alive then
+		return
+	end
+	local char = player.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	if not (char and root and root:IsA("BasePart") and hum and hum.Health > 0) or not char:FindFirstChild("Shovel") then
+		return
+	end
+	local now = os.clock()
+	if now - (lastDig[player] or 0) < Settings.MineCooldown * 0.8 then
+		return
+	end
+	if (root.Position - spot.Pos).Magnitude > Settings.MineRange + 6 then
+		return
+	end
+	if spot.Dimension and spot.Dimension > Shared.DimensionsUnlocked(data.Level) then
+		return
+	end
+	if data.Gems >= Shared.BestBackpack(data).Capacity then
+		Remotes.Effect:FireClient(player, "full")
+		return
+	end
+	lastDig[player] = now
+	local power = math.max(1, math.floor(Shared.BestPickaxe(data).Power * Shared.LevelPower(data.Level)))
+	spot.Health -= power
+	Remotes.Effect:FireClient(player, "dig", spot.Pos, power)
+	if spot.Health <= 0 then
+		digOut(spot, player, data)
+	else
+		updateDigBar(spot)
+	end
+end)
+
+--------------------------------------------------------------------------------
+-- DIAMOND BOSSES (one in every zone and every dimension)
+--   They float around their arena and shoot crystal shards at you (jump away!).
+--   Hit them with your pickaxe. Beating one gives lots of coins, XP and
+--   💠 Boss Shards, the money for the special pickaxes in the dimensions.
+--------------------------------------------------------------------------------
+type Boss = {
+	Model: Model,
+	Name: string,
+	Color: Color3,
+	Center: Vector3,
+	Radius: number,
+	Zone: number,
+	Dimension: number?,
+	Pos: Vector3,
+	Target: Vector3,
+	Health: number,
+	MaxHealth: number,
+	Alive: boolean,
+	Removed: boolean,
+	Hitters: { [Player]: number },
+	NextAttack: number,
+	Fill: Frame,
+	Label: TextLabel,
+}
+local bosses: { [Model]: Boss } = {}
+local BOSS_NAMES = { "Emerald Guardian", "Amethyst Titan", "Ruby Overlord", "Sapphire Giant", "Void Diamond" }
+local BOSS_HOVER = 7 -- how high bosses float
+
+local function updateBossBar(boss: Boss)
+	local frac = math.clamp(boss.Health / boss.MaxHealth, 0, 1)
+	boss.Fill.Size = UDim2.fromScale(frac, 1)
+	boss.Label.Text = "❤️ " .. Format(math.max(boss.Health, 0)) .. " / " .. Format(boss.MaxHealth)
+end
+
+-- A giant gem with an angry face, a crown of crystals and shards flying around it
+local function buildBossModel(name: string, color: Color3, accent: Color3, shiny: boolean): (Model, Frame, TextLabel)
+	local m = Instance.new("Model")
+	m.Name = "DiamondBoss"
+	local function gemPart(props)
+		props.CanCollide = false
+		props.CanQuery = true
+		props.Parent = m
+		return P(props)
+	end
+	local body = gemPart({ Name = "Body", Size = Vector3.new(5, 5.4, 5), Color = color, Material = Enum.Material.Glass, Transparency = 0.05, Reflectance = 0.3 })
+	gemPart({ Name = "Top", Size = Vector3.one * 4.3, CFrame = CFrame.new(0, 2.7, 0) * CORNER_UP, Color = color:Lerp(Color3.new(1, 1, 1), 0.15), Material = Enum.Material.Glass, Transparency = 0.05, Reflectance = 0.3 })
+	gemPart({ Name = "Bottom", Size = Vector3.one * 4.3, CFrame = CFrame.new(0, -2.7, 0) * CORNER_UP, Color = color:Lerp(Color3.new(0, 0, 0), 0.2), Material = Enum.Material.Glass, Transparency = 0.05, Reflectance = 0.3 })
+	gemPart({ Name = "Core", Size = Vector3.new(2.6, 3.4, 2.6), Color = color:Lerp(Color3.new(1, 1, 1), 0.5), Material = if shiny then Enum.Material.Neon else Enum.Material.Glass, Transparency = if shiny then 0.2 else 0.4 })
+	for k = 0, 4 do
+		local a = k / 5 * math.pi * 2
+		gemPart({
+			Name = "Crown",
+			Size = Vector3.new(0.8, 2.4, 0.8),
+			CFrame = CFrame.new(math.cos(a) * 1.4, 5.4, math.sin(a) * 1.4) * CFrame.Angles(0, -a, 0) * CFrame.Angles(0, 0, rad(-18)),
+			Color = accent,
+			Material = Enum.Material.Glass,
+			Reflectance = 0.3,
+		})
+	end
+	-- the angry face (on the -Z side, the front)
+	for _, side in ipairs({ -1, 1 }) do
+		gemPart({ Name = "Eye", Shape = Enum.PartType.Ball, Size = Vector3.one * 1.15, CFrame = CFrame.new(1.05 * side, 0.7, -2.45), Color = Color3.fromRGB(255, 250, 235), Material = Enum.Material.Neon })
+		gemPart({ Name = "Pupil", Shape = Enum.PartType.Ball, Size = Vector3.one * 0.5, CFrame = CFrame.new(0.95 * side, 0.6, -2.95), Color = Color3.fromRGB(25, 20, 30) })
+		gemPart({ Name = "Brow", Size = Vector3.new(1.5, 0.32, 0.4), CFrame = CFrame.new(1.05 * side, 1.55, -2.6) * CFrame.Angles(0, 0, rad(-20 * side)), Color = color:Lerp(Color3.new(0, 0, 0), 0.55) })
+	end
+	gemPart({ Name = "Mouth", Size = Vector3.new(1.8, 0.35, 0.3), CFrame = CFrame.new(0, -0.95, -2.55), Color = Color3.fromRGB(30, 22, 34) })
+	-- little shards that fly around it
+	for k = 0, 3 do
+		local a = k / 4 * math.pi * 2
+		gemPart({
+			Name = "Shard",
+			Size = Vector3.new(0.9, 1.8, 0.9),
+			CFrame = CFrame.new(math.cos(a) * 5.2, math.sin(a * 2) * 0.8, math.sin(a) * 5.2) * CFrame.Angles(rad(30), a, rad(20)),
+			Color = accent,
+			Material = Enum.Material.Glass,
+			Reflectance = 0.3,
+		})
+	end
+	light(body, color, 22, if shiny then 2 else 1)
+	m.PrimaryPart = body
+	-- a big health bar with the boss's name
+	local bb = Instance.new("BillboardGui")
+	bb.Name = "BossBar"
+	bb.Size = UDim2.fromOffset(260, 56)
+	bb.StudsOffset = Vector3.new(0, 8, 0)
+	bb.AlwaysOnTop = true
+	bb.LightInfluence = 0
+	bb.MaxDistance = 120
+	local title = Instance.new("TextLabel")
+	title.BackgroundTransparency = 1
+	title.Size = UDim2.fromScale(1, 0.45)
+	title.Font = Enum.Font.FredokaOne
+	title.TextScaled = true
+	title.TextColor3 = accent:Lerp(Color3.new(1, 1, 1), 0.5)
+	title.Text = "👑 " .. name
+	title.Parent = bb
+	local titleStroke = Instance.new("UIStroke")
+	titleStroke.Thickness = 2
+	titleStroke.Parent = title
+	local back = Instance.new("Frame")
+	back.Position = UDim2.fromScale(0, 0.5)
+	back.Size = UDim2.fromScale(1, 0.5)
+	back.BackgroundColor3 = Color3.fromRGB(28, 20, 26)
+	back.BackgroundTransparency = 0.1
+	back.Parent = bb
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0.5, 0)
+	corner.Parent = back
+	local fill = Instance.new("Frame")
+	fill.Size = UDim2.fromScale(1, 1)
+	fill.BackgroundColor3 = Color3.fromRGB(235, 70, 80)
+	fill.Parent = back
+	corner:Clone().Parent = fill
+	local label = Instance.new("TextLabel")
+	label.BackgroundTransparency = 1
+	label.Size = UDim2.fromScale(1, 0.9)
+	label.Font = Enum.Font.GothamBold
+	label.TextScaled = true
+	label.TextColor3 = Color3.new(1, 1, 1)
+	label.Parent = back
+	local labelStroke = Instance.new("UIStroke")
+	labelStroke.Thickness = 1.5
+	labelStroke.Parent = label
+	bb.Parent = body
+	return m, fill, label
+end
+
+-- The arena: a stone floor and a low wall with an opening, braziers and a sign
+local function buildArenaRing(center: Vector3, radius: number, entrance: Vector3, name: string, accent: Color3, parent: Instance)
+	local arena = model("BossArena", parent)
+	arena.ModelStreamingMode = Enum.ModelStreamingMode.Persistent
+	local upright = CFrame.Angles(0, 0, rad(90))
+	local stone = Color3.fromRGB(116, 110, 104)
+	P({ Name = "Floor", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.6, radius * 2, radius * 2), CFrame = CFrame.new(center + Vector3.new(0, 0.1, 0)) * upright, Color = stone, Material = Enum.Material.Slate, Parent = arena })
+	P({ Name = "FloorRing", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.66, radius * 1.3, radius * 1.3), CFrame = CFrame.new(center + Vector3.new(0, 0.12, 0)) * upright, Color = stone:Lerp(Color3.new(0, 0, 0), 0.2), Material = Enum.Material.Cobblestone, Parent = arena })
+	P({ Name = "FloorCenter", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.7, radius * 0.6, radius * 0.6), CFrame = CFrame.new(center + Vector3.new(0, 0.14, 0)) * upright, Color = accent:Lerp(stone, 0.6), Material = Enum.Material.Slate, Parent = arena })
+	local segments = 22
+	local openAngle = math.atan2(entrance.Z - center.Z, entrance.X - center.X)
+	for k = 0, segments - 1 do
+		local a = (k + 0.5) / segments * math.pi * 2
+		local diff = math.abs((a - openAngle + math.pi) % (math.pi * 2) - math.pi)
+		if diff > 0.3 then
+			local pos = center + Vector3.new(math.cos(a) * radius, 0, math.sin(a) * radius)
+			P({
+				Name = "Wall",
+				Size = Vector3.new(1.6, 3.2, radius * 2 * math.pi / segments + 0.3),
+				CFrame = CFrame.new(pos + Vector3.new(0, 1.6, 0)) * CFrame.Angles(0, -a, 0),
+				Color = stone:Lerp(Color3.new(0, 0, 0), rng:NextNumber(0, 0.2)),
+				Material = Enum.Material.Cobblestone,
+				Parent = arena,
+			})
+			if k % 4 == 0 then
+				P({ Name = "Pillar", Size = Vector3.new(2.4, 6, 2.4), CFrame = CFrame.new(pos + Vector3.new(0, 3, 0)) * CFrame.Angles(0, -a, 0), Color = stone, Material = Enum.Material.Slate, Parent = arena })
+				local bowl = P({ Name = "Brazier", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.8, 2.2, 2.2), CFrame = CFrame.new(pos + Vector3.new(0, 6.4, 0)) * upright, Color = Color3.fromRGB(40, 38, 40), Material = Enum.Material.Metal, Parent = arena })
+				local fire = Instance.new("Fire")
+				fire.Size = 3
+				fire.Heat = 7
+				fire.Color = Color3.fromRGB(255, 150, 60)
+				fire.SecondaryColor = Color3.fromRGB(255, 220, 120)
+				fire.Parent = bowl
+				light(bowl, Color3.fromRGB(255, 170, 90), 18, 1)
+			end
+		end
+	end
+	-- sign over the entrance
+	local signPos = center + Vector3.new(math.cos(openAngle), 0, math.sin(openAngle)) * (radius + 1)
+	for _, offset in ipairs({ -3.5, 3.5 }) do
+		local side = Vector3.new(-math.sin(openAngle), 0, math.cos(openAngle)) * offset
+		P({ Name = "GatePost", Size = Vector3.new(1.4, 9, 1.4), CFrame = CFrame.new(signPos + side + Vector3.new(0, 4.5, 0)), Color = Color3.fromRGB(80, 64, 50), Material = Enum.Material.Wood, Parent = arena })
+	end
+	local anchor = P({ Name = "SignAnchor", Size = Vector3.one, CFrame = CFrame.new(signPos + Vector3.new(0, 9, 0)), Transparency = 1, CanCollide = false, Parent = arena })
+	fancySign(anchor, "⚔️", "BOSS: " .. string.upper(name), "Beat it for 💠 Boss Shards!", Color3.fromRGB(235, 90, 90), 13, 2.5)
+	return arena
+end
+
+local function randomArenaPoint(boss: Boss): Vector3
+	local a = rng:NextNumber(0, math.pi * 2)
+	local r = rng:NextNumber(0, boss.Radius - 7)
+	return boss.Center + Vector3.new(math.cos(a) * r, BOSS_HOVER, math.sin(a) * r)
+end
+
+local function createBoss(center: Vector3, radius: number, zoneIndex: number, d: number?, entrance: Vector3, parent: Instance): Boss
+	local name, color, accent, health, shiny
+	if d then
+		local dim = Shared.GetDimension(d)
+		name = dim.Name .. " Diamond"
+		color, accent = dim.CrystalColors[1], dim.Accent
+		health = dim.Health * Settings.BossHealth
+		shiny = dim.Shiny
+	else
+		local zone = Shared.Zones[zoneIndex]
+		name = BOSS_NAMES[zoneIndex] or (zone.Name .. " Boss")
+		color, accent = zone.CrystalColors[1], zone.Accent
+		health = zone.Health * Settings.BossHealth
+		shiny = false
+	end
+	buildArenaRing(center, radius, entrance, name, accent, parent)
+	local m, fill, label = buildBossModel(name, color, accent, shiny)
+	local start = center + Vector3.new(0, BOSS_HOVER, 0)
+	m:PivotTo(CFrame.new(start))
+	m:SetAttribute("IsBoss", true)
+	m:SetAttribute("Radius", 4)
+	m:SetAttribute("BossPos", start)
+	m:SetAttribute("ArenaCenter", center)
+	m:SetAttribute("ArenaRadius", radius)
+	m:AddTag("Boss")
+	m.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
+	m.Parent = BossFolder
+	local boss: Boss = {
+		Model = m,
+		Name = name,
+		Color = color,
+		Center = center,
+		Radius = radius,
+		Zone = zoneIndex,
+		Dimension = d,
+		Pos = start,
+		Target = start,
+		Health = health,
+		MaxHealth = health,
+		Alive = true,
+		Removed = false,
+		Hitters = {},
+		NextAttack = 0,
+		Fill = fill,
+		Label = label,
+	}
+	bosses[m] = boss
+	updateBossBar(boss)
+	return boss
+end
+
+buildBossArena = function(i: number)
+	local center = bossArenaCenter(i)
+	createBoss(center, BOSS_ARENA_RADIUS, i, nil, Vector3.new(0, 0, center.Z), MapFolder)
+end
+
+local function removeBoss(boss: Boss)
+	boss.Removed = true
+	boss.Alive = false
+	bosses[boss.Model] = nil
+	boss.Model:Destroy()
+end
+
+local function defeatBoss(boss: Boss)
+	boss.Alive = false
+	Remotes.Effect:FireAllClients("bossdefeat", boss.Pos, boss.Color)
+	local level = boss.Dimension or boss.Zone
+	for player, damage in pairs(boss.Hitters) do
+		local data = Data[player]
+		-- you need to have helped a bit to get the reward
+		if data and player.Parent and damage >= boss.MaxHealth * 0.05 then
+			local coins = Shared.RewardCoins(data, Settings.BossRewardCrystals)
+			local shards = Shared.BossShards(boss.Zone, boss.Dimension)
+			local xp = Settings.BossXP * level
+			data.Coins += coins
+			data.Shards += shards
+			data.BossesBeaten += 1
+			Remotes.Effect:FireClient(player, "bossreward", boss.Name, coins, shards, xp)
+			addXP(player, data, xp)
+			sync(player)
+		end
+	end
+	boss.Hitters = {}
+	boss.Model.Parent = ServerStorage
+	task.delay(Settings.BossRespawnTime, function()
+		if boss.Removed then
+			return
+		end
+		boss.Health = boss.MaxHealth
+		updateBossBar(boss)
+		boss.Pos = boss.Center + Vector3.new(0, BOSS_HOVER, 0)
+		boss.Target = boss.Pos
+		boss.Model:SetAttribute("BossPos", boss.Pos)
+		boss.Alive = true
+		boss.Model.Parent = BossFolder
+		Remotes.Effect:FireAllClients("bossspawn", boss.Pos, boss.Color)
+	end)
+end
+
+local function hitBoss(player: Player, boss: Boss, power: number)
+	boss.Health -= power
+	boss.Hitters[player] = (boss.Hitters[player] or 0) + power
+	Remotes.Effect:FireClient(player, "bosshit", boss.Pos, power, boss.Model)
+	if boss.Health <= 0 then
+		defeatBoss(boss)
+	else
+		updateBossBar(boss)
+	end
+end
+
+-- Bosses float around and attack whoever is in their arena
+local function playersInArena(boss: Boss): { Player }
+	local list = {}
+	for _, player in ipairs(Players:GetPlayers()) do
+		local char = player.Character
+		local root = char and char:FindFirstChild("HumanoidRootPart")
+		local hum = char and char:FindFirstChildOfClass("Humanoid")
+		if root and root:IsA("BasePart") and hum and hum.Health > 0 then
+			local flat = Vector3.new(root.Position.X - boss.Center.X, 0, root.Position.Z - boss.Center.Z)
+			if flat.Magnitude < boss.Radius + 1 and math.abs(root.Position.Y - boss.Center.Y) < 25 then
+				table.insert(list, player)
+			end
+		end
+	end
+	return list
+end
+
+task.spawn(function()
+	while true do
+		local dt = task.wait(0.1)
+		for _, boss in pairs(bosses) do
+			if boss.Alive then
+				local fighters = playersInArena(boss)
+				local to = boss.Target - boss.Pos
+				if to.Magnitude < 1 then
+					boss.Target = randomArenaPoint(boss)
+				else
+					local speed = if #fighters > 0 then 9 else 4
+					boss.Pos += to.Unit * math.min(to.Magnitude, speed * dt)
+				end
+				boss.Model:SetAttribute("BossPos", boss.Pos)
+				local now = os.clock()
+				if now >= boss.NextAttack then
+					if #fighters > 0 then
+						boss.NextAttack = now + Settings.BossAttackEvery
+						local victim = fighters[rng:NextInteger(1, #fighters)]
+						local root = (victim.Character :: Model):FindFirstChild("HumanoidRootPart") :: BasePart
+						local spot = root.Position - Vector3.new(0, 2.6, 0)
+						Remotes.Effect:FireAllClients("bossattack", boss.Model, boss.Pos, spot)
+						task.delay(0.8, function()
+							if not boss.Alive then
+								return
+							end
+							for _, player in ipairs(fighters) do
+								local char = player.Character
+								local r = char and char:FindFirstChild("HumanoidRootPart")
+								local hum = char and char:FindFirstChildOfClass("Humanoid")
+								if r and r:IsA("BasePart") and hum and (r.Position - Vector3.new(0, 2.6, 0) - spot).Magnitude < 5 then
+									hum:TakeDamage(Settings.BossDamage)
+									Remotes.Effect:FireClient(player, "bossouch")
+								end
+							end
+						end)
+					else
+						boss.NextAttack = now + 1
+					end
+				end
+			end
+		end
+	end
+end)
+
+--------------------------------------------------------------------------------
+-- DIMENSIONS (valleys between mountains, built when someone visits them)
 --------------------------------------------------------------------------------
 type Arena = {
 	Number: number,
@@ -2844,6 +3727,8 @@ type Arena = {
 	SellPad: Model,
 	Infos: { CrystalInfo },
 	Reserved: { { pos: Vector3, radius: number } },
+	DigSpots: { DigSpot },
+	Boss: Boss?,
 	EmptySince: number?,
 	Alive: boolean,
 }
@@ -2950,10 +3835,56 @@ local function decorateArena(dim, center: Vector3)
 		local r = rng:NextNumber(78, 83)
 		Decor.Rock(center + Vector3.new(math.cos(a) * r, 0, math.sin(a) * r), rng:NextNumber(1.4, 2.4), rock, Enum.Material.Slate)
 	end
-	-- little floating rocks under and around the island
-	for _ = 1, 8 do
-		local pos = edge(90, 120) + Vector3.new(0, rng:NextNumber(-40, 10), 0)
-		Decor.FloatingRock(pos, rng:NextNumber(1, 2), colors[rng:NextInteger(1, #colors)])
+end
+
+-- What the mountains around each kind of dimension are made of (and if they have snow on top)
+local MOUNTAINS = {
+	candy = { Enum.Material.Limestone, false },
+	pillars = { Enum.Material.Basalt, false },
+	cyber = { Enum.Material.Slate, false },
+	coral = { Enum.Material.Sandstone, false },
+	trees = { Enum.Material.Rock, true },
+	cactus = { Enum.Material.Sandstone, false },
+	mushrooms = { Enum.Material.Mud, false },
+	clouds = { Enum.Material.Snow, true },
+	spires = { Enum.Material.Basalt, false },
+	rainbow = { Enum.Material.Limestone, true },
+	ice = { Enum.Material.Glacier, true },
+	lava = { Enum.Material.Basalt, false },
+}
+
+-- A mountain made of terrain: big round rock at the bottom, getting thinner to the top
+local function mountain(base: Vector3, radius: number, height: number, material: Enum.Material, snow: boolean)
+	local steps = 6
+	for k = 0, steps - 1 do
+		local t = k / (steps - 1)
+		local r = radius * (1 - t * 0.78)
+		Terrain:FillBall(base + Vector3.new(rng:NextNumber(-2, 2), t * height - r * 0.35, rng:NextNumber(-2, 2)), r, material)
+	end
+	if snow then
+		Terrain:FillBall(base + Vector3.new(0, height * 0.97, 0), radius * 0.3, Enum.Material.Snow)
+	end
+end
+
+local function buildMountains(center: Vector3, theme)
+	local info = MOUNTAINS[theme.Decor] or { Enum.Material.Rock, true }
+	for ring, settings in ipairs({ { 12, 135, 165, 30, 46, 55, 95 }, { 10, 205, 235, 50, 70, 100, 150 } }) do
+		local count = settings[1]
+		for k = 0, count - 1 do
+			local a = (k + rng:NextNumber(-0.3, 0.3)) / count * math.pi * 2 + ring * 0.3
+			local dist = rng:NextNumber(settings[2], settings[3])
+			local base = center + Vector3.new(math.cos(a) * dist, -2, math.sin(a) * dist)
+			mountain(base, rng:NextNumber(settings[4], settings[5]), rng:NextNumber(settings[6], settings[7]), info[1], info[2])
+		end
+	end
+end
+
+local function clearMountains(center: Vector3)
+	-- in four pieces, so no single terrain change is too big
+	for _, x in ipairs({ -140, 140 }) do
+		for _, z in ipairs({ -140, 140 }) do
+			Terrain:FillBlock(CFrame.new(center + Vector3.new(x, 70, z)), Vector3.new(280, 240, 280), Enum.Material.Air)
+		end
 	end
 end
 
@@ -2988,28 +3919,17 @@ local function buildArena(d: number): Arena?
 	decorShiny = dim.Shiny
 	local upright = CFrame.Angles(0, 0, rad(90))
 
-	-- the floating island
+	-- a big valley with mountains all around
 	P({
 		Name = "Ground",
 		Shape = Enum.PartType.Cylinder,
-		Size = Vector3.new(8, 170, 170),
+		Size = Vector3.new(8, 540, 540),
 		CFrame = CFrame.new(center - Vector3.new(0, 4, 0)) * upright,
 		Color = dim.Ground,
 		Material = theme.GroundMaterial,
 	})
-	local y = center.Y - 8
-	for _, layer in ipairs({ { 10, 150 }, { 12, 112 }, { 14, 74 }, { 16, 36 } }) do
-		P({
-			Name = "Underside",
-			Shape = Enum.PartType.Cylinder,
-			Size = Vector3.new(layer[1], layer[2], layer[2]),
-			CFrame = CFrame.new(center.X, y - layer[1] / 2, center.Z) * upright,
-			Color = dim.Rock:Lerp(Color3.new(0, 0, 0), 0.35),
-			Material = Enum.Material.Slate,
-		})
-		y -= layer[1]
-	end
-	-- invisible walls so nobody falls off
+	buildMountains(center, theme)
+	-- invisible walls so nobody walks off
 	for k = 0, 23 do
 		local a = k / 24 * math.pi * 2
 		P({
@@ -3021,16 +3941,18 @@ local function buildArena(d: number): Arena?
 		})
 	end
 
-	-- title floating above the island
-	local titlePart = P({
-		Name = "Title",
-		Size = Vector3.new(1, 1, 1),
-		CFrame = CFrame.new(center + Vector3.new(0, 34, 0)),
-		Transparency = 1,
-		CanCollide = false,
-	})
+	-- a stone sign with the dimension's name, in front of the spawn
+	do
+		local signPos = center + Vector3.new(0, 0, 30)
+		P({ Name = "SignBase", Size = Vector3.new(15, 1.2, 3), CFrame = CFrame.new(signPos + Vector3.new(0, 0.6, 0)), Color = dim.Rock:Lerp(Color3.fromRGB(120, 115, 110), 0.5), Material = Enum.Material.Cobblestone })
+		local plate = P({ Name = "SignStone", Size = Vector3.new(13, 5, 1.2), CFrame = CFrame.new(signPos + Vector3.new(0, 3.7, 0)), Color = dim.Rock:Lerp(Color3.fromRGB(70, 66, 64), 0.6), Material = Enum.Material.Slate })
+		if dim.Shiny then
+			carvedText(plate, Enum.NormalId.Back, "✨ SHINY DIMENSION " .. d .. " ✨", dim.Emoji .. " " .. dim.Name .. "  •  2x gems!", Color3.fromRGB(255, 225, 130))
+		else
+			carvedText(plate, Enum.NormalId.Back, "🌌 DIMENSION " .. d, dim.Emoji .. " " .. dim.Name, dim.Accent:Lerp(Color3.new(1, 1, 1), 0.5))
+		end
+	end
 	if dim.Shiny then
-		sign(titlePart, "✨ SHINY DIMENSION " .. d .. " ✨", dim.Emoji .. " " .. dim.Name .. "  •  2x gems!", Color3.fromRGB(255, 230, 140), 48, 11, 0)
 		-- sparkles in the air (only shiny dimensions sparkle)
 		local air = P({
 			Name = "Sparkles",
@@ -3047,12 +3969,10 @@ local function buildArena(d: number): Arena?
 			Speed = NumberRange.new(0.3, 1),
 			Spread = Vector2.new(180, 180),
 		})
-	else
-		sign(titlePart, "🌌 DIMENSION " .. d, dim.Emoji .. " " .. dim.Name, dim.Accent:Lerp(Color3.new(1, 1, 1), 0.5), 44, 11, 0)
 	end
 
-	-- stone portal back home
-	local homePos = center + Vector3.new(24, 0, 42)
+	-- stone portal back home (step in its circle)
+	local homePos = center + Vector3.new(24, 0, 44)
 	local home = model("HomePortal")
 	local ringCenter = homePos + Vector3.new(0, 6.5, 0)
 	for k = 0, 15 do
@@ -3066,14 +3986,6 @@ local function buildArena(d: number): Arena?
 			Parent = home,
 		})
 	end
-	P({
-		Name = "Base",
-		Size = Vector3.new(12, 1, 4),
-		CFrame = CFrame.new(homePos + Vector3.new(0, 0.5, 0)),
-		Color = Color3.fromRGB(112, 108, 104),
-		Material = Enum.Material.Cobblestone,
-		Parent = home,
-	})
 	local homeSwirl = P({
 		Name = "Swirl",
 		Shape = Enum.PartType.Cylinder,
@@ -3085,14 +3997,19 @@ local function buildArena(d: number): Arena?
 		Parent = home,
 	})
 	light(homeSwirl, Color3.fromRGB(140, 210, 240), 14, 0.8)
-	sign(homeSwirl, "🏠 HOME", "Back to the spawn", Color3.fromRGB(170, 225, 245), 12, 4, 8)
-	local homePrompt = prompt(homeSwirl, "Go Home", "Home Portal", 0)
-	homePrompt.Triggered:Connect(function(player)
-		teleport(player, 0)
-	end)
+	actionCircle(homePos, 5.5, Color3.fromRGB(120, 200, 235), "Home", nil, home)
+	fancySign(homeSwirl, "🏠", "HOME", "Step in to go back", Color3.fromRGB(130, 205, 240), 10, 8)
 
-	local sellPos = center + Vector3.new(-24, 0, 38)
+	-- selling, the special shop and this dimension's egg
+	local sellPos = center + Vector3.new(-24, 0, 40)
 	local sellPad = buildSellPad(sellPos, 14, 1, d)
+	local shopPos = center + Vector3.new(-40, 0, 10)
+	local special = Shared.DimensionPickaxe(d)
+	buildShopCircle(shopPos, 6.5, dim.Accent, "DimShop", d, Shared.BuildPickaxe(special), "💠", "SPECIAL SHOP", "Only in this dimension!", f)
+	local eggId = Shared.DimensionEggId(d)
+	local eggPos = center + Vector3.new(40, 0, 10)
+	buildEggMachine(eggId, eggPos, f)
+	local bossCenter = center + Vector3.new(-24, 0, -32)
 
 	decorateArena(dim, center)
 	decorShiny = false
@@ -3109,11 +4026,17 @@ local function buildArena(d: number): Arena?
 		Infos = {},
 		Reserved = {
 			{ pos = center + Vector3.new(0, 0, 45), radius = 8 },
+			{ pos = center + Vector3.new(0, 0, 30), radius = 9 },
 			{ pos = sellPos, radius = 11 },
 			{ pos = homePos, radius = 9 },
+			{ pos = shopPos, radius = 10 },
+			{ pos = eggPos, radius = 11 },
+			{ pos = bossCenter, radius = 19 },
 		},
+		DigSpots = {},
 		Alive = true,
 	}
+	arena.Boss = createBoss(bossCenter, 15, 0, d, center, f)
 	local spec: CrystalSpec = {
 		Colors = dim.CrystalColors,
 		RockColor = dim.Rock,
@@ -3133,6 +4056,25 @@ local function buildArena(d: number): Arena?
 		info.Model.Parent = crystalFolder
 		table.insert(arena.Infos, info)
 	end
+	-- buried gems on the island
+	local function place(): Vector3?
+		if not arena.Alive then
+			return nil
+		end
+		for _ = 1, 30 do
+			local spot = arenaSpot(arena, nil)
+			if spot and digSpotFree(spot.Position) then
+				return spot.Position
+			end
+		end
+		return nil
+	end
+	for _ = 1, Settings.DigSpotsPerDimension do
+		local spot = buildDigSpot(0, d, dim.Health * Settings.DigHealth, dim.Gems * Settings.DigGems, dim.XP * 2, dim.CrystalColors[rng:NextInteger(1, #dim.CrystalColors)], place, false)
+		if spot then
+			table.insert(arena.DigSpots, spot)
+		end
+	end
 	arenas[d] = arena
 	return arena
 end
@@ -3146,12 +4088,20 @@ local function destroyArena(arena: Arena)
 			info.Model:Destroy()
 		end
 	end
+	for _, spot in ipairs(arena.DigSpots) do
+		removeDigSpot(spot)
+	end
+	if arena.Boss then
+		removeBoss(arena.Boss)
+	end
+	eggMachines[Shared.DimensionEggId(arena.Number)] = nil
 	for k, pad in ipairs(sellPads) do
 		if pad.Model == arena.SellPad then
 			table.remove(sellPads, k)
 			break
 		end
 	end
+	clearMountains(arena.Center)
 	arena.SellPad:Destroy()
 	arena.Walls:Destroy()
 	arena.Folder:Destroy()
@@ -3250,13 +4200,13 @@ local function breakCrystal(info: CrystalInfo)
 	end)
 end
 
+local function minePower(data: PlayerData): number
+	return math.max(1, math.floor(Shared.BestPickaxe(data).Power * Shared.LevelPower(data.Level)))
+end
+
 Remotes.Mine.OnServerEvent:Connect(function(player, crystal)
 	local data = Data[player]
 	if not data or typeof(crystal) ~= "Instance" or not crystal:IsA("Model") then
-		return
-	end
-	local info = crystals[crystal]
-	if not info or not info.Alive or crystal.Parent ~= info.Folder then
 		return
 	end
 	local now = os.clock()
@@ -3266,7 +4216,25 @@ Remotes.Mine.OnServerEvent:Connect(function(player, crystal)
 	local char = player.Character
 	local root = char and char:FindFirstChild("HumanoidRootPart")
 	local hum = char and char:FindFirstChildOfClass("Humanoid")
-	if not (root and root:IsA("BasePart") and hum and hum.Health > 0) then
+	if not (char and root and root:IsA("BasePart") and hum and hum.Health > 0) then
+		return
+	end
+	-- you need your pickaxe in your hand
+	if not char:FindFirstChild("Pickaxe") then
+		return
+	end
+	-- hitting a boss
+	local boss = bosses[crystal]
+	if boss then
+		local allowed = if boss.Dimension then boss.Dimension <= Shared.DimensionsUnlocked(data.Level) else boss.Zone <= data.Zone
+		if boss.Alive and allowed and (root.Position - boss.Pos).Magnitude <= Settings.MineRange + 10 then
+			lastMine[player] = now
+			hitBoss(player, boss, minePower(data))
+		end
+		return
+	end
+	local info = crystals[crystal]
+	if not info or not info.Alive or crystal.Parent ~= info.Folder then
 		return
 	end
 	if (root.Position - crystal:GetPivot().Position).Magnitude > Settings.MineRange + info.Radius + 6 then
@@ -3278,7 +4246,7 @@ Remotes.Mine.OnServerEvent:Connect(function(player, crystal)
 	if info.Dimension and info.Dimension > Shared.DimensionsUnlocked(data.Level) then
 		return
 	end
-	local capacity = Shared.Backpacks[data.Backpack].Capacity
+	local capacity = Shared.BestBackpack(data).Capacity
 	if data.Gems >= capacity then
 		if now - (lastFullWarning[player] or 0) > 1 then
 			lastFullWarning[player] = now
@@ -3288,13 +4256,18 @@ Remotes.Mine.OnServerEvent:Connect(function(player, crystal)
 	end
 	lastMine[player] = now
 
-	local power = math.max(1, math.floor(Shared.Pickaxes[data.Pickaxe].Power * Shared.LevelPower(data.Level)))
+	local power = minePower(data)
 	info.Health -= power
 	Remotes.Effect:FireClient(player, "hit", info.Main.Position, power, crystal)
 
 	if info.Health <= 0 then
-		local gems = math.floor(info.Gems * Shared.GemMultiplier(data.Pets))
-		local added = math.min(gems, capacity - data.Gems)
+		local stats = gadgetStats(data)
+		local gems = info.Gems * Shared.GemMultiplier(data.Pets) * stats.Gems
+		local lucky = stats.Lucky > 0 and rng:NextNumber() < stats.Lucky
+		if lucky then
+			gems *= 10
+		end
+		local added = math.min(math.floor(gems), capacity - data.Gems)
 		local xp = info.XP
 		local golden = info.Golden
 		local color = info.Color
@@ -3312,6 +4285,9 @@ Remotes.Mine.OnServerEvent:Connect(function(player, crystal)
 			questProgress(player, data, "golden", 1)
 			notify(player, "✨ GOLDEN CRYSTAL! +" .. Format(added) .. " gems!", "gold")
 		end
+		if lucky then
+			notify(player, "🍀 LUCKY! 10x gems: +" .. Format(added) .. "!", "good")
+		end
 		sync(player)
 	else
 		updateBar(info)
@@ -3323,6 +4299,7 @@ end)
 --------------------------------------------------------------------------------
 type ObbyRun = { Started: number, Checkpoint: number }
 local obbyRuns: { [Player]: ObbyRun } = {}
+local lastObbyEnd: { [Player]: number } = {}
 
 local function obbySpawn(run: ObbyRun): CFrame
 	local checkpoint = Obby.Checkpoints[run.Checkpoint]
@@ -3338,6 +4315,7 @@ startObby = function(player: Player)
 	leaveDimension(player)
 	obbyRuns[player] = { Started = os.clock(), Checkpoint = 0 }
 	player:SetAttribute("ObbyStart", Workspace:GetServerTimeNow())
+	applyMovement(player, true) -- no gadgets in the obby, that would be cheating!
 	char:PivotTo(Obby.Start)
 	Remotes.Effect:FireClient(player, "obbystart")
 end
@@ -3348,7 +4326,9 @@ endObby = function(player: Player, finished: boolean)
 		return
 	end
 	obbyRuns[player] = nil
+	lastObbyEnd[player] = os.clock()
 	player:SetAttribute("ObbyStart", nil)
+	applyMovement(player)
 	local data = Data[player]
 	if not finished or not data then
 		return
@@ -3478,6 +4458,13 @@ task.spawn(function()
 		for player, data in pairs(Data) do
 			local char = player.Character
 			local root = char and char:FindFirstChild("HumanoidRootPart")
+			-- the obby circle at the spawn starts the obby
+			if root and root:IsA("BasePart") and not obbyRuns[player] and os.clock() - (lastObbyEnd[player] or -math.huge) > 3 then
+				local flat = Vector3.new(root.Position.X - HUB.Obby.X, 0, root.Position.Z - HUB.Obby.Z)
+				if flat.Magnitude < 6 and math.abs(root.Position.Y - HUB.Obby.Y) < 8 then
+					startObby(player)
+				end
+			end
 			if data.Gems > 0 and root and root:IsA("BasePart") then
 				local pad = padUnder(root.Position)
 				if pad then
@@ -3607,6 +4594,54 @@ Remotes.Buy.OnServerEvent:Connect(function(player, category, index)
 		data.Pets[index] = 1
 		refreshPets(player)
 		notify(player, "🐾 " .. def.Name .. " joined your team!", "good")
+	elseif category == "Gadget" then
+		local def = Shared.Gadgets[index]
+		if not def then
+			return
+		end
+		if table.find(data.Gadgets, index) then
+			notify(player, "You already have the " .. def.Name .. "!", "info")
+			return
+		end
+		if not spend(player, data, def.Price) then
+			return
+		end
+		table.insert(data.Gadgets, index)
+		applyMovement(player, obbyRuns[player] ~= nil)
+		notify(player, "⚡ You got the " .. def.Name .. "! " .. Shared.GadgetText(def), "good")
+	elseif category == "DimPickaxe" or category == "DimBackpack" then
+		-- special things can only be bought in their own dimension
+		if dimensionOf[player] ~= index or index > Shared.DimensionsUnlocked(data.Level) then
+			notify(player, "You can only buy this in dimension " .. index .. "!", "bad")
+			return
+		end
+		if category == "DimPickaxe" then
+			local def = Shared.DimensionPickaxe(index)
+			if def.Power <= Shared.BestPickaxe(data).Power then
+				notify(player, "You already have a pickaxe this good!", "info")
+				return
+			end
+			if data.Shards < def.Shards then
+				notify(player, "You need 💠 " .. (def.Shards - data.Shards) .. " more Boss Shards! Beat bosses to get them.", "bad")
+				return
+			end
+			data.Shards -= def.Shards
+			data.DimPickaxe = index
+			givePickaxe(player)
+			notify(player, "⛏️ You got the " .. def.Name .. "!", "gold")
+		else
+			local def = Shared.DimensionBackpack(index)
+			if def.Capacity <= Shared.BestBackpack(data).Capacity then
+				notify(player, "You already have a backpack this big!", "info")
+				return
+			end
+			if not spend(player, data, def.Price) then
+				return
+			end
+			data.DimBackpack = index
+			updateBackpack(player)
+			notify(player, "🎒 You got the " .. def.Name .. "!", "gold")
+		end
 	elseif category == "Zone" then
 		unlockZone(player, index)
 		return
@@ -3614,6 +4649,22 @@ Remotes.Buy.OnServerEvent:Connect(function(player, category, index)
 		return
 	end
 	Remotes.Effect:FireClient(player, "bought", category, index)
+	sync(player)
+end)
+
+-- Turn a gadget on or off
+Remotes.GadgetToggle.OnServerEvent:Connect(function(player, index)
+	local data = Data[player]
+	if not data or type(index) ~= "number" or not table.find(data.Gadgets, index) then
+		return
+	end
+	local k = table.find(data.GadgetsOff, index)
+	if k then
+		table.remove(data.GadgetsOff, k)
+	else
+		table.insert(data.GadgetsOff, index)
+	end
+	applyMovement(player, obbyRuns[player] ~= nil)
 	sync(player)
 end)
 
@@ -3625,12 +4676,15 @@ local lastHatch: { [Player]: number } = {}
 
 hatchEgg = function(player: Player, eggIndex: number, amount: number)
 	local data = Data[player]
-	local egg = Shared.Eggs[eggIndex]
+	local egg = Shared.GetEgg(eggIndex)
 	if not data or not egg then
 		return
 	end
-	if data.Zone < egg.Zone then
+	if egg.Zone and data.Zone < egg.Zone then
 		notify(player, "🔒 Unlock " .. Shared.Zones[egg.Zone].Name .. " first!", "bad")
+		return
+	end
+	if egg.Dimension and egg.Dimension > Shared.DimensionsUnlocked(data.Level) then
 		return
 	end
 	local now = os.clock()
@@ -3669,7 +4723,7 @@ hatchEgg = function(player: Player, eggIndex: number, amount: number)
 
 	-- tell everyone in the server about super rare pets
 	for _, result in ipairs(results) do
-		local def = Shared.Pets[result.Pet]
+		local def = Shared.GetPet(result.Pet)
 		if Shared.RarityRank(def.Rarity) >= Shared.RarityRank("Legendary") then
 			for _, other in ipairs(Players:GetPlayers()) do
 				notify(other, "🎉 " .. player.DisplayName .. " hatched a " .. string.upper(def.Rarity) .. " " .. def.Name .. "!", "gold")
@@ -3677,6 +4731,20 @@ hatchEgg = function(player: Player, eggIndex: number, amount: number)
 		end
 	end
 end
+
+-- The egg window asks to hatch (you have to stand at the egg machine)
+Remotes.Hatch.OnServerEvent:Connect(function(player, eggId, amount)
+	if type(eggId) ~= "number" or (amount ~= 1 and amount ~= 3) then
+		return
+	end
+	local pos = eggMachines[eggId]
+	local char = player.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if not pos or not (root and root:IsA("BasePart")) or (root.Position - pos).Magnitude > 18 then
+		return
+	end
+	hatchEgg(player, eggId, amount)
+end)
 
 --------------------------------------------------------------------------------
 -- REBIRTH
@@ -3697,6 +4765,8 @@ Remotes.Rebirth.OnServerEvent:Connect(function(player)
 	data.Pickaxe = 1
 	data.Backpack = 1
 	data.Zone = 1
+	data.DimPickaxe = 0
+	data.DimBackpack = 0
 	givePickaxe(player)
 	updateBackpack(player)
 	teleport(player, 0)
@@ -3748,6 +4818,8 @@ local function onCharacter(player: Player, char: Model)
 		return
 	end
 	hum.WalkSpeed = Settings.WalkSpeed
+	hum.UseJumpPower = false
+	hum.JumpHeight = Settings.JumpHeight
 	local started = os.clock()
 	while (not Data[player] or not char:IsDescendantOf(Workspace)) and player.Parent and os.clock() - started < 20 do
 		task.wait(0.1)
@@ -3760,7 +4832,9 @@ local function onCharacter(player: Player, char: Model)
 	else
 		char:WaitForChild("Torso", 5)
 	end
-	givePickaxe(player)
+	givePickaxe(player, true)
+	giveShovel(player)
+	applyMovement(player)
 	updateBackpack(player)
 	refreshPets(player)
 end
@@ -3817,6 +4891,11 @@ Players.PlayerRemoving:Connect(function(player)
 	dimensionOf[player] = nil
 	lastGoSell[player] = nil
 	lastLockedPad[player] = nil
+	lastDig[player] = nil
+	lastObbyEnd[player] = nil
+	for _, boss in pairs(bosses) do
+		boss.Hitters[player] = nil
+	end
 	sessionStart[player] = nil
 	giftsClaimed[player] = nil
 end)
@@ -3858,6 +4937,9 @@ end
 buildObby()
 buildWalls()
 spawnCrystals()
+for i = 1, #Shared.Zones do
+	spawnZoneDigSpots(i)
+end
 
 Players.CharacterAutoLoads = true
 Players.PlayerAdded:Connect(onPlayerAdded)

@@ -21,6 +21,9 @@
         "Client": {
           "$path": "src/client/Client.client.luau"
         }
+      },
+      "$properties": {
+        "EnableMouseLockOption": false
       }
     },
     "Lighting": {
@@ -41,7 +44,7 @@
         "$className": "Terrain",
         "$properties": {
           "Decoration": true,
-          "GrassLength": 0.6
+          "GrassLength": 0.25
         }
       }
     }
