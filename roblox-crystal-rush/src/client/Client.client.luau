@@ -26,7 +26,7 @@ local Format = Shared.Format
 
 local RemoteFolder = ReplicatedStorage:WaitForChild("Remotes")
 local R: { [string]: RemoteEvent } = {}
-for _, name in ipairs({ "Mine", "Buy", "Rebirth", "Teleport", "Sync", "Notify", "Effect", "OpenMenu", "EnterDimension", "GoSell", "Claim", "Dig", "Hatch", "GadgetToggle", "Swing" }) do
+for _, name in ipairs({ "Mine", "Buy", "Rebirth", "Teleport", "Sync", "Notify", "Effect", "OpenMenu", "EnterDimension", "GoSell", "Claim", "Dig", "Hatch", "GadgetToggle", "Swing", "Spin" }) do
 	R[name] = RemoteFolder:WaitForChild(name) :: RemoteEvent
 end
 
@@ -72,6 +72,10 @@ type State = {
 	ObbyBest: number,
 	ObbyWait: number, -- seconds until the obby pays out again
 	DimObbyWaits: { [string]: number }?, -- ["3"] = seconds until dimension 3's obby pays again
+	WheelWait: number, -- seconds until the next free spin of the lucky wheel
+	BoostWait: number, -- seconds of 2x gems left
+	ChestsFound: number,
+	MeteorsBroken: number,
 	DimPets: { { Index: number, Count: number } }, -- pets from dimension eggs
 	Shards: number, -- 💠 Boss Shards
 	BossesBeaten: number,
@@ -3257,6 +3261,9 @@ do
 		elseif action == "DimShop" and type(arg) == "number" then
 			openDimShop(arg)
 			window = "DimShop"
+		elseif action == "Wheel" then
+			openWindow("Wheel", true)
+			window = "Wheel"
 		elseif action == "Home" then
 			R.Teleport:FireServer(0)
 		end
@@ -3553,7 +3560,8 @@ do
 			return
 		end
 		local s = state
-		local isBoss = m:GetAttribute("IsBoss") == true
+		-- bosses and meteors pay coins, so a full backpack doesn't stop you
+		local isBoss = m:GetAttribute("IsBoss") == true or m:GetAttribute("Meteor") == true
 		if s and s.Gems >= s.Capacity and not isBoss then
 			backpackFull()
 			freeSwing(tool, now)
@@ -4080,6 +4088,303 @@ task.spawn(function()
 		task.wait(0.3)
 	end
 end)
+
+--------------------------------------------------------------------------------
+-- FUN EXTRAS: 🎡 LUCKY WHEEL, 🦘 BOUNCE PADS, 🎁 TREASURE CHESTS, 🌠 METEORS
+--------------------------------------------------------------------------------
+do
+	local prizes = Shared.WheelPrizes
+	local wheelWindow = makeWindow("Wheel", "🎡 LUCKY WHEEL", 660, 470, COLORS.Gold)
+	label({
+		Text = "Spin for a free prize! You get a new spin every " .. math.floor(Settings.WheelCooldown / 60) .. " minutes.",
+		Size = UDim2.new(1, 0, 0, 26),
+		TextColor3 = Color3.fromRGB(235, 230, 215),
+		Stroke = 0,
+		Parent = wheelWindow.Body,
+	})
+	-- 8 prize tiles in a ring: the top row goes right, the bottom row comes back
+	local tiles: { { Frame: Frame, Light: Frame } } = {}
+	for k, prize in ipairs(prizes) do
+		local row = if k <= 4 then 0 else 1
+		local col = if k <= 4 then k - 1 else 8 - k
+		local frame = new("Frame", {
+			Name = "Prize" .. k,
+			Size = UDim2.fromOffset(142, 118),
+			Position = UDim2.fromOffset(8 + col * 156, 40 + row * 132),
+			BackgroundColor3 = WHITE,
+			Parent = wheelWindow.Body,
+		})
+		round(frame, 16)
+		outline(frame, 3)
+		gradient(frame, { prize.Color:Lerp(WHITE, 0.2), prize.Color:Lerp(Color3.new(0, 0, 0), 0.4) })
+		label({ Text = prize.Text, Size = UDim2.new(1, -12, 0, 56), Position = UDim2.fromOffset(6, 12), TextWrapped = true, Parent = frame })
+		label({ Text = "🎲 " .. string.format("%g", prize.Chance) .. "%", Size = UDim2.new(1, -12, 0, 24), Position = UDim2.fromOffset(6, 80), TextColor3 = Color3.fromRGB(255, 245, 200), Parent = frame })
+		local glow = new("Frame", { Name = "Light", Size = UDim2.fromScale(1, 1), BackgroundColor3 = WHITE, BackgroundTransparency = 1, ZIndex = 3, Parent = frame })
+		round(glow, 16)
+		tiles[k] = { Frame = frame, Light = glow }
+	end
+	-- Spinning: is it turning right now? Angle: how far the big wheel at the spawn has turned
+	local W: { Spinning: boolean, Angle: number, Model: Model?, Base: CFrame? } = { Spinning = false, Angle = 0, Model = nil, Base = nil }
+	local _, spinLabel, spinGrad = button({
+		Size = UDim2.fromOffset(360, 66),
+		Position = UDim2.new(0.5, 0, 1, -4),
+		AnchorPoint = Vector2.new(0.5, 1),
+		Text = "🎡 SPIN!",
+		Colors = COLORS.Green,
+		Radius = 18,
+		Parent = wheelWindow.Body,
+		OnClick = function()
+			local s = state
+			if W.Spinning or not s then
+				return
+			end
+			if s.WheelWait - (os.clock() - syncedAt) > 0 then
+				toast("⏳ The wheel needs a little rest. Come back soon!", "info")
+				return
+			end
+			W.Spinning = true
+			R.Spin:FireServer()
+			task.delay(4, function()
+				W.Spinning = false -- just in case the server didn't answer
+			end)
+		end,
+	})
+
+	local function wheelWait(): number
+		local s = state
+		return if s then math.max(0, s.WheelWait - (os.clock() - syncedAt)) else 0
+	end
+	local function refreshWheel()
+		if W.Spinning then
+			spinLabel.Text = "🎡 Spinning..."
+			setColors(spinGrad, COLORS.Gold)
+			return
+		end
+		local wait = wheelWait()
+		spinLabel.Text = if wait > 0 then "⏳ Next spin in " .. clockText(wait) else "🎡 SPIN! (FREE)"
+		setColors(spinGrad, if wait > 0 then COLORS.Gray else COLORS.Green)
+	end
+	wheelWindow.OnOpen = refreshWheel
+
+	-- the big wheel at the spawn turns too
+	local function worldWheel(): (Model?, CFrame?)
+		local current = W.Model
+		if not (current and current.Parent) then
+			local map = Workspace:FindFirstChild("Map")
+			local found = map and map:FindFirstChild("LuckyWheel", true)
+			local m = found and found:FindFirstChild("Wheel")
+			if m and m:IsA("Model") then
+				W.Model, W.Base = m, m:GetPivot()
+			end
+		end
+		return W.Model, W.Base
+	end
+
+	local function playWheel(index: number, text: string)
+		W.Spinning = true
+		refreshWheel()
+		-- turn the big wheel so the prize's slice ends up under the pointer
+		local m, base = worldWheel()
+		local sliceAngle = (index - 1) / #prizes * math.pi * 2
+		local startAngle = W.Angle
+		local finalAngle = startAngle - 4 * math.pi - ((startAngle + sliceAngle) % (math.pi * 2))
+		W.Angle = finalAngle
+		local steps = 2 * #prizes + index - 1
+		local started = os.clock()
+		local duration = 3.2
+		local connection: RBXScriptConnection
+		connection = RunService.RenderStepped:Connect(function()
+			local t = math.clamp((os.clock() - started) / duration, 0, 1)
+			local eased = 1 - (1 - t) ^ 3
+			if m and base and m.Parent then
+				placeModel(m, base * CFrame.Angles(startAngle + (finalAngle - startAngle) * eased, 0, 0))
+			end
+			-- the light runs around the tiles and slows down
+			local at = math.floor(eased * steps + 0.5) % #prizes + 1
+			for k, tile in ipairs(tiles) do
+				tile.Light.BackgroundTransparency = if k == at then 0.45 else 1
+			end
+			if t >= 1 then
+				connection:Disconnect()
+			end
+		end)
+		task.spawn(function()
+			local last = -1
+			while os.clock() - started < duration do
+				local eased = 1 - (1 - math.clamp((os.clock() - started) / duration, 0, 1)) ^ 3
+				local at = math.floor(eased * steps + 0.5)
+				if at ~= last then
+					last = at
+					playSound("Click", 1.4, 0.35)
+				end
+				task.wait()
+			end
+			W.Spinning = false
+			refreshWheel()
+			local prize = prizes[index]
+			showBanner("🎡 YOU WON: " .. text .. "!", prize.Color:Lerp(WHITE, 0.3))
+			toast("🎡 " .. text .. "!", "gold")
+			local position = rootPosition()
+			if prize.Crystals and position then
+				flyIcons(position, "💰", coinsPill, coinsPop, if prize.Crystals >= 300 then 16 else 8)
+			end
+			celebrate(if prize.Chance <= 3 then 12 else 7, 1)
+		end)
+	end
+
+	-- Side panel: wheel timer and the 2x gems boost
+	do
+		local side = gui:FindFirstChild("SidePanel")
+		if side and side:IsA("Frame") then
+			side.Size = UDim2.fromOffset(240, 560)
+		end
+		local wheelPill = new("Frame", { Name = "WheelInfo", Size = UDim2.fromOffset(240, 40), BackgroundColor3 = WHITE, LayoutOrder = 6, Parent = side })
+		round(wheelPill, 14)
+		outline(wheelPill, 3)
+		local wheelGrad = gradient(wheelPill, COLORS.Gold)
+		local wheelText = label({ Text = "", Size = UDim2.new(1, -20, 0.62, 0), Position = UDim2.fromScale(0.5, 0.5), AnchorPoint = Vector2.new(0.5, 0.5), Parent = wheelPill })
+		local gemBoostPill = new("Frame", { Name = "BoostInfo", Size = UDim2.fromOffset(240, 40), BackgroundColor3 = WHITE, LayoutOrder = 7, Visible = false, Parent = side })
+		round(gemBoostPill, 14)
+		outline(gemBoostPill, 3)
+		gradient(gemBoostPill, COLORS.Purple)
+		local gemBoostText = label({ Text = "", Size = UDim2.new(1, -20, 0.62, 0), Position = UDim2.fromScale(0.5, 0.5), AnchorPoint = Vector2.new(0.5, 0.5), Parent = gemBoostPill })
+		task.spawn(function()
+			while true do
+				if state then
+					local wait = wheelWait()
+					wheelText.Text = if wait > 0 then "🎡 Next spin in " .. clockText(wait) else "🎡 Lucky Wheel spin ready!"
+					setColors(wheelGrad, if wait > 0 then COLORS.Gray else COLORS.Gold)
+					local boost = math.max(0, ((state :: State).BoostWait or 0) - (os.clock() - syncedAt))
+					gemBoostPill.Visible = boost > 0
+					gemBoostText.Text = "⚡ 2x GEMS  " .. clockText(boost)
+					if openName == "Wheel" then
+						refreshWheel()
+					end
+				end
+				task.wait(0.5)
+			end
+		end)
+	end
+
+	R.Effect.OnClientEvent:Connect(function(kind, a, b)
+		if kind == "wheel" and type(a) == "number" and type(b) == "string" then
+			playWheel(a, b)
+		end
+	end)
+end
+
+do
+	-- 🦘 Bounce pads: land on one and it throws you up high
+	local lastBounce = 0
+	RunService.Heartbeat:Connect(function()
+		local root = myRoot()
+		if not root or os.clock() - lastBounce < 0.5 then
+			return
+		end
+		for _, pad in ipairs(CollectionService:GetTagged("BouncePad")) do
+			if pad:IsA("BasePart") and pad.Parent then
+				local flat = Vector3.new(root.Position.X - pad.Position.X, 0, root.Position.Z - pad.Position.Z)
+				local up = root.Position.Y - pad.Position.Y
+				if flat.Magnitude < pad.Size.Y / 2 + 0.5 and up > 0 and up < 4.5 and root.AssemblyLinearVelocity.Y < 5 then
+					lastBounce = os.clock()
+					local hum = root.Parent and root.Parent:FindFirstChildOfClass("Humanoid")
+					if hum then
+						hum:ChangeState(Enum.HumanoidStateType.Jumping)
+					end
+					local v = root.AssemblyLinearVelocity
+					local power = pad:GetAttribute("Power")
+					root.AssemblyLinearVelocity = Vector3.new(v.X, if type(power) == "number" then power else 110, v.Z)
+					playSound("Hit", 1.8, 0.5)
+					burst(pad.Position + Vector3.new(0, 0.5, 0), Color3.fromRGB(130, 215, 255), 12, 14, 0.5)
+					break
+				end
+			end
+		end
+	end)
+
+end
+
+do
+	-- 🌠 a fireball falls from the sky, then BOOM
+	local function meteorFall(position: Vector3)
+		local root = myRoot()
+		if root and (root.Position - position).Magnitude > 700 then
+			return -- too far away to see
+		end
+		local ball = new("Part", {
+			Name = "Fireball",
+			Shape = Enum.PartType.Ball,
+			Size = Vector3.one * 7,
+			Color = Color3.fromRGB(255, 140, 50),
+			Material = Enum.Material.Neon,
+			Anchored = true,
+			CanCollide = false,
+			CastShadow = false,
+			CFrame = CFrame.new(position + Vector3.new(140, 300, 70)),
+			Parent = FxFolder,
+		})
+		new("ParticleEmitter", {
+			Texture = "rbxasset://textures/particles/fire_main.dds",
+			Color = ColorSequence.new(Color3.fromRGB(255, 200, 80), Color3.fromRGB(255, 70, 30)),
+			LightEmission = 1,
+			Size = NumberSequence.new(6, 0),
+			Lifetime = NumberRange.new(0.5, 1),
+			Speed = NumberRange.new(2, 6),
+			Rate = 60,
+			Parent = ball,
+		})
+		new("PointLight", { Color = Color3.fromRGB(255, 150, 60), Range = 40, Brightness = 3, Parent = ball })
+		tween(ball, 1.6, { CFrame = CFrame.new(position + Vector3.new(0, 2, 0)) }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+		task.delay(1.6, function()
+			ball:Destroy()
+			playSound("Boom", 0.8, 0.8)
+			for _, color in ipairs({ Color3.fromRGB(255, 160, 60), Color3.fromRGB(255, 230, 120), Color3.fromRGB(90, 80, 75) }) do
+				burst(position + Vector3.new(0, 2, 0), color, 30, 45, 1.2)
+			end
+			-- a glowing pillar so you can find it
+			local pillar = new("Part", {
+				Name = "MeteorBeacon",
+				Shape = Enum.PartType.Cylinder,
+				Size = Vector3.new(120, 3, 3),
+				CFrame = CFrame.new(position + Vector3.new(0, 60, 0)) * CFrame.Angles(0, 0, math.rad(90)),
+				Color = Color3.fromRGB(255, 200, 90),
+				Material = Enum.Material.Neon,
+				Transparency = 0.6,
+				Anchored = true,
+				CanCollide = false,
+				CastShadow = false,
+				Parent = FxFolder,
+			})
+			tween(pillar, 25, { Transparency = 1 })
+			Debris:AddItem(pillar, 25)
+		end)
+	end
+
+	R.Effect.OnClientEvent:Connect(function(kind, a, b)
+		if kind == "chest" then
+			local position, coins = a :: Vector3, b :: number
+			for _, color in ipairs({ Color3.fromRGB(255, 215, 90), Color3.fromRGB(255, 250, 220) }) do
+				burst(position + Vector3.new(0, 2, 0), color, 20, 25, 0.7)
+			end
+			flyIcons(position, "💰", coinsPill, coinsPop, 10)
+			showBanner("🎁 TREASURE CHEST! +💰 " .. Format(coins), Color3.fromRGB(255, 215, 110))
+			chime(6, 1.2)
+		elseif kind == "meteor" then
+			local position, where = a :: Vector3, b :: string
+			meteorFall(position)
+			showBanner("🌠 A METEOR CRASHED IN " .. string.upper(where) .. "!", Color3.fromRGB(255, 170, 80))
+			toast("🌠 Find the glowing meteor and mine it for a huge reward!", "gold")
+			playSound("Boom", 0.5, 0.4)
+		elseif kind == "meteorwin" then
+			local position, coins = a :: Vector3, b :: number
+			flyIcons(position, "💰", coinsPill, coinsPop, 16)
+			showBanner("🌠 METEOR SMASHED! +💰 " .. Format(coins), Color3.fromRGB(255, 200, 90))
+			celebrate(12, 0.9)
+		elseif kind == "meteorgone" then
+			toast("🌠 The meteor cooled down and crumbled away.", "info")
+		end
+	end)
+end
 
 -- Once a second: timers on the right side, the gifts window and the obby signs
 task.spawn(function()

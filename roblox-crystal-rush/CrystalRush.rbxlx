@@ -39,7 +39,7 @@ Shared.Settings = {
 	MineRange = 24, -- how close (in studs) you must be to mine a crystal
 	MineCooldown = 0.2, -- seconds between pickaxe swings
 	CrystalsPerZone = 16, -- how many crystals each zone has
-	CrystalRespawnTime = 7, -- seconds until a mined crystal grows back
+	CrystalRespawnTime = 9, -- seconds until a mined crystal grows back
 	GiantChance = 0.15, -- chance that a crystal is a GIANT crystal
 	GiantHealth = 5, -- giant crystals have 5x more health...
 	GiantGems = 6, -- ...and give 6x more gems
@@ -53,14 +53,15 @@ Shared.Settings = {
 	LevelsPerZone = 3, -- you can't level up past level 1 in the first zone; every zone you unlock lets you go 3 levels higher (the last zone has no limit)
 	LevelPowerBonus = 0.1, -- every level makes your pickaxe 10% stronger
 	DimensionCrystals = 14, -- crystals on each dimension island
-	DimensionHealth = 5, -- crystal health in dimension 1...
-	DimensionHealthGrowth = 1.8, -- ...and x1.8 for every dimension after that
+	DimensionHealth = 8, -- crystal health in dimension 1...
+	DimensionHealthGrowth = 1.9, -- ...and x1.9 for every dimension after that
 	DimensionGems = 4, -- gems per crystal in dimension 1...
 	DimensionGemGrowth = 2, -- ...and x2 for every dimension after that
 	MaxOpenDimensions = 8, -- how many dimension islands can exist at the same time
 	DimensionCloseTime = 30, -- seconds an empty dimension stays before it disappears
 	ShinyEvery = 5, -- every 5th dimension is a SHINY dimension (glowing, and 2x gems)
 	DimensionPetGrowth = 1.45, -- pets from dimension eggs get 45% stronger every dimension
+	MythicEggPrice = 12, -- the Mythic egg in every dimension costs 12x the normal one
 	DimensionPickaxePower = 6, -- the special pickaxe in dimension 1 has power 6...
 	DimensionPickaxeGrowth = 2.1, -- ...and x2.1 in every dimension after that
 	DimensionPickaxeShards = 5, -- it costs 5 Boss Shards in dimension 1...
@@ -88,19 +89,31 @@ Shared.Settings = {
 	DigRespawnTime = 15, -- seconds until a new buried gem appears
 
 	-- Diamond bosses (one in every zone and every dimension)
-	BossHealth = 80, -- a boss has as much health as 80 crystals
+	BossHealth = 120, -- a boss has as much health as 120 crystals
 	BossRewardCrystals = 150, -- beating it gives as many coins as 150 crystals
 	BossXP = 40, -- ...and this much XP (x the zone number)
 	BossRespawnTime = 75, -- seconds until the boss comes back
-	BossDamage = 8, -- how much a boss attack hurts (you have 100 health)
-	BossAttackEvery = 2.6, -- seconds between boss attacks
+	BossDamage = 12, -- how much a boss attack hurts (you have 100 health)
+	BossAttackEvery = 2.2, -- seconds between boss attacks
+
+	-- Fun extras
+	WheelCooldown = 600, -- seconds between free spins of the 🎡 Lucky Wheel at the spawn
+	ChestsPerZone = 2, -- hidden 🎁 treasure chests in every zone (and 1 in every dimension)
+	ChestCrystals = 60, -- a chest has up to as many coins as mining 60 crystals
+	ChestRespawnTime = 90, -- seconds until an opened chest shows up somewhere else
+	MeteorEvery = 240, -- about every 4 minutes a 🌠 meteor crashes down near a player
+	MeteorHealth = 40, -- a meteor is as tough as 40 crystals...
+	MeteorRewardCrystals = 150, -- ...and gives as many coins as 150 crystals
+	MeteorShards = 2, -- plus this many 💠 Boss Shards
+	MeteorLifetime = 150, -- seconds before an unmined meteor fades away
+	BouncePower = 110, -- how high the 🦘 bounce pads throw you
 
 	-- Background music. Paste song IDs from the Toolbox (Audio tab) here, like
 	-- MusicIds = { 1234567890, 9876543210 }. With none, a little music box plays.
 	MusicIds = {},
 	MusicVolume = 0.35,
 	RebirthBoost = 0.5, -- every rebirth gives +50% coins when selling
-	RebirthBaseCost = 75000, -- coins needed for your first rebirth
+	RebirthBaseCost = 150000, -- coins needed for your first rebirth
 	RebirthCostGrowth = 2.5, -- each rebirth costs this many times more
 	SaveData = true, -- save progress (needs the game to be published)
 	StudioStartCoins = 0, -- testing tip: set to 1000000 to get coins in Studio
@@ -150,7 +163,7 @@ Shared.Zones = {
 		Name = "Sunny Meadow",
 		Emoji = "🌻",
 		Price = 0,
-		Health = 4,
+		Health = 6,
 		Gems = 3,
 		-- emerald, citrine, aquamarine
 		CrystalColors = { Color3.fromRGB(30, 150, 80), Color3.fromRGB(215, 160, 40), Color3.fromRGB(70, 170, 195) },
@@ -163,8 +176,8 @@ Shared.Zones = {
 	{
 		Name = "Crystal Caves",
 		Emoji = "💜",
-		Price = 2000,
-		Health = 40,
+		Price = 4000,
+		Health = 60,
 		Gems = 30,
 		-- amethyst, rose quartz, sapphire
 		CrystalColors = { Color3.fromRGB(120, 60, 180), Color3.fromRGB(205, 120, 160), Color3.fromRGB(45, 80, 190) },
@@ -180,8 +193,8 @@ Shared.Zones = {
 	{
 		Name = "Lava Volcano",
 		Emoji = "🌋",
-		Price = 40000,
-		Health = 400,
+		Price = 80000,
+		Health = 600,
 		Gems = 300,
 		-- ruby, fire opal, garnet
 		CrystalColors = { Color3.fromRGB(175, 20, 40), Color3.fromRGB(220, 90, 30), Color3.fromRGB(120, 18, 35) },
@@ -197,8 +210,8 @@ Shared.Zones = {
 	{
 		Name = "Frozen Peaks",
 		Emoji = "❄️",
-		Price = 750000,
-		Health = 4000,
+		Price = 1500000,
+		Health = 6000,
 		Gems = 3000,
 		-- diamond, ice, sapphire
 		CrystalColors = { Color3.fromRGB(215, 232, 245), Color3.fromRGB(125, 185, 225), Color3.fromRGB(55, 100, 200) },
@@ -213,8 +226,8 @@ Shared.Zones = {
 	{
 		Name = "Galaxy Isles",
 		Emoji = "🌌",
-		Price = 15000000,
-		Health = 40000,
+		Price = 30000000,
+		Health = 60000,
 		Gems = 30000,
 		-- alexandrite, tanzanite, opal
 		CrystalColors = { Color3.fromRGB(105, 55, 160), Color3.fromRGB(70, 65, 190), Color3.fromRGB(185, 215, 230) },
@@ -493,14 +506,14 @@ end
 --------------------------------------------------------------------------------
 Shared.Pickaxes = {
 	{ Name = "Wooden Pickaxe", Power = 1, Price = 0, Color = Color3.fromRGB(150, 105, 60), Material = Enum.Material.Wood },
-	{ Name = "Stone Pickaxe", Power = 2, Price = 60, Color = Color3.fromRGB(140, 140, 150), Material = Enum.Material.Slate },
-	{ Name = "Copper Pickaxe", Power = 4, Price = 300, Color = Color3.fromRGB(215, 125, 70), Material = Enum.Material.Metal, Shine = 0.1 },
-	{ Name = "Iron Pickaxe", Power = 10, Price = 1200, Color = Color3.fromRGB(200, 205, 215), Material = Enum.Material.Metal, Shine = 0.15 },
-	{ Name = "Gold Pickaxe", Power = 25, Price = 6000, Color = Color3.fromRGB(255, 200, 50), Material = Enum.Material.Metal, Shine = 0.25 },
+	{ Name = "Stone Pickaxe", Power = 2, Price = 100, Color = Color3.fromRGB(140, 140, 150), Material = Enum.Material.Slate },
+	{ Name = "Copper Pickaxe", Power = 4, Price = 500, Color = Color3.fromRGB(215, 125, 70), Material = Enum.Material.Metal, Shine = 0.1 },
+	{ Name = "Iron Pickaxe", Power = 10, Price = 2000, Color = Color3.fromRGB(200, 205, 215), Material = Enum.Material.Metal, Shine = 0.15 },
+	{ Name = "Gold Pickaxe", Power = 25, Price = 10000, Color = Color3.fromRGB(255, 200, 50), Material = Enum.Material.Metal, Shine = 0.25 },
 	{
 		Name = "Diamond Pickaxe",
 		Power = 60,
-		Price = 25000,
+		Price = 40000,
 		Color = Color3.fromRGB(120, 230, 255),
 		Material = Enum.Material.Glass,
 		Glow = Color3.fromRGB(150, 240, 255),
@@ -508,7 +521,7 @@ Shared.Pickaxes = {
 	{
 		Name = "Ruby Pickaxe",
 		Power = 150,
-		Price = 120000,
+		Price = 200000,
 		Color = Color3.fromRGB(230, 40, 70),
 		Material = Enum.Material.Glass,
 		Glow = Color3.fromRGB(255, 80, 110),
@@ -516,7 +529,7 @@ Shared.Pickaxes = {
 	{
 		Name = "Lava Pickaxe",
 		Power = 400,
-		Price = 600000,
+		Price = 1000000,
 		Color = Color3.fromRGB(70, 45, 40),
 		Material = Enum.Material.CrackedLava,
 		Glow = Color3.fromRGB(255, 120, 30),
@@ -524,7 +537,7 @@ Shared.Pickaxes = {
 	{
 		Name = "Frost Pickaxe",
 		Power = 1200,
-		Price = 3000000,
+		Price = 5000000,
 		Color = Color3.fromRGB(170, 225, 255),
 		Material = Enum.Material.Ice,
 		Glow = Color3.fromRGB(190, 240, 255),
@@ -532,7 +545,7 @@ Shared.Pickaxes = {
 	{
 		Name = "Galaxy Pickaxe",
 		Power = 4000,
-		Price = 15000000,
+		Price = 25000000,
 		Color = Color3.fromRGB(120, 60, 220),
 		Material = Enum.Material.Glass,
 		Glow = Color3.fromRGB(220, 120, 255),
@@ -540,7 +553,7 @@ Shared.Pickaxes = {
 	{
 		Name = "Rainbow Pickaxe",
 		Power = 12000,
-		Price = 100000000,
+		Price = 160000000,
 		Color = Color3.fromRGB(255, 90, 200),
 		Material = Enum.Material.ForceField,
 		Glow = Color3.fromRGB(255, 255, 255),
@@ -552,21 +565,21 @@ Shared.Pickaxes = {
 --------------------------------------------------------------------------------
 Shared.Backpacks = {
 	{ Name = "Pouch", Capacity = 30, Price = 0, Color = Color3.fromRGB(150, 110, 70), Accent = Color3.fromRGB(115, 80, 50) },
-	{ Name = "Sack", Capacity = 75, Price = 40, Color = Color3.fromRGB(205, 175, 125), Accent = Color3.fromRGB(160, 130, 90) },
-	{ Name = "Backpack", Capacity = 250, Price = 300, Color = Color3.fromRGB(60, 140, 230), Accent = Color3.fromRGB(40, 90, 170) },
-	{ Name = "Big Backpack", Capacity = 800, Price = 1500, Color = Color3.fromRGB(230, 70, 70), Accent = Color3.fromRGB(160, 40, 40) },
-	{ Name = "Explorer Pack", Capacity = 2500, Price = 7500, Color = Color3.fromRGB(95, 175, 80), Accent = Color3.fromRGB(60, 110, 50) },
-	{ Name = "Crystal Pack", Capacity = 8000, Price = 30000, Color = Color3.fromRGB(150, 90, 230), Accent = Color3.fromRGB(100, 50, 170) },
-	{ Name = "Lava Pack", Capacity = 30000, Price = 150000, Color = Color3.fromRGB(65, 45, 45), Accent = Color3.fromRGB(255, 120, 30) },
-	{ Name = "Frost Pack", Capacity = 120000, Price = 700000, Color = Color3.fromRGB(215, 240, 255), Accent = Color3.fromRGB(110, 180, 240) },
-	{ Name = "Galaxy Pack", Capacity = 500000, Price = 3500000, Color = Color3.fromRGB(45, 30, 90), Accent = Color3.fromRGB(180, 90, 255) },
-	{ Name = "Infinity Pack", Capacity = 2500000, Price = 20000000, Color = Color3.fromRGB(255, 215, 80), Accent = Color3.fromRGB(255, 250, 235) },
+	{ Name = "Sack", Capacity = 75, Price = 60, Color = Color3.fromRGB(205, 175, 125), Accent = Color3.fromRGB(160, 130, 90) },
+	{ Name = "Backpack", Capacity = 250, Price = 500, Color = Color3.fromRGB(60, 140, 230), Accent = Color3.fromRGB(40, 90, 170) },
+	{ Name = "Big Backpack", Capacity = 800, Price = 2500, Color = Color3.fromRGB(230, 70, 70), Accent = Color3.fromRGB(160, 40, 40) },
+	{ Name = "Explorer Pack", Capacity = 2500, Price = 12000, Color = Color3.fromRGB(95, 175, 80), Accent = Color3.fromRGB(60, 110, 50) },
+	{ Name = "Crystal Pack", Capacity = 8000, Price = 50000, Color = Color3.fromRGB(150, 90, 230), Accent = Color3.fromRGB(100, 50, 170) },
+	{ Name = "Lava Pack", Capacity = 30000, Price = 250000, Color = Color3.fromRGB(65, 45, 45), Accent = Color3.fromRGB(255, 120, 30) },
+	{ Name = "Frost Pack", Capacity = 120000, Price = 1100000, Color = Color3.fromRGB(215, 240, 255), Accent = Color3.fromRGB(110, 180, 240) },
+	{ Name = "Galaxy Pack", Capacity = 500000, Price = 6000000, Color = Color3.fromRGB(45, 30, 90), Accent = Color3.fromRGB(180, 90, 255) },
+	{ Name = "Infinity Pack", Capacity = 2500000, Price = 32000000, Color = Color3.fromRGB(255, 215, 80), Accent = Color3.fromRGB(255, 250, 235) },
 }
 
 --------------------------------------------------------------------------------
 -- PETS  (Bonus = extra gems. 0.25 means +25% gems)
 --   Kind picks the look: dog, cat, bunny, fox, panda, dragon, unicorn, cosmic,
---                        bee, slime, penguin, phoenix
+--                        bee, slime, penguin, phoenix, owl, turtle, octopus
 --   Price  = pets with a price are sold in the Shop. The rest come from eggs!
 --   Rarity = Common, Uncommon, Rare, Epic, Legendary, Mythic or Secret
 --   Extra looks you can add: Material, Shine (0 to 1), Glow (a color),
@@ -838,10 +851,11 @@ end
 
 --------------------------------------------------------------------------------
 -- SPECIAL THINGS IN EVERY DIMENSION
---   Every dimension has its own shop and its own egg.
+--   Every dimension has its own shop and two eggs.
 --   * a special pickaxe (you pay with 💠 Boss Shards, which you only get from bosses)
 --   * a special backpack (you pay with coins)
 --   * an egg with 4 pets you can only find there
+--   * a MYTHIC egg (much more expensive) with 5 rarer pets, and a tiny chance of a SECRET one
 --   The further you go, the better they get. Shiny dimensions have shiny versions!
 --------------------------------------------------------------------------------
 local METAL = Enum.Material.Metal
@@ -860,87 +874,150 @@ Shared.DimensionItems = {
 	{ Pickaxe = "Magma Pickaxe", Pack = "Magma Pack", Egg = "Magma Egg", Material = Enum.Material.CrackedLava },
 }
 
--- The 4 pets in each dimension's egg (Common, Uncommon, Rare, Legendary)
+-- The pets of each dimension:
+--   1-4 come from the normal egg (Common, Uncommon, Rare, Legendary)
+--   5-9 come from the Mythic egg (Rare, Epic, Legendary, Mythic, Secret)
 Shared.DimensionPets = {
 	{ -- Candy World
 		{ Name = "Gummy Slime", Kind = "slime", Color = RGB(255, 120, 190), Accent = RGB(255, 230, 120) },
 		{ Name = "Lollipop Bunny", Kind = "bunny", Color = RGB(255, 235, 245), Accent = RGB(255, 110, 180) },
 		{ Name = "Candy Unicorn", Kind = "unicorn", Color = RGB(255, 210, 235), Accent = RGB(120, 230, 210) },
 		{ Name = "Sugar Dragon", Kind = "dragon", Color = RGB(255, 150, 210), Accent = RGB(255, 245, 160) },
+		{ Name = "Marshmallow Owl", Kind = "owl", Color = RGB(255, 245, 240), Accent = RGB(255, 150, 200) },
+		{ Name = "Cupcake Turtle", Kind = "turtle", Color = RGB(255, 190, 220), Accent = RGB(150, 95, 60) },
+		{ Name = "Jelly Octopus", Kind = "octopus", Color = RGB(255, 110, 200), Accent = RGB(255, 240, 140) },
+		{ Name = "Cotton Candy Phoenix", Kind = "phoenix", Color = RGB(255, 180, 230), Accent = RGB(150, 220, 255) },
+		{ Name = "Gummy King", Kind = "slime", Color = RGB(255, 215, 80), Accent = RGB(255, 120, 190) },
 	},
 	{ -- Neon City
 		{ Name = "Neon Cat", Kind = "cat", Color = RGB(40, 40, 70), Accent = RGB(0, 235, 255) },
 		{ Name = "Laser Fox", Kind = "fox", Color = RGB(255, 60, 200), Accent = RGB(40, 40, 70) },
 		{ Name = "Pixel Panda", Kind = "panda", Color = RGB(230, 240, 255), Accent = RGB(150, 60, 255) },
 		{ Name = "Neon Phoenix", Kind = "phoenix", Color = RGB(30, 30, 60), Accent = RGB(0, 240, 255) },
+		{ Name = "Neon Owl", Kind = "owl", Color = RGB(30, 30, 60), Accent = RGB(255, 60, 200) },
+		{ Name = "Disco Turtle", Kind = "turtle", Color = RGB(60, 40, 90), Accent = RGB(0, 240, 255) },
+		{ Name = "Synth Octopus", Kind = "octopus", Color = RGB(120, 40, 255), Accent = RGB(0, 255, 200) },
+		{ Name = "Laser Dragon", Kind = "dragon", Color = RGB(25, 25, 45), Accent = RGB(255, 40, 180) },
+		{ Name = "Hologram Cat", Kind = "cosmic", Color = RGB(150, 240, 255), Accent = RGB(255, 90, 230) },
 	},
 	{ -- Cyber Grid
 		{ Name = "Robo Dog", Kind = "dog", Color = RGB(170, 180, 195), Accent = RGB(60, 255, 180), Material = METAL },
 		{ Name = "Cyber Bee", Kind = "bee", Color = RGB(60, 255, 180), Accent = RGB(35, 45, 60) },
 		{ Name = "Glitch Cat", Kind = "cat", Color = RGB(60, 140, 255), Accent = RGB(255, 255, 255) },
 		{ Name = "Mecha Dragon", Kind = "dragon", Color = RGB(120, 130, 150), Accent = RGB(60, 255, 180), Material = METAL },
+		{ Name = "Drone Owl", Kind = "owl", Color = RGB(150, 160, 175), Accent = RGB(60, 255, 180), Material = METAL },
+		{ Name = "Tank Turtle", Kind = "turtle", Color = RGB(110, 120, 135), Accent = RGB(60, 255, 180), Material = METAL },
+		{ Name = "Circuit Octopus", Kind = "octopus", Color = RGB(40, 60, 80), Accent = RGB(60, 255, 180) },
+		{ Name = "Robo Unicorn", Kind = "unicorn", Color = RGB(190, 200, 215), Accent = RGB(60, 255, 180), Material = METAL },
+		{ Name = "Mainframe Phoenix", Kind = "phoenix", Color = RGB(30, 40, 55), Accent = RGB(60, 255, 180) },
 	},
 	{ -- Ocean Reef
 		{ Name = "Bubble Slime", Kind = "slime", Color = RGB(80, 210, 255), Accent = RGB(255, 255, 255) },
 		{ Name = "Reef Penguin", Kind = "penguin", Color = RGB(30, 70, 110), Accent = RGB(255, 130, 110) },
 		{ Name = "Coral Bunny", Kind = "bunny", Color = RGB(255, 140, 130), Accent = RGB(255, 230, 220) },
 		{ Name = "Tide Dragon", Kind = "dragon", Color = RGB(40, 150, 200), Accent = RGB(120, 255, 220) },
+		{ Name = "Puffer Slime", Kind = "slime", Color = RGB(255, 220, 120), Accent = RGB(255, 140, 60) },
+		{ Name = "Sea Turtle", Kind = "turtle", Color = RGB(80, 170, 120), Accent = RGB(230, 200, 140) },
+		{ Name = "Reef Octopus", Kind = "octopus", Color = RGB(255, 110, 90), Accent = RGB(255, 230, 200) },
+		{ Name = "Pearl Unicorn", Kind = "unicorn", Color = RGB(245, 245, 255), Accent = RGB(120, 220, 255) },
+		{ Name = "Kraken King", Kind = "octopus", Color = RGB(40, 30, 90), Accent = RGB(120, 255, 220) },
 	},
 	{ -- Jungle
 		{ Name = "Jungle Bee", Kind = "bee", Color = RGB(180, 230, 60), Accent = RGB(40, 60, 30) },
 		{ Name = "Leaf Fox", Kind = "fox", Color = RGB(90, 170, 60), Accent = RGB(240, 250, 220) },
 		{ Name = "Jungle Panda", Kind = "panda", Color = RGB(240, 245, 225), Accent = RGB(60, 110, 40) },
 		{ Name = "Parrot Phoenix", Kind = "phoenix", Color = RGB(40, 180, 70), Accent = RGB(255, 200, 40) },
+		{ Name = "Jungle Owl", Kind = "owl", Color = RGB(130, 100, 60), Accent = RGB(255, 200, 60) },
+		{ Name = "Moss Turtle", Kind = "turtle", Color = RGB(90, 140, 60), Accent = RGB(200, 230, 120) },
+		{ Name = "Tiger Cat", Kind = "cat", Color = RGB(255, 150, 40), Accent = RGB(40, 30, 25) },
+		{ Name = "Toucan Phoenix", Kind = "phoenix", Color = RGB(35, 35, 40), Accent = RGB(255, 160, 30) },
+		{ Name = "Ancient Jungle Dragon", Kind = "dragon", Color = RGB(40, 110, 50), Accent = RGB(255, 215, 80) },
 	},
 	{ -- Desert Dunes
 		{ Name = "Sand Slime", Kind = "slime", Color = RGB(235, 195, 120), Accent = RGB(200, 140, 70) },
 		{ Name = "Desert Fox", Kind = "fox", Color = RGB(225, 170, 100), Accent = RGB(255, 245, 225) },
 		{ Name = "Pharaoh Cat", Kind = "cat", Color = RGB(60, 50, 45), Accent = RGB(255, 200, 60) },
 		{ Name = "Sun Dragon", Kind = "dragon", Color = RGB(255, 170, 40), Accent = RGB(255, 90, 50) },
+		{ Name = "Scarab Bee", Kind = "bee", Color = RGB(60, 150, 140), Accent = RGB(255, 200, 60) },
+		{ Name = "Dune Turtle", Kind = "turtle", Color = RGB(215, 170, 110), Accent = RGB(150, 100, 60) },
+		{ Name = "Mummy Panda", Kind = "panda", Color = RGB(240, 230, 205), Accent = RGB(120, 100, 80) },
+		{ Name = "Sphinx Cat", Kind = "cosmic", Color = RGB(225, 180, 110), Accent = RGB(80, 170, 255) },
+		{ Name = "Pharaoh Dragon", Kind = "dragon", Color = RGB(255, 200, 60), Accent = RGB(40, 90, 200) },
 	},
 	{ -- Toxic Swamp
 		{ Name = "Toxic Slime", Kind = "slime", Color = RGB(140, 255, 40), Accent = RGB(190, 80, 255) },
 		{ Name = "Swamp Bee", Kind = "bee", Color = RGB(150, 200, 60), Accent = RGB(50, 40, 60) },
 		{ Name = "Bog Panda", Kind = "panda", Color = RGB(200, 220, 160), Accent = RGB(70, 85, 45) },
 		{ Name = "Venom Dragon", Kind = "dragon", Color = RGB(110, 60, 160), Accent = RGB(140, 255, 40) },
+		{ Name = "Swamp Owl", Kind = "owl", Color = RGB(90, 110, 60), Accent = RGB(140, 255, 40) },
+		{ Name = "Sludge Turtle", Kind = "turtle", Color = RGB(100, 120, 50), Accent = RGB(190, 80, 255) },
+		{ Name = "Toxic Octopus", Kind = "octopus", Color = RGB(140, 255, 40), Accent = RGB(110, 60, 160) },
+		{ Name = "Plague Phoenix", Kind = "phoenix", Color = RGB(60, 40, 80), Accent = RGB(140, 255, 40) },
+		{ Name = "Mutant King Slime", Kind = "slime", Color = RGB(190, 80, 255), Accent = RGB(140, 255, 40) },
 	},
 	{ -- Cloud Kingdom
 		{ Name = "Cloud Bunny", Kind = "bunny", Color = RGB(250, 252, 255), Accent = RGB(170, 210, 255) },
 		{ Name = "Sky Penguin", Kind = "penguin", Color = RGB(110, 160, 230), Accent = RGB(255, 215, 90) },
 		{ Name = "Angel Cat", Kind = "cosmic", Color = RGB(255, 252, 245), Accent = RGB(255, 215, 90) },
 		{ Name = "Heaven Unicorn", Kind = "unicorn", Color = RGB(255, 255, 255), Accent = RGB(255, 215, 90) },
+		{ Name = "Sky Owl", Kind = "owl", Color = RGB(235, 245, 255), Accent = RGB(150, 190, 255) },
+		{ Name = "Cloud Turtle", Kind = "turtle", Color = RGB(250, 252, 255), Accent = RGB(255, 215, 90) },
+		{ Name = "Storm Fox", Kind = "fox", Color = RGB(120, 140, 190), Accent = RGB(255, 240, 120) },
+		{ Name = "Thunder Dragon", Kind = "dragon", Color = RGB(90, 110, 170), Accent = RGB(255, 235, 90) },
+		{ Name = "Celestial Pegasus", Kind = "unicorn", Color = RGB(255, 255, 255), Accent = RGB(150, 210, 255) },
 	},
 	{ -- Shadow Realm
 		{ Name = "Shadow Slime", Kind = "slime", Color = RGB(60, 40, 80), Accent = RGB(255, 40, 70) },
 		{ Name = "Night Fox", Kind = "fox", Color = RGB(45, 35, 60), Accent = RGB(255, 60, 90) },
 		{ Name = "Ghost Cat", Kind = "cosmic", Color = RGB(200, 200, 225), Accent = RGB(150, 40, 255) },
 		{ Name = "Shadow Dragon", Kind = "dragon", Color = RGB(30, 20, 40), Accent = RGB(255, 40, 70) },
+		{ Name = "Bat Owl", Kind = "owl", Color = RGB(50, 35, 65), Accent = RGB(255, 40, 70) },
+		{ Name = "Crypt Turtle", Kind = "turtle", Color = RGB(55, 50, 65), Accent = RGB(150, 40, 255) },
+		{ Name = "Phantom Octopus", Kind = "octopus", Color = RGB(200, 200, 230), Accent = RGB(150, 40, 255) },
+		{ Name = "Nightmare Unicorn", Kind = "unicorn", Color = RGB(30, 20, 40), Accent = RGB(255, 40, 70) },
+		{ Name = "Void Phoenix", Kind = "phoenix", Color = RGB(15, 10, 25), Accent = RGB(190, 110, 255) },
 	},
 	{ -- Rainbow Road
 		{ Name = "Rainbow Slime", Kind = "slime", Color = RGB(255, 120, 200), Accent = RGB(120, 220, 255) },
 		{ Name = "Prism Bunny", Kind = "bunny", Color = RGB(250, 250, 255), Accent = RGB(255, 120, 200) },
 		{ Name = "Rainbow Cat", Kind = "cat", Color = RGB(255, 200, 80), Accent = RGB(120, 140, 255) },
 		{ Name = "Rainbow Unicorn", Kind = "unicorn", Color = RGB(255, 245, 255), Accent = RGB(255, 90, 140) },
+		{ Name = "Rainbow Owl", Kind = "owl", Color = RGB(255, 240, 250), Accent = RGB(255, 120, 200) },
+		{ Name = "Prism Turtle", Kind = "turtle", Color = RGB(180, 240, 255), Accent = RGB(255, 150, 90) },
+		{ Name = "Rainbow Octopus", Kind = "octopus", Color = RGB(255, 150, 90), Accent = RGB(140, 120, 255) },
+		{ Name = "Rainbow Dragon", Kind = "dragon", Color = RGB(255, 110, 190), Accent = RGB(120, 240, 255) },
+		{ Name = "Spectrum Cat", Kind = "cosmic", Color = RGB(255, 250, 255), Accent = RGB(255, 120, 200) },
 	},
 	{ -- Crystal Glacier
 		{ Name = "Frost Penguin", Kind = "penguin", Color = RGB(60, 100, 150), Accent = RGB(160, 230, 255) },
 		{ Name = "Glacier Fox", Kind = "fox", Color = RGB(200, 235, 255), Accent = RGB(100, 150, 255) },
 		{ Name = "Crystal Panda", Kind = "panda", Color = RGB(235, 248, 255), Accent = RGB(110, 200, 255), Material = Enum.Material.Glass },
 		{ Name = "Ice Phoenix", Kind = "phoenix", Color = RGB(160, 225, 255), Accent = RGB(230, 250, 255) },
+		{ Name = "Snow Owl", Kind = "owl", Color = RGB(245, 250, 255), Accent = RGB(140, 200, 255) },
+		{ Name = "Glacier Turtle", Kind = "turtle", Color = RGB(180, 225, 250), Accent = RGB(90, 150, 230), Material = Enum.Material.Ice },
+		{ Name = "Frost Octopus", Kind = "octopus", Color = RGB(150, 210, 255), Accent = RGB(240, 250, 255) },
+		{ Name = "Crystal Dragon", Kind = "dragon", Color = RGB(200, 235, 255), Accent = RGB(110, 200, 255), Material = Enum.Material.Glass },
+		{ Name = "Diamond Phoenix", Kind = "phoenix", Color = RGB(230, 248, 255), Accent = RGB(120, 220, 255) },
 	},
 	{ -- Magma Core
 		{ Name = "Ember Slime", Kind = "slime", Color = RGB(255, 110, 30), Accent = RGB(255, 220, 60) },
 		{ Name = "Magma Dog", Kind = "dog", Color = RGB(70, 40, 35), Accent = RGB(255, 110, 30) },
 		{ Name = "Lava Cat", Kind = "cat", Color = RGB(255, 80, 40), Accent = RGB(60, 35, 30) },
 		{ Name = "Magma Phoenix", Kind = "phoenix", Color = RGB(255, 90, 30), Accent = RGB(255, 220, 60) },
+		{ Name = "Ash Owl", Kind = "owl", Color = RGB(70, 60, 60), Accent = RGB(255, 120, 40) },
+		{ Name = "Volcano Turtle", Kind = "turtle", Color = RGB(60, 40, 35), Accent = RGB(255, 110, 30) },
+		{ Name = "Lava Octopus", Kind = "octopus", Color = RGB(255, 90, 30), Accent = RGB(255, 220, 60) },
+		{ Name = "Magma Dragon", Kind = "dragon", Color = RGB(60, 35, 30), Accent = RGB(255, 110, 30) },
+		{ Name = "Core Titan", Kind = "unicorn", Color = RGB(40, 25, 25), Accent = RGB(255, 140, 40) },
 	},
 }
 
 local DIM_PET = 100000 -- dimension pets have numbers like 100000 + dimension x 10 + slot
 local DIM_EGG = 1000 -- dimension eggs have numbers like 1000 + dimension
-local DIM_RARITY = { "Common", "Uncommon", "Rare", "Legendary" }
-local DIM_BONUS = { 0.4, 0.8, 2, 5 } -- pet boosts in dimension 1 (they grow every dimension)
-local DIM_CHANCE = { 60, 30, 9, 1 }
+local MYTHIC_EGG = 200000 -- Mythic dimension eggs have numbers like 200000 + dimension
+local DIM_RARITY = { "Common", "Uncommon", "Rare", "Legendary", "Rare", "Epic", "Legendary", "Mythic", "Secret" }
+local DIM_BONUS = { 0.4, 0.8, 2, 5, 3, 6, 12, 30, 100 } -- pet boosts in dimension 1 (they grow every dimension)
+local DIM_CHANCE = { 60, 30, 9, 1, 50, 32, 14, 3.8, 0.2 }
 
 local function dimensionInfo(d: number)
 	local themes = Shared.DimensionThemes
@@ -964,13 +1041,18 @@ function Shared.GetPet(index: number)
 		return petCache[index]
 	end
 	local d, slot = (index - DIM_PET) // 10, (index - DIM_PET) % 10
-	if index ~= math.floor(index) or d < 1 or d > 100000 or slot < 1 or slot > 4 then
+	if index ~= math.floor(index) or d < 1 or d > 100000 or slot < 1 or slot > #DIM_RARITY then
 		return nil
 	end
 	local dim = Shared.GetDimension(d)
 	local themeIndex, roman, hue = dimensionInfo(d)
 	local template = Shared.DimensionPets[themeIndex][slot]
+	if not template then
+		return nil
+	end
 	local color, accent = shiftHue(template.Color, hue), shiftHue(template.Accent, hue)
+	local mythic = slot >= 5
+	local big = slot == 4 or slot >= 7
 	def = {
 		Name = (if dim.Shiny then "Shiny " else "") .. template.Name .. roman,
 		Kind = template.Kind,
@@ -979,11 +1061,12 @@ function Shared.GetPet(index: number)
 		Color = color,
 		Accent = accent,
 		Material = template.Material,
+		Shine = if mythic then 0.15 else nil,
 		Glow = if slot >= 3 or dim.Shiny then accent else nil,
-		Aura = if slot == 4 then accent else nil,
-		Size = if slot == 4 then 1.2 else nil,
+		Aura = if big then accent else nil,
+		Size = if slot >= 8 then 1.3 elseif big then 1.2 else nil,
 		Dimension = d,
-		From = (if dim.Shiny then "Shiny " else "") .. Shared.DimensionItems[themeIndex].Egg .. roman,
+		From = (if dim.Shiny then "Shiny " else "") .. (if mythic then "Mythic " else "") .. Shared.DimensionItems[themeIndex].Egg .. roman,
 	}
 	petCache[index] = def
 	return def
@@ -999,21 +1082,46 @@ function Shared.GetEgg(id: number)
 	if eggCache[id] then
 		return eggCache[id]
 	end
-	local d = id - DIM_EGG
-	if id ~= math.floor(id) or d < 1 or d > 100000 then
+	if id ~= math.floor(id) then
+		return nil
+	end
+	local mythic = id > MYTHIC_EGG
+	local d = id - (if mythic then MYTHIC_EGG else DIM_EGG)
+	if d < 1 or d > 100000 then
 		return nil
 	end
 	local dim = Shared.GetDimension(d)
 	local themeIndex, roman = dimensionInfo(d)
 	local pets = {}
-	for slot = 1, 4 do
+	for slot = if mythic then 5 else 1, if mythic then 9 else 4 do
 		table.insert(pets, { Index = Shared.DimensionPetIndex(d, slot), Chance = DIM_CHANCE[slot] })
+	end
+	local normalPrice = math.floor(dim.Gems * math.min(40 + 25 * (d - 1), 1000))
+	if mythic then
+		local gold = RGB(255, 205, 90)
+		egg = {
+			Id = id,
+			Name = (if dim.Shiny then "Shiny " else "") .. "Mythic " .. Shared.DimensionItems[themeIndex].Egg .. roman,
+			Dimension = d,
+			Mythic = true,
+			Price = normalPrice * Shared.Settings.MythicEggPrice,
+			Color = dim.CrystalColors[1]:Lerp(RGB(40, 30, 60), 0.35),
+			Cap = gold,
+			Spots = dim.Accent,
+			SpotMaterial = if dim.Shiny then Enum.Material.Neon else Enum.Material.Glass,
+			Pattern = "gems",
+			Stars = dim.Shiny,
+			Shine = 0.3,
+			Pets = pets,
+		}
+		eggCache[id] = egg
+		return egg
 	end
 	egg = {
 		Id = id,
 		Name = (if dim.Shiny then "Shiny " else "") .. Shared.DimensionItems[themeIndex].Egg .. roman,
 		Dimension = d,
-		Price = math.floor(dim.Gems * math.min(40 + 25 * (d - 1), 1000)),
+		Price = normalPrice,
 		Color = dim.Accent:Lerp(Color3.new(1, 1, 1), 0.45),
 		Cap = dim.CrystalColors[1],
 		Spots = dim.CrystalColors[2],
@@ -1027,8 +1135,9 @@ function Shared.GetEgg(id: number)
 	return egg
 end
 
-function Shared.DimensionEggId(d: number): number
-	return DIM_EGG + d
+-- The egg of dimension d (mythic = the expensive Mythic egg)
+function Shared.DimensionEggId(d: number, mythic: boolean?): number
+	return (if mythic then MYTHIC_EGG else DIM_EGG) + d
 end
 
 -- The special pickaxe sold in dimension d (costs 💠 Boss Shards)
@@ -1198,6 +1307,21 @@ Shared.Gifts = {
 	{ Minutes = 30, Crystals = 75 },
 	{ Minutes = 45, Egg = true },
 	{ Minutes = 60, Crystals = 150 },
+}
+
+-- The 🎡 Lucky Wheel at the spawn: one free spin every few minutes.
+--   Crystals = coins (as much as mining that many crystals), Eggs = free eggs,
+--   Shards = 💠 Boss Shards, XP = part of a level, Boost = seconds of 2x gems
+--   Chance = how likely it is (they add up to 100)
+Shared.WheelPrizes = {
+	{ Text = "💰 Coins", Crystals = 25, Chance = 27, Color = RGB(255, 205, 70) },
+	{ Text = "⭐ XP", XP = 0.3, Chance = 13, Color = RGB(120, 200, 255) },
+	{ Text = "🥚 Free Egg", Eggs = 1, Chance = 14, Color = RGB(150, 230, 120) },
+	{ Text = "💰💰 More Coins", Crystals = 80, Chance = 17, Color = RGB(255, 150, 60) },
+	{ Text = "💠 Boss Shards", Shards = 3, Chance = 12, Color = RGB(90, 230, 230) },
+	{ Text = "⚡ 2x Gems (5 min)", Boost = 300, Chance = 12, Color = RGB(190, 120, 255) },
+	{ Text = "🥚🥚 2 Free Eggs", Eggs = 2, Chance = 3, Color = RGB(255, 120, 190) },
+	{ Text = "💎 JACKPOT!", Crystals = 400, Chance = 2, Color = RGB(255, 80, 90) },
 }
 
 -- Daily rewards: come back every day to keep your streak!
@@ -1483,7 +1607,7 @@ function Shared.BuildPet(index: number): Model
 	local dark = Color3.fromRGB(25, 25, 35)
 	local pink = Color3.fromRGB(255, 140, 170)
 	local face = if kind == "slime" then 0.2 else 0 -- slimes are a bit wider
-	local hasFeet = kind ~= "slime" and kind ~= "bee"
+	local hasFeet = kind ~= "slime" and kind ~= "bee" and kind ~= "octopus"
 	-- very dark pets get glowing eyes so you can still see their face
 	local eyeColor, eyeMaterial = dark, Enum.Material.SmoothPlastic
 	if def.Color.R + def.Color.G + def.Color.B < 0.65 and kind ~= "penguin" then
@@ -1736,6 +1860,71 @@ function Shared.BuildPet(index: number): Model
 		flames.Speed = NumberRange.new(1, 2)
 		flames.Rate = 12
 		flames.Parent = body
+	elseif kind == "owl" then
+		-- big round eyes, ear tufts, a little beak and folded wings
+		for _, side in ipairs({ -1, 1 }) do
+			part(model, { Name = "EyeRing", Shape = BALL, Size = Vector3.one * 0.8, CFrame = CFrame.new(0.42 * side, 0.22, -0.62), Color = WHITE:Lerp(def.Accent, 0.15) })
+			part(model, {
+				Name = "Tuft",
+				Size = Vector3.new(0.28, 0.62, 0.28),
+				CFrame = CFrame.new(0.6 * side, 1.05, -0.1) * CFrame.Angles(0, 0, math.rad(-25 * side)),
+				Color = def.Accent,
+			})
+			part(model, {
+				Name = "Wing",
+				Size = Vector3.new(0.22, 1.15, 1.05),
+				CFrame = CFrame.new(1.02 * side, -0.05, 0.2) * CFrame.Angles(math.rad(10), 0, math.rad(12 * side)),
+				Color = def.Accent,
+			})
+		end
+		part(model, { Name = "Beak", Size = Vector3.new(0.26, 0.26, 0.26), CFrame = CFrame.new(0, -0.08, -1.08) * CFrame.Angles(math.rad(45), 0, 0), Color = Color3.fromRGB(255, 195, 60) })
+		part(model, { Name = "Belly", Shape = BALL, Size = Vector3.one * 1.4, CFrame = CFrame.new(0, -0.42, -0.42), Color = def.Color:Lerp(WHITE, 0.5) })
+	elseif kind == "turtle" then
+		-- a round shell with plates, the head sticks out in front
+		local shellPos = Vector3.new(0, 0.3, 0.85)
+		part(model, {
+			Name = "Shell",
+			Shape = BALL,
+			Size = Vector3.one * 2.5,
+			CFrame = CFrame.new(shellPos),
+			Color = def.Accent,
+			Material = bodyMaterial,
+			Reflectance = def.Shine or 0,
+		})
+		part(model, {
+			Name = "ShellRim",
+			Shape = CYLINDER,
+			Size = Vector3.new(0.3, 2.7, 2.7),
+			CFrame = CFrame.new(shellPos + Vector3.new(0, -0.45, 0)) * CFrame.Angles(0, 0, math.rad(90)),
+			Color = def.Accent:Lerp(dark, 0.3),
+		})
+		local plateColor = def.Accent:Lerp(WHITE, 0.3)
+		for i = 0, 6 do
+			local dir = if i == 6 then Vector3.yAxis else Vector3.new(math.cos(i / 6 * math.pi * 2) * 0.7, 0.72, math.sin(i / 6 * math.pi * 2) * 0.7).Unit
+			part(model, {
+				Name = "Plate",
+				Shape = CYLINDER,
+				Size = Vector3.new(0.12, 0.72, 0.72),
+				CFrame = CFrame.lookAt(shellPos + dir * 1.2, shellPos + dir * 3) * CFrame.Angles(0, math.rad(90), 0),
+				Color = plateColor,
+			})
+		end
+		for _, side in ipairs({ -1, 1 }) do
+			part(model, { Name = "BackFoot", Shape = BALL, Size = Vector3.one * 0.6, CFrame = CFrame.new(0.85 * side, -0.95, 1.45), Color = def.Color })
+		end
+		part(model, { Name = "Tail", Shape = BALL, Size = Vector3.one * 0.35, CFrame = CFrame.new(0, -0.35, 2.1), Color = def.Color })
+	elseif kind == "octopus" then
+		-- eight wiggly arms under a round head
+		for i = 0, 7 do
+			local a = (i + 0.5) / 8 * math.pi * 2
+			local out = Vector3.new(math.cos(a), 0, math.sin(a))
+			part(model, { Name = "Arm", Shape = BALL, Size = Vector3.one * 0.55, CFrame = CFrame.new(out * 0.75 + Vector3.new(0, -0.85, 0)), Color = def.Color })
+			part(model, { Name = "Arm", Shape = BALL, Size = Vector3.one * 0.42, CFrame = CFrame.new(out * 1.12 + Vector3.new(0, -1.05, 0)), Color = def.Color })
+			part(model, { Name = "ArmTip", Shape = BALL, Size = Vector3.one * 0.3, CFrame = CFrame.new(out * 1.42 + Vector3.new(0, -0.92, 0)), Color = def.Accent })
+		end
+		for i, pos in ipairs({ Vector3.new(0.35, 0.85, 0.45), Vector3.new(-0.45, 0.7, 0.6), Vector3.new(0.05, 1.0, -0.15) }) do
+			part(model, { Name = "Spot" .. i, Shape = BALL, Size = Vector3.one * (0.42 - i * 0.05), CFrame = CFrame.new(pos), Color = def.Accent })
+		end
 	end
 
 	-- Extra looks for rare pets
@@ -2273,7 +2462,7 @@ do
 	end
 	local folder = Instance.new("Folder")
 	folder.Name = "Remotes"
-	for _, name in ipairs({ "Mine", "Buy", "Rebirth", "Teleport", "Sync", "Notify", "Effect", "OpenMenu", "EnterDimension", "GoSell", "Claim", "Dig", "Hatch", "GadgetToggle", "Swing" }) do
+	for _, name in ipairs({ "Mine", "Buy", "Rebirth", "Teleport", "Sync", "Notify", "Effect", "OpenMenu", "EnterDimension", "GoSell", "Claim", "Dig", "Hatch", "GadgetToggle", "Swing", "Spin" }) do
 		local remote = Instance.new("RemoteEvent")
 		remote.Name = name
 		remote.Parent = folder
@@ -3953,6 +4142,65 @@ local function buildObbyEntrance(pos: Vector3, title: string, dimension: number?
 end
 
 --------------------------------------------------------------------------------
+-- FUN EXTRAS: 🎡 lucky wheel, 🦘 bounce pads, 🎁 treasure chests, 🌠 meteors
+-- (their code is spread over the script; everything is kept in this table)
+--------------------------------------------------------------------------------
+local Fun: { [string]: any } = {}
+Fun.ChestFolder = folder("Chests")
+Fun.Chests = {} -- [chest model] = chest
+
+-- A trampoline. Every player's computer makes it bounce them up high.
+function Fun.BouncePad(pos: Vector3, parent: Instance?): Model
+	local m = model("BouncePad", parent)
+	local upright = CFrame.Angles(0, 0, rad(90))
+	local metal = Color3.fromRGB(70, 75, 90)
+	for k = 0, 5 do
+		local a = k / 6 * math.pi * 2
+		P({ Name = "Leg", Size = Vector3.new(0.45, 1.9, 0.45), CFrame = CFrame.new(pos + Vector3.new(math.cos(a) * 3.3, 0.95, math.sin(a) * 3.3)), Color = metal, Material = Enum.Material.Metal, Parent = m })
+	end
+	P({ Name = "Frame", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.5, 7.8, 7.8), CFrame = CFrame.new(pos + Vector3.new(0, 1.9, 0)) * upright, Color = Color3.fromRGB(40, 140, 230), Parent = m })
+	for k = 0, 11 do
+		local a = (k + 0.5) / 12 * math.pi * 2
+		P({ Name = "Spring", Size = Vector3.new(0.2, 0.2, 0.9), CFrame = CFrame.new(pos + Vector3.new(math.cos(a) * 3.45, 2.2, math.sin(a) * 3.45)) * CFrame.Angles(0, -a, 0), Color = Color3.fromRGB(200, 205, 215), Material = Enum.Material.Metal, Parent = m })
+	end
+	local mat = P({ Name = "Mat", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.3, 6.4, 6.4), CFrame = CFrame.new(pos + Vector3.new(0, 2.05, 0)) * upright, Color = Color3.fromRGB(30, 32, 42), Material = Enum.Material.Fabric, Parent = m })
+	mat:SetAttribute("Power", Settings.BouncePower)
+	mat:AddTag("BouncePad")
+	sign(mat, "🦘 BOUNCE!", nil, Color3.fromRGB(130, 215, 255), 7, 1.8, 3.5)
+	return m
+end
+
+-- The 🎡 Lucky Wheel: step in its circle and spin it for a prize
+function Fun.LuckyWheel(pos: Vector3, parent: Instance): Model
+	local m = model("LuckyWheel", parent)
+	m.ModelStreamingMode = Enum.ModelStreamingMode.Persistent
+	local gold = Color3.fromRGB(230, 185, 70)
+	local wood = Color3.fromRGB(110, 78, 52)
+	P({ Name = "Floor", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.3, 13, 13), CFrame = CFrame.new(pos + Vector3.new(0, 0.05, 0)) * CFrame.Angles(0, 0, rad(90)), Color = Color3.fromRGB(152, 146, 136), Material = Enum.Material.Pavement, Parent = m })
+	actionCircle(pos, 6, Color3.fromRGB(255, 200, 80), "Wheel", nil, m)
+	local center = pos + Vector3.new(-9, 8, 0)
+	P({ Name = "Base", Size = Vector3.new(3, 1, 9), CFrame = CFrame.new(pos + Vector3.new(-9.6, 0.5, 0)), Color = Color3.fromRGB(120, 116, 110), Material = Enum.Material.Cobblestone, Parent = m })
+	for _, side in ipairs({ -1, 1 }) do
+		rod(pos + Vector3.new(-9.6, 1, side * 3.6), center + Vector3.new(-0.7, 0, side * 0.5), 0.55, { Name = "Stand", Color = wood, Material = Enum.Material.Wood, Parent = m })
+	end
+	local wheel = model("Wheel", m)
+	local disc = P({ Name = "Disc", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.6, 11.6, 11.6), CFrame = CFrame.new(center), Color = Color3.fromRGB(245, 240, 230), Parent = wheel })
+	wheel.PrimaryPart = disc
+	P({ Name = "Rim", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.5, 12.4, 12.4), CFrame = CFrame.new(center - Vector3.new(0.1, 0, 0)), Color = gold, Material = Enum.Material.Metal, Parent = wheel })
+	for k, prize in ipairs(Shared.WheelPrizes) do
+		local a = (k - 1) / #Shared.WheelPrizes * math.pi * 2
+		P({ Name = "Slice", Size = Vector3.new(0.7, 4.7, 2.2), CFrame = CFrame.new(center) * CFrame.Angles(a, 0, 0) * CFrame.new(0.05, 3, 0), Color = prize.Color, Parent = wheel })
+		P({ Name = "Peg", Shape = Enum.PartType.Cylinder, Size = Vector3.new(1, 0.45, 0.45), CFrame = CFrame.new(center) * CFrame.Angles(a + math.pi / #Shared.WheelPrizes, 0, 0) * CFrame.new(0.3, 5.5, 0), Color = gold, Material = Enum.Material.Metal, Parent = wheel })
+	end
+	P({ Name = "Hub", Shape = Enum.PartType.Cylinder, Size = Vector3.new(1.1, 2.2, 2.2), CFrame = CFrame.new(center + Vector3.new(0.2, 0, 0)), Color = gold, Material = Enum.Material.Metal, Reflectance = 0.2, Parent = wheel })
+	P({ Name = "Pointer", Size = Vector3.new(0.6, 1.6, 0.9), CFrame = CFrame.new(center + Vector3.new(0.5, 6.6, 0)), Color = Color3.fromRGB(225, 60, 60), Parent = m })
+	local anchor = P({ Name = "SignAnchor", Size = Vector3.one, CFrame = CFrame.new(center + Vector3.new(0, 7, 0)), Transparency = 1, CanCollide = false, Parent = m })
+	light(anchor, Color3.fromRGB(255, 210, 120), 16, 0.7)
+	fancySign(anchor, "🎡", "LUCKY WHEEL", "A free spin every " .. math.floor(Settings.WheelCooldown / 60) .. " minutes!", Color3.fromRGB(255, 200, 80), 11, 3)
+	return m
+end
+
+--------------------------------------------------------------------------------
 -- LEADERBOARDS (big boards behind the spawn with the best players of ALL servers, worldwide)
 --------------------------------------------------------------------------------
 type BoardRow = { PlayerName: TextLabel, Score: TextLabel }
@@ -4073,6 +4321,7 @@ local HUB = {
 	Rebirth = Vector3.new(-36, 0, -36),
 	Portal = Vector3.new(-36, 0, 32),
 	Obby = Vector3.new(34, 0, 32),
+	Wheel = Vector3.new(-46, 0, 10),
 }
 
 local function buildHub()
@@ -4206,6 +4455,7 @@ local function buildHub()
 	end
 	buildPortal(HUB.Portal, hub)
 	buildObbyEntrance(HUB.Obby, "SKY OBBY", nil, hub)
+	Fun.LuckyWheel(HUB.Wheel, hub)
 
 	-- Eggs at the spawn
 	local busy = {
@@ -4213,6 +4463,11 @@ local function buildHub()
 		{ Vector3.new(0, 0, 32), 11 }, -- spawn
 		{ Vector3.new(60, 0, 38), 15 }, -- pond
 	}
+	-- Bounce pads to play on
+	for _, pos in ipairs({ Vector3.new(-14, 0, -28), Vector3.new(14, 0, -28) }) do
+		Fun.BouncePad(pos, hub)
+		table.insert(busy, { pos, 6 })
+	end
 	-- Leaderboards behind the spawn, with a big sign above them
 	for k, info in ipairs(LEADERBOARD_STATS) do
 		local pos = Vector3.new((k - (#LEADERBOARD_STATS + 1) / 2) * 17, 0, 51)
@@ -4647,6 +4902,7 @@ type CrystalInfo = {
 	Billboard: BillboardGui,
 	Fill: Frame,
 	Label: TextLabel,
+	Meteor: boolean?, -- a 🌠 meteor (pays coins, doesn't grow back)
 }
 local crystals: { [Model]: CrystalInfo } = {}
 
@@ -4687,6 +4943,11 @@ local function findSpot(zoneIndex: number, ignore: Model?): CFrame
 		local ok = not isReserved(zoneIndex, pos, 4)
 		for _, spot in pairs(digSpots) do
 			if ok and spot.Alive and (spot.Pos - Vector3.new(pos.X, spot.Pos.Y, pos.Z)).Magnitude < 7 then
+				ok = false
+			end
+		end
+		for _, chest in pairs(Fun.Chests) do
+			if ok and chest.Alive and (chest.Pos - Vector3.new(pos.X, chest.Pos.Y, pos.Z)).Magnitude < 7 then
 				ok = false
 			end
 		end
@@ -4984,6 +5245,10 @@ type PlayerData = {
 	DimBackpack: number, -- the dimension of your special backpack (0 = none)
 	Gadgets: { number }, -- the gadgets you own
 	GadgetsOff: { number }, -- the gadgets you turned off
+	WheelLast: number, -- when you last spun the lucky wheel (os.time)
+	GemBoostUntil: number, -- 2x gems until this time (os.time)
+	ChestsFound: number,
+	MeteorsBroken: number,
 }
 
 local store: DataStore? = nil
@@ -5043,6 +5308,10 @@ local function defaultData(): PlayerData
 		DimBackpack = 0,
 		Gadgets = {},
 		GadgetsOff = {},
+		WheelLast = 0,
+		GemBoostUntil = 0,
+		ChestsFound = 0,
+		MeteorsBroken = 0,
 	}
 end
 
@@ -5252,6 +5521,10 @@ local function sync(player: Player)
 		DimBackpack = data.DimBackpack,
 		Gadgets = data.Gadgets,
 		GadgetsOff = data.GadgetsOff,
+		WheelWait = math.max(0, data.WheelLast + Settings.WheelCooldown - os.time()),
+		BoostWait = math.max(0, data.GemBoostUntil - os.time()),
+		ChestsFound = data.ChestsFound,
+		MeteorsBroken = data.MeteorsBroken,
 	})
 	local stats = player:FindFirstChild("leaderstats")
 	if stats then
@@ -5718,7 +5991,7 @@ local function digOut(spot: DigSpot, player: Player, data: PlayerData)
 	spot.Alive = false
 	local pos = spot.Pos
 	local capacity = Shared.BestBackpack(data).Capacity
-	local gems = math.floor(spot.Gems * Shared.GemMultiplier(data.Pets) * gadgetStats(data).Gems)
+	local gems = math.floor(spot.Gems * Shared.GemMultiplier(data.Pets) * gadgetStats(data).Gems * (if data.GemBoostUntil > os.time() then 2 else 1))
 	local added = math.min(gems, capacity - data.Gems)
 	data.Gems += added
 	data.TotalGems += added
@@ -6176,6 +6449,7 @@ type Arena = {
 	DigSpots: { DigSpot },
 	Boss: Boss?,
 	Obby: ObbyCourse,
+	Chests: { any },
 	EmptySince: number?,
 	Alive: boolean,
 }
@@ -6459,10 +6733,14 @@ local function buildArena(d: number): Arena?
 	local eggId = Shared.DimensionEggId(d)
 	local eggPos = center + Vector3.new(40, 0, 10)
 	buildEggMachine(eggId, eggPos, f)
+	local mythicPos = center + Vector3.new(46, 0, -9)
+	buildEggMachine(Shared.DimensionEggId(d, true), mythicPos, f)
 	local obbyPos = center + Vector3.new(38, 0, -28)
 	buildObbyEntrance(obbyPos, "DIMENSION OBBY", d, f)
 	local obby = buildObby(center, obbyPos, d, f)
 	local bossCenter = center + Vector3.new(-24, 0, -32)
+	local padPos = center + Vector3.new(8, 0, 12)
+	Fun.BouncePad(padPos, f)
 
 	decorateArena(dim, center)
 	decorShiny = false
@@ -6485,11 +6763,14 @@ local function buildArena(d: number): Arena?
 			{ pos = shopPos, radius = 10 },
 			{ pos = regularShopPos, radius = 10 },
 			{ pos = eggPos, radius = 11 },
+			{ pos = mythicPos, radius = 11 },
 			{ pos = obbyPos, radius = 10 },
+			{ pos = padPos, radius = 7 },
 			{ pos = bossCenter, radius = 19 },
 		},
 		DigSpots = {},
 		Obby = obby,
+		Chests = {},
 		Alive = true,
 	}
 	arena.Boss = createBoss(bossCenter, 15, 0, d, center, f)
@@ -6531,6 +6812,11 @@ local function buildArena(d: number): Arena?
 			table.insert(arena.DigSpots, spot)
 		end
 	end
+	-- a hidden treasure chest
+	local chest = Fun.SpawnChest(0, d, Fun.ArenaChestPlace(arena))
+	if chest then
+		table.insert(arena.Chests, chest)
+	end
 	arenas[d] = arena
 	return arena
 end
@@ -6556,7 +6842,11 @@ local function destroyArena(arena: Arena)
 		end
 	end
 	removeObby(arena.Obby)
+	for _, chest in ipairs(arena.Chests) do
+		Fun.RemoveChest(chest)
+	end
 	eggMachines[Shared.DimensionEggId(arena.Number)] = nil
+	eggMachines[Shared.DimensionEggId(arena.Number, true)] = nil
 	for k, pad in ipairs(sellPads) do
 		if pad.Model == arena.SellPad then
 			table.remove(sellPads, k)
@@ -6696,6 +6986,274 @@ local function minePower(data: PlayerData): number
 	return math.max(1, math.floor(Shared.BestPickaxe(data).Power * Shared.LevelPower(data.Level)))
 end
 
+--------------------------------------------------------------------------------
+-- 🎁 TREASURE CHESTS (hidden in every zone and dimension, press E to open)
+--------------------------------------------------------------------------------
+do
+	type Chest = { Model: Model, Lid: BasePart, LidHome: CFrame, Zone: number, Dimension: number?, Place: () -> Vector3?, Pos: Vector3, Alive: boolean, Removed: boolean }
+	local chests: { [Model]: Chest } = Fun.Chests
+
+	local function buildChestModel(): (Model, BasePart, ProximityPrompt)
+		local m = Instance.new("Model")
+		m.Name = "TreasureChest"
+		m.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
+		local wood = Color3.fromRGB(125, 82, 48)
+		local gold = Color3.fromRGB(235, 190, 70)
+		local base = P({ Name = "Box", Size = Vector3.new(3.4, 1.8, 2.3), CFrame = CFrame.new(0, 0.9, 0), Color = wood, Material = Enum.Material.WoodPlanks, Parent = m })
+		m.PrimaryPart = base
+		for _, x in ipairs({ -1.25, 1.25 }) do
+			P({ Name = "Band", Size = Vector3.new(0.3, 1.86, 2.36), CFrame = CFrame.new(x, 0.9, 0), Color = gold, Material = Enum.Material.Metal, Reflectance = 0.2, Parent = m })
+		end
+		local lid = P({ Name = "Lid", Size = Vector3.new(3.5, 0.8, 2.4), CFrame = CFrame.new(0, 2.2, 0), Color = wood:Lerp(Color3.new(0, 0, 0), 0.1), Material = Enum.Material.WoodPlanks, Parent = m })
+		P({ Name = "Lock", Size = Vector3.new(0.6, 0.7, 0.3), CFrame = CFrame.new(0, 1.65, -1.25), Color = gold, Material = Enum.Material.Metal, Reflectance = 0.3, Parent = m })
+		local glow = P({ Name = "Gold", Size = Vector3.new(3, 0.3, 1.9), CFrame = CFrame.new(0, 1.75, 0), Color = gold, Material = Enum.Material.Metal, Reflectance = 0.4, Parent = m })
+		light(glow, Color3.fromRGB(255, 215, 120), 10, 0.8)
+		particles(glow, { Color = Color3.fromRGB(255, 225, 120), Size = 0.25, Rate = 4, Lifetime = NumberRange.new(1, 2), Speed = NumberRange.new(0.5, 1.5), Spread = Vector2.new(40, 40) })
+		local pp = prompt(base, "Open", "🎁 Treasure Chest", 0.6)
+		return m, lid, pp
+	end
+
+	local function chestFree(pos: Vector3): boolean
+		if not digSpotFree(pos) then
+			return false
+		end
+		for _, other in pairs(chests) do
+			if other.Alive and (other.Pos - pos).Magnitude < 20 then
+				return false
+			end
+		end
+		return true
+	end
+
+	local function placeChest(chest: Chest): boolean
+		local pos = chest.Place()
+		if not pos then
+			return false
+		end
+		chest.Pos = pos
+		chest.Lid.CFrame = chest.LidHome
+		chest.Model:PivotTo(CFrame.new(pos + Vector3.new(0, 0.9, 0)) * CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0))
+		chest.LidHome = chest.Lid.CFrame
+		chest.Alive = true
+		chest.Model.Parent = Fun.ChestFolder
+		return true
+	end
+
+	function Fun.RemoveChest(chest: Chest)
+		chest.Removed = true
+		chest.Alive = false
+		chests[chest.Model] = nil
+		chest.Model:Destroy()
+	end
+
+	local function openChest(player: Player, chest: Chest)
+		local data = Data[player]
+		local char = player.Character
+		local root = char and char:FindFirstChild("HumanoidRootPart")
+		if not (data and chest.Alive and root and root:IsA("BasePart")) or (root.Position - chest.Pos).Magnitude > 18 then
+			return
+		end
+		if chest.Dimension then
+			if dimensionOf[player] ~= chest.Dimension then
+				return
+			end
+		elseif chest.Zone > data.Zone then
+			notify(player, "🔒 Unlock " .. Shared.Zones[chest.Zone].Name .. " to open this chest!", "bad")
+			return
+		end
+		chest.Alive = false
+		local coins = Shared.RewardCoins(data, rng:NextInteger(math.floor(Settings.ChestCrystals / 2), Settings.ChestCrystals))
+		data.Coins += coins
+		data.ChestsFound += 1
+		local text = "🎁 TREASURE! +💰 " .. Format(coins)
+		if rng:NextNumber() < 0.35 then
+			local shards = rng:NextInteger(1, 3)
+			data.Shards += shards
+			text ..= "  +💠 " .. shards
+		end
+		if rng:NextNumber() < 0.12 then
+			data.FreeEggs += 1
+			text ..= "  +🥚 a free egg"
+		end
+		notify(player, text, "gold")
+		Remotes.Effect:FireClient(player, "chest", chest.Pos, coins)
+		sync(player)
+		-- the lid swings open...
+		local hinge = chest.LidHome * CFrame.new(0, -0.4, 1.2)
+		task.spawn(function()
+			for k = 1, 8 do
+				chest.Lid.CFrame = hinge * CFrame.Angles(rad(9 * k), 0, 0) * CFrame.new(0, 0.4, -1.2)
+				task.wait(0.03)
+			end
+		end)
+		-- ...then it vanishes and hides somewhere else later
+		task.delay(2.5, function()
+			if chest.Removed then
+				return
+			end
+			chest.Model.Parent = ServerStorage
+			task.delay(Settings.ChestRespawnTime, function()
+				if not chest.Removed and not placeChest(chest) then
+					Fun.RemoveChest(chest)
+				end
+			end)
+		end)
+	end
+
+	-- place() finds a spot for it (nil = there is no room, or its dimension is gone)
+	function Fun.SpawnChest(zone: number, dimension: number?, place: () -> Vector3?): Chest?
+		local m, lid, pp = buildChestModel()
+		local chest: Chest = { Model = m, Lid = lid, LidHome = lid.CFrame, Zone = zone, Dimension = dimension, Place = place, Pos = Vector3.zero, Alive = false, Removed = false }
+		if not placeChest(chest) then
+			m:Destroy()
+			return nil
+		end
+		chests[m] = chest
+		pp.Triggered:Connect(function(player)
+			openChest(player, chest)
+		end)
+		return chest
+	end
+
+	function Fun.SpawnZoneChests()
+		for i = 1, #Shared.Zones do
+			local function place(): Vector3?
+				for _ = 1, 30 do
+					local pos = freeSpot(i, 4)
+					if pos and chestFree(pos) then
+						return onGround(pos)
+					end
+				end
+				return nil
+			end
+			for _ = 1, Settings.ChestsPerZone do
+				Fun.SpawnChest(i, nil, place)
+			end
+		end
+	end
+
+	function Fun.ArenaChestPlace(arena): () -> Vector3?
+		return function(): Vector3?
+			if not arena.Alive then
+				return nil
+			end
+			for _ = 1, 30 do
+				local spot = arenaSpot(arena, nil)
+				if spot and chestFree(spot.Position) then
+					return spot.Position
+				end
+			end
+			return nil
+		end
+	end
+end
+
+--------------------------------------------------------------------------------
+-- 🌠 METEOR SHOWERS (every few minutes a giant meteor crashes down near a player)
+--------------------------------------------------------------------------------
+do
+	local meteorRandom = Random.new()
+
+	-- Where the next meteor lands: near a random player, in a place they can mine
+	local function meteorTarget(): (CrystalSpec?, Instance?, CFrame?, string?)
+		local list = {}
+		for player in pairs(Data) do
+			local char = player.Character
+			if player.Parent and char and char:FindFirstChild("HumanoidRootPart") then
+				table.insert(list, player)
+			end
+		end
+		if #list == 0 then
+			return nil
+		end
+		local player = list[meteorRandom:NextInteger(1, #list)]
+		local d = dimensionOf[player]
+		local arena = d and arenas[d]
+		if d and arena then
+			local dim = Shared.GetDimension(d)
+			local spec: CrystalSpec = { Colors = dim.CrystalColors, RockColor = dim.Rock, Health = dim.Health, Gems = dim.Gems, XP = dim.XP, Zone = 0, Dimension = d, Shiny = dim.Shiny }
+			return spec, arena.CrystalFolder, arenaSpot(arena, nil), dim.Emoji .. " " .. dim.Name
+		end
+		local root = (player.Character :: Model):FindFirstChild("HumanoidRootPart") :: BasePart
+		local zone = math.clamp(Shared.ZoneAt(root.Position.Z), 1, Data[player].Zone)
+		return zoneSpec(zone), CrystalFolder, findSpot(zone, nil), Shared.Zones[zone].Emoji .. " " .. Shared.Zones[zone].Name
+	end
+
+	function Fun.DropMeteor(): CrystalInfo?
+		local spec, crystalFolder, spot, where = meteorTarget()
+		if not (spec and crystalFolder and spot) then
+			return nil
+		end
+		local info = buildCrystal(spec, true, crystalFolder, function()
+			return nil -- meteors don't grow back
+		end)
+		local health = spec.Health * Settings.MeteorHealth
+		info.Health, info.MaxHealth = health, health
+		info.Meteor = true
+		setGolden(info, true)
+		info.Model.Name = "Meteor"
+		info.Model:SetAttribute("Meteor", true)
+		-- a burnt crater around it
+		for k = 0, 9 do
+			local a = k / 10 * math.pi * 2 + rng:NextNumber(-0.2, 0.2)
+			P({
+				Name = "CraterRock",
+				Size = Vector3.new(rng:NextNumber(2, 3.4), rng:NextNumber(0.8, 1.6), rng:NextNumber(1.6, 2.6)),
+				CFrame = CFrame.new(math.cos(a) * 6.2, 0.3, math.sin(a) * 6.2) * CFrame.Angles(rng:NextNumber(-0.3, 0.3), -a, rng:NextNumber(-0.3, 0.3)),
+				Color = Color3.fromRGB(45, 38, 36),
+				Material = Enum.Material.Basalt,
+				Parent = info.Model,
+			})
+		end
+		local scorch = P({ Name = "Scorch", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.2, 14, 14), CFrame = CFrame.new(0, 0.08, 0) * CFrame.Angles(0, 0, rad(90)), Color = Color3.fromRGB(35, 30, 30), Material = Enum.Material.Basalt, CanCollide = false, Parent = info.Model })
+		particles(scorch, { Texture = "rbxasset://textures/particles/fire_main.dds", Color = Color3.fromRGB(255, 140, 50), Size = 1.2, Rate = 8, Lifetime = NumberRange.new(0.6, 1.2), Speed = NumberRange.new(2, 4), Spread = Vector2.new(15, 15), Direction = Enum.NormalId.Right })
+		info.Model:PivotTo(spot)
+		updateBar(info)
+		Remotes.Effect:FireAllClients("meteor", spot.Position, where, spec.Dimension)
+		-- it lands after a short fall...
+		task.delay(1.6, function()
+			if crystals[info.Model] == info then
+				info.Model.Parent = crystalFolder
+			end
+		end)
+		-- ...and fades away if nobody mines it
+		task.delay(Settings.MeteorLifetime, function()
+			if crystals[info.Model] == info and info.Alive then
+				info.Alive = false
+				crystals[info.Model] = nil
+				Remotes.Effect:FireAllClients("meteorgone", spot.Position)
+				info.Model:Destroy()
+			end
+		end)
+		return info
+	end
+
+	-- Breaking a meteor pays coins right away (so a full backpack doesn't matter)
+	function Fun.MeteorBroken(player: Player, data: PlayerData, info: CrystalInfo)
+		local coins = Shared.RewardCoins(data, Settings.MeteorRewardCrystals)
+		data.Coins += coins
+		data.Shards += Settings.MeteorShards
+		data.MeteorsBroken += 1
+		local pos = info.Main.Position
+		breakCrystal(info)
+		Remotes.Effect:FireClient(player, "meteorwin", pos, coins)
+		addXP(player, data, info.XP * 10)
+		questProgress(player, data, "mine", 1)
+		for _, other in ipairs(Players:GetPlayers()) do
+			notify(other, "🌠 " .. player.DisplayName .. " smashed the meteor! +💰 " .. Format(coins) .. " +💠 " .. Settings.MeteorShards, "gold")
+		end
+		sync(player)
+	end
+
+	task.spawn(function()
+		task.wait(Settings.MeteorEvery / 2)
+		while true do
+			Fun.DropMeteor()
+			task.wait(math.max(5, Settings.MeteorEvery * meteorRandom:NextNumber(0.75, 1.25)))
+		end
+	end)
+end
+
 Remotes.Mine.OnServerEvent:Connect(function(player, crystal)
 	local data = Data[player]
 	if not data or typeof(crystal) ~= "Instance" or not crystal:IsA("Model") then
@@ -6738,6 +7296,19 @@ Remotes.Mine.OnServerEvent:Connect(function(player, crystal)
 	if info.Dimension and info.Dimension > Shared.DimensionsUnlocked(data.Level) then
 		return
 	end
+	-- a meteor: everyone hits the same one, and it pays coins (so your backpack can be full)
+	if info.Meteor then
+		lastMine[player] = now
+		local power = minePower(data)
+		info.Health -= power
+		Remotes.Effect:FireClient(player, "hit", info.Main.Position, power, crystal)
+		if info.Health <= 0 then
+			Fun.MeteorBroken(player, data, info)
+		else
+			updateBar(info)
+		end
+		return
+	end
 	local capacity = Shared.BestBackpack(data).Capacity
 	if data.Gems >= capacity then
 		if now - (lastFullWarning[player] or 0) > 1 then
@@ -6754,7 +7325,7 @@ Remotes.Mine.OnServerEvent:Connect(function(player, crystal)
 
 	if info.Health <= 0 then
 		local stats = gadgetStats(data)
-		local gems = info.Gems * Shared.GemMultiplier(data.Pets) * stats.Gems
+		local gems = info.Gems * Shared.GemMultiplier(data.Pets) * stats.Gems * (if data.GemBoostUntil > os.time() then 2 else 1)
 		local lucky = stats.Lucky > 0 and rng:NextNumber() < stats.Lucky
 		if lucky then
 			gems *= 10
@@ -7267,6 +7838,64 @@ Remotes.Hatch.OnServerEvent:Connect(function(player, eggId, amount)
 end)
 
 --------------------------------------------------------------------------------
+-- 🎡 LUCKY WHEEL (a free spin every few minutes)
+--------------------------------------------------------------------------------
+do
+	local wheelRandom = Random.new()
+	Remotes.Spin.OnServerEvent:Connect(function(player)
+		local data = Data[player]
+		local char = player.Character
+		local root = char and char:FindFirstChild("HumanoidRootPart")
+		if not (data and root and root:IsA("BasePart")) or (root.Position - HUB.Wheel).Magnitude > 16 then
+			return
+		end
+		local wait = data.WheelLast + Settings.WheelCooldown - os.time()
+		if wait > 0 then
+			notify(player, "🎡 The wheel is ready again in " .. math.ceil(wait / 60) .. " min.", "info")
+			return
+		end
+		data.WheelLast = os.time()
+		-- pick a prize (Chance = how likely)
+		local total = 0
+		for _, prize in ipairs(Shared.WheelPrizes) do
+			total += prize.Chance
+		end
+		local roll = wheelRandom:NextNumber(0, total)
+		local index = #Shared.WheelPrizes
+		for k, prize in ipairs(Shared.WheelPrizes) do
+			roll -= prize.Chance
+			if roll <= 0 then
+				index = k
+				break
+			end
+		end
+		local prize = Shared.WheelPrizes[index]
+		local text = prize.Text
+		if prize.Crystals then
+			local coins = Shared.RewardCoins(data, prize.Crystals)
+			data.Coins += coins
+			text = "💰 +" .. Format(coins) .. " coins"
+		elseif prize.Eggs then
+			data.FreeEggs += prize.Eggs
+			text = "🥚 +" .. prize.Eggs .. " free " .. (if prize.Eggs == 1 then "egg" else "eggs")
+		elseif prize.Shards then
+			local shards = prize.Shards + data.Zone - 1
+			data.Shards += shards
+			text = "💠 +" .. shards .. " Boss Shards"
+		elseif prize.XP then
+			local xp = math.max(1, math.floor(Shared.XPNeeded(data.Level) * prize.XP))
+			addXP(player, data, xp)
+			text = "⭐ +" .. Format(xp) .. " XP"
+		elseif prize.Boost then
+			data.GemBoostUntil = math.max(data.GemBoostUntil, os.time()) + prize.Boost
+			text = "⚡ 2x gems for " .. math.floor(prize.Boost / 60) .. " minutes"
+		end
+		Remotes.Effect:FireClient(player, "wheel", index, text)
+		sync(player)
+	end)
+end
+
+--------------------------------------------------------------------------------
 -- REBIRTH
 --------------------------------------------------------------------------------
 Remotes.Rebirth.OnServerEvent:Connect(function(player)
@@ -7546,10 +8175,19 @@ for i = 1, #Shared.Zones do
 end
 buildObby(Vector3.zero, HUB.Obby, nil, MapFolder)
 buildWalls()
+for i = 1, #Shared.Zones do
+	-- a bounce pad somewhere in every zone
+	local padPos = freeSpot(i, 6)
+	if padPos then
+		reserve(i, padPos, 6)
+		Fun.BouncePad(onGround(padPos), MapFolder)
+	end
+end
 spawnCrystals()
 for i = 1, #Shared.Zones do
 	spawnZoneDigSpots(i)
 end
+Fun.SpawnZoneChests()
 
 Players.CharacterAutoLoads = true
 Players.PlayerAdded:Connect(onPlayerAdded)
@@ -7609,7 +8247,7 @@ local Format = Shared.Format
 
 local RemoteFolder = ReplicatedStorage:WaitForChild("Remotes")
 local R: { [string]: RemoteEvent } = {}
-for _, name in ipairs({ "Mine", "Buy", "Rebirth", "Teleport", "Sync", "Notify", "Effect", "OpenMenu", "EnterDimension", "GoSell", "Claim", "Dig", "Hatch", "GadgetToggle", "Swing" }) do
+for _, name in ipairs({ "Mine", "Buy", "Rebirth", "Teleport", "Sync", "Notify", "Effect", "OpenMenu", "EnterDimension", "GoSell", "Claim", "Dig", "Hatch", "GadgetToggle", "Swing", "Spin" }) do
 	R[name] = RemoteFolder:WaitForChild(name) :: RemoteEvent
 end
 
@@ -7655,6 +8293,10 @@ type State = {
 	ObbyBest: number,
 	ObbyWait: number, -- seconds until the obby pays out again
 	DimObbyWaits: { [string]: number }?, -- ["3"] = seconds until dimension 3's obby pays again
+	WheelWait: number, -- seconds until the next free spin of the lucky wheel
+	BoostWait: number, -- seconds of 2x gems left
+	ChestsFound: number,
+	MeteorsBroken: number,
 	DimPets: { { Index: number, Count: number } }, -- pets from dimension eggs
 	Shards: number, -- 💠 Boss Shards
 	BossesBeaten: number,
@@ -10840,6 +11482,9 @@ do
 		elseif action == "DimShop" and type(arg) == "number" then
 			openDimShop(arg)
 			window = "DimShop"
+		elseif action == "Wheel" then
+			openWindow("Wheel", true)
+			window = "Wheel"
 		elseif action == "Home" then
 			R.Teleport:FireServer(0)
 		end
@@ -11136,7 +11781,8 @@ do
 			return
 		end
 		local s = state
-		local isBoss = m:GetAttribute("IsBoss") == true
+		-- bosses and meteors pay coins, so a full backpack doesn't stop you
+		local isBoss = m:GetAttribute("IsBoss") == true or m:GetAttribute("Meteor") == true
 		if s and s.Gems >= s.Capacity and not isBoss then
 			backpackFull()
 			freeSwing(tool, now)
@@ -11663,6 +12309,303 @@ task.spawn(function()
 		task.wait(0.3)
 	end
 end)
+
+--------------------------------------------------------------------------------
+-- FUN EXTRAS: 🎡 LUCKY WHEEL, 🦘 BOUNCE PADS, 🎁 TREASURE CHESTS, 🌠 METEORS
+--------------------------------------------------------------------------------
+do
+	local prizes = Shared.WheelPrizes
+	local wheelWindow = makeWindow("Wheel", "🎡 LUCKY WHEEL", 660, 470, COLORS.Gold)
+	label({
+		Text = "Spin for a free prize! You get a new spin every " .. math.floor(Settings.WheelCooldown / 60) .. " minutes.",
+		Size = UDim2.new(1, 0, 0, 26),
+		TextColor3 = Color3.fromRGB(235, 230, 215),
+		Stroke = 0,
+		Parent = wheelWindow.Body,
+	})
+	-- 8 prize tiles in a ring: the top row goes right, the bottom row comes back
+	local tiles: { { Frame: Frame, Light: Frame } } = {}
+	for k, prize in ipairs(prizes) do
+		local row = if k <= 4 then 0 else 1
+		local col = if k <= 4 then k - 1 else 8 - k
+		local frame = new("Frame", {
+			Name = "Prize" .. k,
+			Size = UDim2.fromOffset(142, 118),
+			Position = UDim2.fromOffset(8 + col * 156, 40 + row * 132),
+			BackgroundColor3 = WHITE,
+			Parent = wheelWindow.Body,
+		})
+		round(frame, 16)
+		outline(frame, 3)
+		gradient(frame, { prize.Color:Lerp(WHITE, 0.2), prize.Color:Lerp(Color3.new(0, 0, 0), 0.4) })
+		label({ Text = prize.Text, Size = UDim2.new(1, -12, 0, 56), Position = UDim2.fromOffset(6, 12), TextWrapped = true, Parent = frame })
+		label({ Text = "🎲 " .. string.format("%g", prize.Chance) .. "%", Size = UDim2.new(1, -12, 0, 24), Position = UDim2.fromOffset(6, 80), TextColor3 = Color3.fromRGB(255, 245, 200), Parent = frame })
+		local glow = new("Frame", { Name = "Light", Size = UDim2.fromScale(1, 1), BackgroundColor3 = WHITE, BackgroundTransparency = 1, ZIndex = 3, Parent = frame })
+		round(glow, 16)
+		tiles[k] = { Frame = frame, Light = glow }
+	end
+	-- Spinning: is it turning right now? Angle: how far the big wheel at the spawn has turned
+	local W: { Spinning: boolean, Angle: number, Model: Model?, Base: CFrame? } = { Spinning = false, Angle = 0, Model = nil, Base = nil }
+	local _, spinLabel, spinGrad = button({
+		Size = UDim2.fromOffset(360, 66),
+		Position = UDim2.new(0.5, 0, 1, -4),
+		AnchorPoint = Vector2.new(0.5, 1),
+		Text = "🎡 SPIN!",
+		Colors = COLORS.Green,
+		Radius = 18,
+		Parent = wheelWindow.Body,
+		OnClick = function()
+			local s = state
+			if W.Spinning or not s then
+				return
+			end
+			if s.WheelWait - (os.clock() - syncedAt) > 0 then
+				toast("⏳ The wheel needs a little rest. Come back soon!", "info")
+				return
+			end
+			W.Spinning = true
+			R.Spin:FireServer()
+			task.delay(4, function()
+				W.Spinning = false -- just in case the server didn't answer
+			end)
+		end,
+	})
+
+	local function wheelWait(): number
+		local s = state
+		return if s then math.max(0, s.WheelWait - (os.clock() - syncedAt)) else 0
+	end
+	local function refreshWheel()
+		if W.Spinning then
+			spinLabel.Text = "🎡 Spinning..."
+			setColors(spinGrad, COLORS.Gold)
+			return
+		end
+		local wait = wheelWait()
+		spinLabel.Text = if wait > 0 then "⏳ Next spin in " .. clockText(wait) else "🎡 SPIN! (FREE)"
+		setColors(spinGrad, if wait > 0 then COLORS.Gray else COLORS.Green)
+	end
+	wheelWindow.OnOpen = refreshWheel
+
+	-- the big wheel at the spawn turns too
+	local function worldWheel(): (Model?, CFrame?)
+		local current = W.Model
+		if not (current and current.Parent) then
+			local map = Workspace:FindFirstChild("Map")
+			local found = map and map:FindFirstChild("LuckyWheel", true)
+			local m = found and found:FindFirstChild("Wheel")
+			if m and m:IsA("Model") then
+				W.Model, W.Base = m, m:GetPivot()
+			end
+		end
+		return W.Model, W.Base
+	end
+
+	local function playWheel(index: number, text: string)
+		W.Spinning = true
+		refreshWheel()
+		-- turn the big wheel so the prize's slice ends up under the pointer
+		local m, base = worldWheel()
+		local sliceAngle = (index - 1) / #prizes * math.pi * 2
+		local startAngle = W.Angle
+		local finalAngle = startAngle - 4 * math.pi - ((startAngle + sliceAngle) % (math.pi * 2))
+		W.Angle = finalAngle
+		local steps = 2 * #prizes + index - 1
+		local started = os.clock()
+		local duration = 3.2
+		local connection: RBXScriptConnection
+		connection = RunService.RenderStepped:Connect(function()
+			local t = math.clamp((os.clock() - started) / duration, 0, 1)
+			local eased = 1 - (1 - t) ^ 3
+			if m and base and m.Parent then
+				placeModel(m, base * CFrame.Angles(startAngle + (finalAngle - startAngle) * eased, 0, 0))
+			end
+			-- the light runs around the tiles and slows down
+			local at = math.floor(eased * steps + 0.5) % #prizes + 1
+			for k, tile in ipairs(tiles) do
+				tile.Light.BackgroundTransparency = if k == at then 0.45 else 1
+			end
+			if t >= 1 then
+				connection:Disconnect()
+			end
+		end)
+		task.spawn(function()
+			local last = -1
+			while os.clock() - started < duration do
+				local eased = 1 - (1 - math.clamp((os.clock() - started) / duration, 0, 1)) ^ 3
+				local at = math.floor(eased * steps + 0.5)
+				if at ~= last then
+					last = at
+					playSound("Click", 1.4, 0.35)
+				end
+				task.wait()
+			end
+			W.Spinning = false
+			refreshWheel()
+			local prize = prizes[index]
+			showBanner("🎡 YOU WON: " .. text .. "!", prize.Color:Lerp(WHITE, 0.3))
+			toast("🎡 " .. text .. "!", "gold")
+			local position = rootPosition()
+			if prize.Crystals and position then
+				flyIcons(position, "💰", coinsPill, coinsPop, if prize.Crystals >= 300 then 16 else 8)
+			end
+			celebrate(if prize.Chance <= 3 then 12 else 7, 1)
+		end)
+	end
+
+	-- Side panel: wheel timer and the 2x gems boost
+	do
+		local side = gui:FindFirstChild("SidePanel")
+		if side and side:IsA("Frame") then
+			side.Size = UDim2.fromOffset(240, 560)
+		end
+		local wheelPill = new("Frame", { Name = "WheelInfo", Size = UDim2.fromOffset(240, 40), BackgroundColor3 = WHITE, LayoutOrder = 6, Parent = side })
+		round(wheelPill, 14)
+		outline(wheelPill, 3)
+		local wheelGrad = gradient(wheelPill, COLORS.Gold)
+		local wheelText = label({ Text = "", Size = UDim2.new(1, -20, 0.62, 0), Position = UDim2.fromScale(0.5, 0.5), AnchorPoint = Vector2.new(0.5, 0.5), Parent = wheelPill })
+		local gemBoostPill = new("Frame", { Name = "BoostInfo", Size = UDim2.fromOffset(240, 40), BackgroundColor3 = WHITE, LayoutOrder = 7, Visible = false, Parent = side })
+		round(gemBoostPill, 14)
+		outline(gemBoostPill, 3)
+		gradient(gemBoostPill, COLORS.Purple)
+		local gemBoostText = label({ Text = "", Size = UDim2.new(1, -20, 0.62, 0), Position = UDim2.fromScale(0.5, 0.5), AnchorPoint = Vector2.new(0.5, 0.5), Parent = gemBoostPill })
+		task.spawn(function()
+			while true do
+				if state then
+					local wait = wheelWait()
+					wheelText.Text = if wait > 0 then "🎡 Next spin in " .. clockText(wait) else "🎡 Lucky Wheel spin ready!"
+					setColors(wheelGrad, if wait > 0 then COLORS.Gray else COLORS.Gold)
+					local boost = math.max(0, ((state :: State).BoostWait or 0) - (os.clock() - syncedAt))
+					gemBoostPill.Visible = boost > 0
+					gemBoostText.Text = "⚡ 2x GEMS  " .. clockText(boost)
+					if openName == "Wheel" then
+						refreshWheel()
+					end
+				end
+				task.wait(0.5)
+			end
+		end)
+	end
+
+	R.Effect.OnClientEvent:Connect(function(kind, a, b)
+		if kind == "wheel" and type(a) == "number" and type(b) == "string" then
+			playWheel(a, b)
+		end
+	end)
+end
+
+do
+	-- 🦘 Bounce pads: land on one and it throws you up high
+	local lastBounce = 0
+	RunService.Heartbeat:Connect(function()
+		local root = myRoot()
+		if not root or os.clock() - lastBounce < 0.5 then
+			return
+		end
+		for _, pad in ipairs(CollectionService:GetTagged("BouncePad")) do
+			if pad:IsA("BasePart") and pad.Parent then
+				local flat = Vector3.new(root.Position.X - pad.Position.X, 0, root.Position.Z - pad.Position.Z)
+				local up = root.Position.Y - pad.Position.Y
+				if flat.Magnitude < pad.Size.Y / 2 + 0.5 and up > 0 and up < 4.5 and root.AssemblyLinearVelocity.Y < 5 then
+					lastBounce = os.clock()
+					local hum = root.Parent and root.Parent:FindFirstChildOfClass("Humanoid")
+					if hum then
+						hum:ChangeState(Enum.HumanoidStateType.Jumping)
+					end
+					local v = root.AssemblyLinearVelocity
+					local power = pad:GetAttribute("Power")
+					root.AssemblyLinearVelocity = Vector3.new(v.X, if type(power) == "number" then power else 110, v.Z)
+					playSound("Hit", 1.8, 0.5)
+					burst(pad.Position + Vector3.new(0, 0.5, 0), Color3.fromRGB(130, 215, 255), 12, 14, 0.5)
+					break
+				end
+			end
+		end
+	end)
+
+end
+
+do
+	-- 🌠 a fireball falls from the sky, then BOOM
+	local function meteorFall(position: Vector3)
+		local root = myRoot()
+		if root and (root.Position - position).Magnitude > 700 then
+			return -- too far away to see
+		end
+		local ball = new("Part", {
+			Name = "Fireball",
+			Shape = Enum.PartType.Ball,
+			Size = Vector3.one * 7,
+			Color = Color3.fromRGB(255, 140, 50),
+			Material = Enum.Material.Neon,
+			Anchored = true,
+			CanCollide = false,
+			CastShadow = false,
+			CFrame = CFrame.new(position + Vector3.new(140, 300, 70)),
+			Parent = FxFolder,
+		})
+		new("ParticleEmitter", {
+			Texture = "rbxasset://textures/particles/fire_main.dds",
+			Color = ColorSequence.new(Color3.fromRGB(255, 200, 80), Color3.fromRGB(255, 70, 30)),
+			LightEmission = 1,
+			Size = NumberSequence.new(6, 0),
+			Lifetime = NumberRange.new(0.5, 1),
+			Speed = NumberRange.new(2, 6),
+			Rate = 60,
+			Parent = ball,
+		})
+		new("PointLight", { Color = Color3.fromRGB(255, 150, 60), Range = 40, Brightness = 3, Parent = ball })
+		tween(ball, 1.6, { CFrame = CFrame.new(position + Vector3.new(0, 2, 0)) }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+		task.delay(1.6, function()
+			ball:Destroy()
+			playSound("Boom", 0.8, 0.8)
+			for _, color in ipairs({ Color3.fromRGB(255, 160, 60), Color3.fromRGB(255, 230, 120), Color3.fromRGB(90, 80, 75) }) do
+				burst(position + Vector3.new(0, 2, 0), color, 30, 45, 1.2)
+			end
+			-- a glowing pillar so you can find it
+			local pillar = new("Part", {
+				Name = "MeteorBeacon",
+				Shape = Enum.PartType.Cylinder,
+				Size = Vector3.new(120, 3, 3),
+				CFrame = CFrame.new(position + Vector3.new(0, 60, 0)) * CFrame.Angles(0, 0, math.rad(90)),
+				Color = Color3.fromRGB(255, 200, 90),
+				Material = Enum.Material.Neon,
+				Transparency = 0.6,
+				Anchored = true,
+				CanCollide = false,
+				CastShadow = false,
+				Parent = FxFolder,
+			})
+			tween(pillar, 25, { Transparency = 1 })
+			Debris:AddItem(pillar, 25)
+		end)
+	end
+
+	R.Effect.OnClientEvent:Connect(function(kind, a, b)
+		if kind == "chest" then
+			local position, coins = a :: Vector3, b :: number
+			for _, color in ipairs({ Color3.fromRGB(255, 215, 90), Color3.fromRGB(255, 250, 220) }) do
+				burst(position + Vector3.new(0, 2, 0), color, 20, 25, 0.7)
+			end
+			flyIcons(position, "💰", coinsPill, coinsPop, 10)
+			showBanner("🎁 TREASURE CHEST! +💰 " .. Format(coins), Color3.fromRGB(255, 215, 110))
+			chime(6, 1.2)
+		elseif kind == "meteor" then
+			local position, where = a :: Vector3, b :: string
+			meteorFall(position)
+			showBanner("🌠 A METEOR CRASHED IN " .. string.upper(where) .. "!", Color3.fromRGB(255, 170, 80))
+			toast("🌠 Find the glowing meteor and mine it for a huge reward!", "gold")
+			playSound("Boom", 0.5, 0.4)
+		elseif kind == "meteorwin" then
+			local position, coins = a :: Vector3, b :: number
+			flyIcons(position, "💰", coinsPill, coinsPop, 16)
+			showBanner("🌠 METEOR SMASHED! +💰 " .. Format(coins), Color3.fromRGB(255, 200, 90))
+			celebrate(12, 0.9)
+		elseif kind == "meteorgone" then
+			toast("🌠 The meteor cooled down and crumbled away.", "info")
+		end
+	end)
+end
 
 -- Once a second: timers on the right side, the gifts window and the obby signs
 task.spawn(function()

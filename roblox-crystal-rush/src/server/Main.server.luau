@@ -41,7 +41,7 @@ do
 	end
 	local folder = Instance.new("Folder")
 	folder.Name = "Remotes"
-	for _, name in ipairs({ "Mine", "Buy", "Rebirth", "Teleport", "Sync", "Notify", "Effect", "OpenMenu", "EnterDimension", "GoSell", "Claim", "Dig", "Hatch", "GadgetToggle", "Swing" }) do
+	for _, name in ipairs({ "Mine", "Buy", "Rebirth", "Teleport", "Sync", "Notify", "Effect", "OpenMenu", "EnterDimension", "GoSell", "Claim", "Dig", "Hatch", "GadgetToggle", "Swing", "Spin" }) do
 		local remote = Instance.new("RemoteEvent")
 		remote.Name = name
 		remote.Parent = folder
@@ -1721,6 +1721,65 @@ local function buildObbyEntrance(pos: Vector3, title: string, dimension: number?
 end
 
 --------------------------------------------------------------------------------
+-- FUN EXTRAS: 🎡 lucky wheel, 🦘 bounce pads, 🎁 treasure chests, 🌠 meteors
+-- (their code is spread over the script; everything is kept in this table)
+--------------------------------------------------------------------------------
+local Fun: { [string]: any } = {}
+Fun.ChestFolder = folder("Chests")
+Fun.Chests = {} -- [chest model] = chest
+
+-- A trampoline. Every player's computer makes it bounce them up high.
+function Fun.BouncePad(pos: Vector3, parent: Instance?): Model
+	local m = model("BouncePad", parent)
+	local upright = CFrame.Angles(0, 0, rad(90))
+	local metal = Color3.fromRGB(70, 75, 90)
+	for k = 0, 5 do
+		local a = k / 6 * math.pi * 2
+		P({ Name = "Leg", Size = Vector3.new(0.45, 1.9, 0.45), CFrame = CFrame.new(pos + Vector3.new(math.cos(a) * 3.3, 0.95, math.sin(a) * 3.3)), Color = metal, Material = Enum.Material.Metal, Parent = m })
+	end
+	P({ Name = "Frame", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.5, 7.8, 7.8), CFrame = CFrame.new(pos + Vector3.new(0, 1.9, 0)) * upright, Color = Color3.fromRGB(40, 140, 230), Parent = m })
+	for k = 0, 11 do
+		local a = (k + 0.5) / 12 * math.pi * 2
+		P({ Name = "Spring", Size = Vector3.new(0.2, 0.2, 0.9), CFrame = CFrame.new(pos + Vector3.new(math.cos(a) * 3.45, 2.2, math.sin(a) * 3.45)) * CFrame.Angles(0, -a, 0), Color = Color3.fromRGB(200, 205, 215), Material = Enum.Material.Metal, Parent = m })
+	end
+	local mat = P({ Name = "Mat", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.3, 6.4, 6.4), CFrame = CFrame.new(pos + Vector3.new(0, 2.05, 0)) * upright, Color = Color3.fromRGB(30, 32, 42), Material = Enum.Material.Fabric, Parent = m })
+	mat:SetAttribute("Power", Settings.BouncePower)
+	mat:AddTag("BouncePad")
+	sign(mat, "🦘 BOUNCE!", nil, Color3.fromRGB(130, 215, 255), 7, 1.8, 3.5)
+	return m
+end
+
+-- The 🎡 Lucky Wheel: step in its circle and spin it for a prize
+function Fun.LuckyWheel(pos: Vector3, parent: Instance): Model
+	local m = model("LuckyWheel", parent)
+	m.ModelStreamingMode = Enum.ModelStreamingMode.Persistent
+	local gold = Color3.fromRGB(230, 185, 70)
+	local wood = Color3.fromRGB(110, 78, 52)
+	P({ Name = "Floor", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.3, 13, 13), CFrame = CFrame.new(pos + Vector3.new(0, 0.05, 0)) * CFrame.Angles(0, 0, rad(90)), Color = Color3.fromRGB(152, 146, 136), Material = Enum.Material.Pavement, Parent = m })
+	actionCircle(pos, 6, Color3.fromRGB(255, 200, 80), "Wheel", nil, m)
+	local center = pos + Vector3.new(-9, 8, 0)
+	P({ Name = "Base", Size = Vector3.new(3, 1, 9), CFrame = CFrame.new(pos + Vector3.new(-9.6, 0.5, 0)), Color = Color3.fromRGB(120, 116, 110), Material = Enum.Material.Cobblestone, Parent = m })
+	for _, side in ipairs({ -1, 1 }) do
+		rod(pos + Vector3.new(-9.6, 1, side * 3.6), center + Vector3.new(-0.7, 0, side * 0.5), 0.55, { Name = "Stand", Color = wood, Material = Enum.Material.Wood, Parent = m })
+	end
+	local wheel = model("Wheel", m)
+	local disc = P({ Name = "Disc", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.6, 11.6, 11.6), CFrame = CFrame.new(center), Color = Color3.fromRGB(245, 240, 230), Parent = wheel })
+	wheel.PrimaryPart = disc
+	P({ Name = "Rim", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.5, 12.4, 12.4), CFrame = CFrame.new(center - Vector3.new(0.1, 0, 0)), Color = gold, Material = Enum.Material.Metal, Parent = wheel })
+	for k, prize in ipairs(Shared.WheelPrizes) do
+		local a = (k - 1) / #Shared.WheelPrizes * math.pi * 2
+		P({ Name = "Slice", Size = Vector3.new(0.7, 4.7, 2.2), CFrame = CFrame.new(center) * CFrame.Angles(a, 0, 0) * CFrame.new(0.05, 3, 0), Color = prize.Color, Parent = wheel })
+		P({ Name = "Peg", Shape = Enum.PartType.Cylinder, Size = Vector3.new(1, 0.45, 0.45), CFrame = CFrame.new(center) * CFrame.Angles(a + math.pi / #Shared.WheelPrizes, 0, 0) * CFrame.new(0.3, 5.5, 0), Color = gold, Material = Enum.Material.Metal, Parent = wheel })
+	end
+	P({ Name = "Hub", Shape = Enum.PartType.Cylinder, Size = Vector3.new(1.1, 2.2, 2.2), CFrame = CFrame.new(center + Vector3.new(0.2, 0, 0)), Color = gold, Material = Enum.Material.Metal, Reflectance = 0.2, Parent = wheel })
+	P({ Name = "Pointer", Size = Vector3.new(0.6, 1.6, 0.9), CFrame = CFrame.new(center + Vector3.new(0.5, 6.6, 0)), Color = Color3.fromRGB(225, 60, 60), Parent = m })
+	local anchor = P({ Name = "SignAnchor", Size = Vector3.one, CFrame = CFrame.new(center + Vector3.new(0, 7, 0)), Transparency = 1, CanCollide = false, Parent = m })
+	light(anchor, Color3.fromRGB(255, 210, 120), 16, 0.7)
+	fancySign(anchor, "🎡", "LUCKY WHEEL", "A free spin every " .. math.floor(Settings.WheelCooldown / 60) .. " minutes!", Color3.fromRGB(255, 200, 80), 11, 3)
+	return m
+end
+
+--------------------------------------------------------------------------------
 -- LEADERBOARDS (big boards behind the spawn with the best players of ALL servers, worldwide)
 --------------------------------------------------------------------------------
 type BoardRow = { PlayerName: TextLabel, Score: TextLabel }
@@ -1841,6 +1900,7 @@ local HUB = {
 	Rebirth = Vector3.new(-36, 0, -36),
 	Portal = Vector3.new(-36, 0, 32),
 	Obby = Vector3.new(34, 0, 32),
+	Wheel = Vector3.new(-46, 0, 10),
 }
 
 local function buildHub()
@@ -1974,6 +2034,7 @@ local function buildHub()
 	end
 	buildPortal(HUB.Portal, hub)
 	buildObbyEntrance(HUB.Obby, "SKY OBBY", nil, hub)
+	Fun.LuckyWheel(HUB.Wheel, hub)
 
 	-- Eggs at the spawn
 	local busy = {
@@ -1981,6 +2042,11 @@ local function buildHub()
 		{ Vector3.new(0, 0, 32), 11 }, -- spawn
 		{ Vector3.new(60, 0, 38), 15 }, -- pond
 	}
+	-- Bounce pads to play on
+	for _, pos in ipairs({ Vector3.new(-14, 0, -28), Vector3.new(14, 0, -28) }) do
+		Fun.BouncePad(pos, hub)
+		table.insert(busy, { pos, 6 })
+	end
 	-- Leaderboards behind the spawn, with a big sign above them
 	for k, info in ipairs(LEADERBOARD_STATS) do
 		local pos = Vector3.new((k - (#LEADERBOARD_STATS + 1) / 2) * 17, 0, 51)
@@ -2415,6 +2481,7 @@ type CrystalInfo = {
 	Billboard: BillboardGui,
 	Fill: Frame,
 	Label: TextLabel,
+	Meteor: boolean?, -- a 🌠 meteor (pays coins, doesn't grow back)
 }
 local crystals: { [Model]: CrystalInfo } = {}
 
@@ -2455,6 +2522,11 @@ local function findSpot(zoneIndex: number, ignore: Model?): CFrame
 		local ok = not isReserved(zoneIndex, pos, 4)
 		for _, spot in pairs(digSpots) do
 			if ok and spot.Alive and (spot.Pos - Vector3.new(pos.X, spot.Pos.Y, pos.Z)).Magnitude < 7 then
+				ok = false
+			end
+		end
+		for _, chest in pairs(Fun.Chests) do
+			if ok and chest.Alive and (chest.Pos - Vector3.new(pos.X, chest.Pos.Y, pos.Z)).Magnitude < 7 then
 				ok = false
 			end
 		end
@@ -2752,6 +2824,10 @@ type PlayerData = {
 	DimBackpack: number, -- the dimension of your special backpack (0 = none)
 	Gadgets: { number }, -- the gadgets you own
 	GadgetsOff: { number }, -- the gadgets you turned off
+	WheelLast: number, -- when you last spun the lucky wheel (os.time)
+	GemBoostUntil: number, -- 2x gems until this time (os.time)
+	ChestsFound: number,
+	MeteorsBroken: number,
 }
 
 local store: DataStore? = nil
@@ -2811,6 +2887,10 @@ local function defaultData(): PlayerData
 		DimBackpack = 0,
 		Gadgets = {},
 		GadgetsOff = {},
+		WheelLast = 0,
+		GemBoostUntil = 0,
+		ChestsFound = 0,
+		MeteorsBroken = 0,
 	}
 end
 
@@ -3020,6 +3100,10 @@ local function sync(player: Player)
 		DimBackpack = data.DimBackpack,
 		Gadgets = data.Gadgets,
 		GadgetsOff = data.GadgetsOff,
+		WheelWait = math.max(0, data.WheelLast + Settings.WheelCooldown - os.time()),
+		BoostWait = math.max(0, data.GemBoostUntil - os.time()),
+		ChestsFound = data.ChestsFound,
+		MeteorsBroken = data.MeteorsBroken,
 	})
 	local stats = player:FindFirstChild("leaderstats")
 	if stats then
@@ -3486,7 +3570,7 @@ local function digOut(spot: DigSpot, player: Player, data: PlayerData)
 	spot.Alive = false
 	local pos = spot.Pos
 	local capacity = Shared.BestBackpack(data).Capacity
-	local gems = math.floor(spot.Gems * Shared.GemMultiplier(data.Pets) * gadgetStats(data).Gems)
+	local gems = math.floor(spot.Gems * Shared.GemMultiplier(data.Pets) * gadgetStats(data).Gems * (if data.GemBoostUntil > os.time() then 2 else 1))
 	local added = math.min(gems, capacity - data.Gems)
 	data.Gems += added
 	data.TotalGems += added
@@ -3944,6 +4028,7 @@ type Arena = {
 	DigSpots: { DigSpot },
 	Boss: Boss?,
 	Obby: ObbyCourse,
+	Chests: { any },
 	EmptySince: number?,
 	Alive: boolean,
 }
@@ -4227,10 +4312,14 @@ local function buildArena(d: number): Arena?
 	local eggId = Shared.DimensionEggId(d)
 	local eggPos = center + Vector3.new(40, 0, 10)
 	buildEggMachine(eggId, eggPos, f)
+	local mythicPos = center + Vector3.new(46, 0, -9)
+	buildEggMachine(Shared.DimensionEggId(d, true), mythicPos, f)
 	local obbyPos = center + Vector3.new(38, 0, -28)
 	buildObbyEntrance(obbyPos, "DIMENSION OBBY", d, f)
 	local obby = buildObby(center, obbyPos, d, f)
 	local bossCenter = center + Vector3.new(-24, 0, -32)
+	local padPos = center + Vector3.new(8, 0, 12)
+	Fun.BouncePad(padPos, f)
 
 	decorateArena(dim, center)
 	decorShiny = false
@@ -4253,11 +4342,14 @@ local function buildArena(d: number): Arena?
 			{ pos = shopPos, radius = 10 },
 			{ pos = regularShopPos, radius = 10 },
 			{ pos = eggPos, radius = 11 },
+			{ pos = mythicPos, radius = 11 },
 			{ pos = obbyPos, radius = 10 },
+			{ pos = padPos, radius = 7 },
 			{ pos = bossCenter, radius = 19 },
 		},
 		DigSpots = {},
 		Obby = obby,
+		Chests = {},
 		Alive = true,
 	}
 	arena.Boss = createBoss(bossCenter, 15, 0, d, center, f)
@@ -4299,6 +4391,11 @@ local function buildArena(d: number): Arena?
 			table.insert(arena.DigSpots, spot)
 		end
 	end
+	-- a hidden treasure chest
+	local chest = Fun.SpawnChest(0, d, Fun.ArenaChestPlace(arena))
+	if chest then
+		table.insert(arena.Chests, chest)
+	end
 	arenas[d] = arena
 	return arena
 end
@@ -4324,7 +4421,11 @@ local function destroyArena(arena: Arena)
 		end
 	end
 	removeObby(arena.Obby)
+	for _, chest in ipairs(arena.Chests) do
+		Fun.RemoveChest(chest)
+	end
 	eggMachines[Shared.DimensionEggId(arena.Number)] = nil
+	eggMachines[Shared.DimensionEggId(arena.Number, true)] = nil
 	for k, pad in ipairs(sellPads) do
 		if pad.Model == arena.SellPad then
 			table.remove(sellPads, k)
@@ -4464,6 +4565,274 @@ local function minePower(data: PlayerData): number
 	return math.max(1, math.floor(Shared.BestPickaxe(data).Power * Shared.LevelPower(data.Level)))
 end
 
+--------------------------------------------------------------------------------
+-- 🎁 TREASURE CHESTS (hidden in every zone and dimension, press E to open)
+--------------------------------------------------------------------------------
+do
+	type Chest = { Model: Model, Lid: BasePart, LidHome: CFrame, Zone: number, Dimension: number?, Place: () -> Vector3?, Pos: Vector3, Alive: boolean, Removed: boolean }
+	local chests: { [Model]: Chest } = Fun.Chests
+
+	local function buildChestModel(): (Model, BasePart, ProximityPrompt)
+		local m = Instance.new("Model")
+		m.Name = "TreasureChest"
+		m.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
+		local wood = Color3.fromRGB(125, 82, 48)
+		local gold = Color3.fromRGB(235, 190, 70)
+		local base = P({ Name = "Box", Size = Vector3.new(3.4, 1.8, 2.3), CFrame = CFrame.new(0, 0.9, 0), Color = wood, Material = Enum.Material.WoodPlanks, Parent = m })
+		m.PrimaryPart = base
+		for _, x in ipairs({ -1.25, 1.25 }) do
+			P({ Name = "Band", Size = Vector3.new(0.3, 1.86, 2.36), CFrame = CFrame.new(x, 0.9, 0), Color = gold, Material = Enum.Material.Metal, Reflectance = 0.2, Parent = m })
+		end
+		local lid = P({ Name = "Lid", Size = Vector3.new(3.5, 0.8, 2.4), CFrame = CFrame.new(0, 2.2, 0), Color = wood:Lerp(Color3.new(0, 0, 0), 0.1), Material = Enum.Material.WoodPlanks, Parent = m })
+		P({ Name = "Lock", Size = Vector3.new(0.6, 0.7, 0.3), CFrame = CFrame.new(0, 1.65, -1.25), Color = gold, Material = Enum.Material.Metal, Reflectance = 0.3, Parent = m })
+		local glow = P({ Name = "Gold", Size = Vector3.new(3, 0.3, 1.9), CFrame = CFrame.new(0, 1.75, 0), Color = gold, Material = Enum.Material.Metal, Reflectance = 0.4, Parent = m })
+		light(glow, Color3.fromRGB(255, 215, 120), 10, 0.8)
+		particles(glow, { Color = Color3.fromRGB(255, 225, 120), Size = 0.25, Rate = 4, Lifetime = NumberRange.new(1, 2), Speed = NumberRange.new(0.5, 1.5), Spread = Vector2.new(40, 40) })
+		local pp = prompt(base, "Open", "🎁 Treasure Chest", 0.6)
+		return m, lid, pp
+	end
+
+	local function chestFree(pos: Vector3): boolean
+		if not digSpotFree(pos) then
+			return false
+		end
+		for _, other in pairs(chests) do
+			if other.Alive and (other.Pos - pos).Magnitude < 20 then
+				return false
+			end
+		end
+		return true
+	end
+
+	local function placeChest(chest: Chest): boolean
+		local pos = chest.Place()
+		if not pos then
+			return false
+		end
+		chest.Pos = pos
+		chest.Lid.CFrame = chest.LidHome
+		chest.Model:PivotTo(CFrame.new(pos + Vector3.new(0, 0.9, 0)) * CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0))
+		chest.LidHome = chest.Lid.CFrame
+		chest.Alive = true
+		chest.Model.Parent = Fun.ChestFolder
+		return true
+	end
+
+	function Fun.RemoveChest(chest: Chest)
+		chest.Removed = true
+		chest.Alive = false
+		chests[chest.Model] = nil
+		chest.Model:Destroy()
+	end
+
+	local function openChest(player: Player, chest: Chest)
+		local data = Data[player]
+		local char = player.Character
+		local root = char and char:FindFirstChild("HumanoidRootPart")
+		if not (data and chest.Alive and root and root:IsA("BasePart")) or (root.Position - chest.Pos).Magnitude > 18 then
+			return
+		end
+		if chest.Dimension then
+			if dimensionOf[player] ~= chest.Dimension then
+				return
+			end
+		elseif chest.Zone > data.Zone then
+			notify(player, "🔒 Unlock " .. Shared.Zones[chest.Zone].Name .. " to open this chest!", "bad")
+			return
+		end
+		chest.Alive = false
+		local coins = Shared.RewardCoins(data, rng:NextInteger(math.floor(Settings.ChestCrystals / 2), Settings.ChestCrystals))
+		data.Coins += coins
+		data.ChestsFound += 1
+		local text = "🎁 TREASURE! +💰 " .. Format(coins)
+		if rng:NextNumber() < 0.35 then
+			local shards = rng:NextInteger(1, 3)
+			data.Shards += shards
+			text ..= "  +💠 " .. shards
+		end
+		if rng:NextNumber() < 0.12 then
+			data.FreeEggs += 1
+			text ..= "  +🥚 a free egg"
+		end
+		notify(player, text, "gold")
+		Remotes.Effect:FireClient(player, "chest", chest.Pos, coins)
+		sync(player)
+		-- the lid swings open...
+		local hinge = chest.LidHome * CFrame.new(0, -0.4, 1.2)
+		task.spawn(function()
+			for k = 1, 8 do
+				chest.Lid.CFrame = hinge * CFrame.Angles(rad(9 * k), 0, 0) * CFrame.new(0, 0.4, -1.2)
+				task.wait(0.03)
+			end
+		end)
+		-- ...then it vanishes and hides somewhere else later
+		task.delay(2.5, function()
+			if chest.Removed then
+				return
+			end
+			chest.Model.Parent = ServerStorage
+			task.delay(Settings.ChestRespawnTime, function()
+				if not chest.Removed and not placeChest(chest) then
+					Fun.RemoveChest(chest)
+				end
+			end)
+		end)
+	end
+
+	-- place() finds a spot for it (nil = there is no room, or its dimension is gone)
+	function Fun.SpawnChest(zone: number, dimension: number?, place: () -> Vector3?): Chest?
+		local m, lid, pp = buildChestModel()
+		local chest: Chest = { Model = m, Lid = lid, LidHome = lid.CFrame, Zone = zone, Dimension = dimension, Place = place, Pos = Vector3.zero, Alive = false, Removed = false }
+		if not placeChest(chest) then
+			m:Destroy()
+			return nil
+		end
+		chests[m] = chest
+		pp.Triggered:Connect(function(player)
+			openChest(player, chest)
+		end)
+		return chest
+	end
+
+	function Fun.SpawnZoneChests()
+		for i = 1, #Shared.Zones do
+			local function place(): Vector3?
+				for _ = 1, 30 do
+					local pos = freeSpot(i, 4)
+					if pos and chestFree(pos) then
+						return onGround(pos)
+					end
+				end
+				return nil
+			end
+			for _ = 1, Settings.ChestsPerZone do
+				Fun.SpawnChest(i, nil, place)
+			end
+		end
+	end
+
+	function Fun.ArenaChestPlace(arena): () -> Vector3?
+		return function(): Vector3?
+			if not arena.Alive then
+				return nil
+			end
+			for _ = 1, 30 do
+				local spot = arenaSpot(arena, nil)
+				if spot and chestFree(spot.Position) then
+					return spot.Position
+				end
+			end
+			return nil
+		end
+	end
+end
+
+--------------------------------------------------------------------------------
+-- 🌠 METEOR SHOWERS (every few minutes a giant meteor crashes down near a player)
+--------------------------------------------------------------------------------
+do
+	local meteorRandom = Random.new()
+
+	-- Where the next meteor lands: near a random player, in a place they can mine
+	local function meteorTarget(): (CrystalSpec?, Instance?, CFrame?, string?)
+		local list = {}
+		for player in pairs(Data) do
+			local char = player.Character
+			if player.Parent and char and char:FindFirstChild("HumanoidRootPart") then
+				table.insert(list, player)
+			end
+		end
+		if #list == 0 then
+			return nil
+		end
+		local player = list[meteorRandom:NextInteger(1, #list)]
+		local d = dimensionOf[player]
+		local arena = d and arenas[d]
+		if d and arena then
+			local dim = Shared.GetDimension(d)
+			local spec: CrystalSpec = { Colors = dim.CrystalColors, RockColor = dim.Rock, Health = dim.Health, Gems = dim.Gems, XP = dim.XP, Zone = 0, Dimension = d, Shiny = dim.Shiny }
+			return spec, arena.CrystalFolder, arenaSpot(arena, nil), dim.Emoji .. " " .. dim.Name
+		end
+		local root = (player.Character :: Model):FindFirstChild("HumanoidRootPart") :: BasePart
+		local zone = math.clamp(Shared.ZoneAt(root.Position.Z), 1, Data[player].Zone)
+		return zoneSpec(zone), CrystalFolder, findSpot(zone, nil), Shared.Zones[zone].Emoji .. " " .. Shared.Zones[zone].Name
+	end
+
+	function Fun.DropMeteor(): CrystalInfo?
+		local spec, crystalFolder, spot, where = meteorTarget()
+		if not (spec and crystalFolder and spot) then
+			return nil
+		end
+		local info = buildCrystal(spec, true, crystalFolder, function()
+			return nil -- meteors don't grow back
+		end)
+		local health = spec.Health * Settings.MeteorHealth
+		info.Health, info.MaxHealth = health, health
+		info.Meteor = true
+		setGolden(info, true)
+		info.Model.Name = "Meteor"
+		info.Model:SetAttribute("Meteor", true)
+		-- a burnt crater around it
+		for k = 0, 9 do
+			local a = k / 10 * math.pi * 2 + rng:NextNumber(-0.2, 0.2)
+			P({
+				Name = "CraterRock",
+				Size = Vector3.new(rng:NextNumber(2, 3.4), rng:NextNumber(0.8, 1.6), rng:NextNumber(1.6, 2.6)),
+				CFrame = CFrame.new(math.cos(a) * 6.2, 0.3, math.sin(a) * 6.2) * CFrame.Angles(rng:NextNumber(-0.3, 0.3), -a, rng:NextNumber(-0.3, 0.3)),
+				Color = Color3.fromRGB(45, 38, 36),
+				Material = Enum.Material.Basalt,
+				Parent = info.Model,
+			})
+		end
+		local scorch = P({ Name = "Scorch", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.2, 14, 14), CFrame = CFrame.new(0, 0.08, 0) * CFrame.Angles(0, 0, rad(90)), Color = Color3.fromRGB(35, 30, 30), Material = Enum.Material.Basalt, CanCollide = false, Parent = info.Model })
+		particles(scorch, { Texture = "rbxasset://textures/particles/fire_main.dds", Color = Color3.fromRGB(255, 140, 50), Size = 1.2, Rate = 8, Lifetime = NumberRange.new(0.6, 1.2), Speed = NumberRange.new(2, 4), Spread = Vector2.new(15, 15), Direction = Enum.NormalId.Right })
+		info.Model:PivotTo(spot)
+		updateBar(info)
+		Remotes.Effect:FireAllClients("meteor", spot.Position, where, spec.Dimension)
+		-- it lands after a short fall...
+		task.delay(1.6, function()
+			if crystals[info.Model] == info then
+				info.Model.Parent = crystalFolder
+			end
+		end)
+		-- ...and fades away if nobody mines it
+		task.delay(Settings.MeteorLifetime, function()
+			if crystals[info.Model] == info and info.Alive then
+				info.Alive = false
+				crystals[info.Model] = nil
+				Remotes.Effect:FireAllClients("meteorgone", spot.Position)
+				info.Model:Destroy()
+			end
+		end)
+		return info
+	end
+
+	-- Breaking a meteor pays coins right away (so a full backpack doesn't matter)
+	function Fun.MeteorBroken(player: Player, data: PlayerData, info: CrystalInfo)
+		local coins = Shared.RewardCoins(data, Settings.MeteorRewardCrystals)
+		data.Coins += coins
+		data.Shards += Settings.MeteorShards
+		data.MeteorsBroken += 1
+		local pos = info.Main.Position
+		breakCrystal(info)
+		Remotes.Effect:FireClient(player, "meteorwin", pos, coins)
+		addXP(player, data, info.XP * 10)
+		questProgress(player, data, "mine", 1)
+		for _, other in ipairs(Players:GetPlayers()) do
+			notify(other, "🌠 " .. player.DisplayName .. " smashed the meteor! +💰 " .. Format(coins) .. " +💠 " .. Settings.MeteorShards, "gold")
+		end
+		sync(player)
+	end
+
+	task.spawn(function()
+		task.wait(Settings.MeteorEvery / 2)
+		while true do
+			Fun.DropMeteor()
+			task.wait(math.max(5, Settings.MeteorEvery * meteorRandom:NextNumber(0.75, 1.25)))
+		end
+	end)
+end
+
 Remotes.Mine.OnServerEvent:Connect(function(player, crystal)
 	local data = Data[player]
 	if not data or typeof(crystal) ~= "Instance" or not crystal:IsA("Model") then
@@ -4506,6 +4875,19 @@ Remotes.Mine.OnServerEvent:Connect(function(player, crystal)
 	if info.Dimension and info.Dimension > Shared.DimensionsUnlocked(data.Level) then
 		return
 	end
+	-- a meteor: everyone hits the same one, and it pays coins (so your backpack can be full)
+	if info.Meteor then
+		lastMine[player] = now
+		local power = minePower(data)
+		info.Health -= power
+		Remotes.Effect:FireClient(player, "hit", info.Main.Position, power, crystal)
+		if info.Health <= 0 then
+			Fun.MeteorBroken(player, data, info)
+		else
+			updateBar(info)
+		end
+		return
+	end
 	local capacity = Shared.BestBackpack(data).Capacity
 	if data.Gems >= capacity then
 		if now - (lastFullWarning[player] or 0) > 1 then
@@ -4522,7 +4904,7 @@ Remotes.Mine.OnServerEvent:Connect(function(player, crystal)
 
 	if info.Health <= 0 then
 		local stats = gadgetStats(data)
-		local gems = info.Gems * Shared.GemMultiplier(data.Pets) * stats.Gems
+		local gems = info.Gems * Shared.GemMultiplier(data.Pets) * stats.Gems * (if data.GemBoostUntil > os.time() then 2 else 1)
 		local lucky = stats.Lucky > 0 and rng:NextNumber() < stats.Lucky
 		if lucky then
 			gems *= 10
@@ -5035,6 +5417,64 @@ Remotes.Hatch.OnServerEvent:Connect(function(player, eggId, amount)
 end)
 
 --------------------------------------------------------------------------------
+-- 🎡 LUCKY WHEEL (a free spin every few minutes)
+--------------------------------------------------------------------------------
+do
+	local wheelRandom = Random.new()
+	Remotes.Spin.OnServerEvent:Connect(function(player)
+		local data = Data[player]
+		local char = player.Character
+		local root = char and char:FindFirstChild("HumanoidRootPart")
+		if not (data and root and root:IsA("BasePart")) or (root.Position - HUB.Wheel).Magnitude > 16 then
+			return
+		end
+		local wait = data.WheelLast + Settings.WheelCooldown - os.time()
+		if wait > 0 then
+			notify(player, "🎡 The wheel is ready again in " .. math.ceil(wait / 60) .. " min.", "info")
+			return
+		end
+		data.WheelLast = os.time()
+		-- pick a prize (Chance = how likely)
+		local total = 0
+		for _, prize in ipairs(Shared.WheelPrizes) do
+			total += prize.Chance
+		end
+		local roll = wheelRandom:NextNumber(0, total)
+		local index = #Shared.WheelPrizes
+		for k, prize in ipairs(Shared.WheelPrizes) do
+			roll -= prize.Chance
+			if roll <= 0 then
+				index = k
+				break
+			end
+		end
+		local prize = Shared.WheelPrizes[index]
+		local text = prize.Text
+		if prize.Crystals then
+			local coins = Shared.RewardCoins(data, prize.Crystals)
+			data.Coins += coins
+			text = "💰 +" .. Format(coins) .. " coins"
+		elseif prize.Eggs then
+			data.FreeEggs += prize.Eggs
+			text = "🥚 +" .. prize.Eggs .. " free " .. (if prize.Eggs == 1 then "egg" else "eggs")
+		elseif prize.Shards then
+			local shards = prize.Shards + data.Zone - 1
+			data.Shards += shards
+			text = "💠 +" .. shards .. " Boss Shards"
+		elseif prize.XP then
+			local xp = math.max(1, math.floor(Shared.XPNeeded(data.Level) * prize.XP))
+			addXP(player, data, xp)
+			text = "⭐ +" .. Format(xp) .. " XP"
+		elseif prize.Boost then
+			data.GemBoostUntil = math.max(data.GemBoostUntil, os.time()) + prize.Boost
+			text = "⚡ 2x gems for " .. math.floor(prize.Boost / 60) .. " minutes"
+		end
+		Remotes.Effect:FireClient(player, "wheel", index, text)
+		sync(player)
+	end)
+end
+
+--------------------------------------------------------------------------------
 -- REBIRTH
 --------------------------------------------------------------------------------
 Remotes.Rebirth.OnServerEvent:Connect(function(player)
@@ -5314,10 +5754,19 @@ for i = 1, #Shared.Zones do
 end
 buildObby(Vector3.zero, HUB.Obby, nil, MapFolder)
 buildWalls()
+for i = 1, #Shared.Zones do
+	-- a bounce pad somewhere in every zone
+	local padPos = freeSpot(i, 6)
+	if padPos then
+		reserve(i, padPos, 6)
+		Fun.BouncePad(onGround(padPos), MapFolder)
+	end
+end
 spawnCrystals()
 for i = 1, #Shared.Zones do
 	spawnZoneDigSpots(i)
 end
+Fun.SpawnZoneChests()
 
 Players.CharacterAutoLoads = true
 Players.PlayerAdded:Connect(onPlayerAdded)

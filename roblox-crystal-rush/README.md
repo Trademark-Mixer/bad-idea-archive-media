@@ -31,6 +31,14 @@ sell them for coins, and spend the coins in the shop.
   💎 Gems Mined, ♻️ Rebirths and **🏃 Fastest Obby** (the quickest finish times of any obby).
   Once the game is published, they show the best players of **all** servers in the whole world,
   not just the one you are in. They update every minute.
+- **🎡 Lucky Wheel** at the spawn: step in its circle and spin it for free every 10 minutes.
+  Prizes: coins, XP, free eggs, 💠 Boss Shards, **⚡ 2x gems for 5 minutes**, or the 💎 JACKPOT.
+- **🎁 Treasure chests** are hidden in every zone and every dimension. Walk up and press **E** to
+  open one for coins (and sometimes Boss Shards or a free egg). Then it hides somewhere new.
+- **🌠 Meteor showers**: every few minutes a giant golden meteor crashes down near a player, with a
+  glowing beam so you can find it. Mine it for a huge pile of coins and 💠 Boss Shards. It still
+  works when your backpack is full, but hurry: it crumbles away after a while!
+- **🦘 Bounce pads** at the spawn, in every zone and in every dimension. Jump on one and fly!
 - **⚡ Gadget shop**: Spring Shoes, Gravity Coil and Rocket Boots (jump higher), Running Shoes,
   Speed Coil and Turbo Boots (walk faster), Sprint Charm, Lucky Clover and Gem Magnet.
   The faster you get, the more it costs. Turn each gadget on or off, and they turn off in the obby.
@@ -47,6 +55,8 @@ sell them for coins, and spend the coins in the shop.
   pets, their chances and what they do: pets you have shimmer green, the others gray.
   **Click while an egg hatches** to make it go faster.
 - **🐾 Pets** give you more gems: a +30% pet makes every crystal give 30% more.
+- **💪 It's harder now**: crystals are tougher, zones, pickaxes and backpacks cost more, rebirth
+  costs 150K, and bosses hit harder. Use the wheel, chests, meteors and obbies to keep up!
 - **⭐ Levels:** you earn XP for every crystal you mine. Each level makes your pickaxe 10% stronger.
   Levels get a lot harder the higher you go. **You have to unlock zones to level up**: in Sunny Meadow
   you stay level 1 (your XP bar fills up and waits). Unlocking Crystal Caves lets you go up to level 4,
@@ -56,8 +66,10 @@ sell them for coins, and spend the coins in the shop.
   and it never stops. There are 12 themes (Candy World, Neon City, Ocean Reef, Jungle, …), and they
   come back with new colors and stronger crystals: Candy World II, Candy World III, and so on.
   Every dimension has the **🛒 normal shop**, its own **💠 special shop** (a pickaxe for Boss Shards
-  and a backpack for coins), its own **egg**, an **obby**, a **boss** and buried gems, so you don't
-  have to go home to buy things. **Selling in a dimension pays more**: dimension 1 gives 1.25x coins,
+  and a backpack for coins), **two eggs**, an **obby**, a **boss**, a treasure chest and buried gems,
+  so you don't have to go home to buy things. The second egg is the **Mythic egg**: it costs
+  12x more, but has 5 much stronger pets (Rare, Epic, Legendary, Mythic and a 0.2% **SECRET** one).
+  That's 9 pets in every dimension, with new kinds like 🦉 owls, 🐢 turtles and 🐙 octopuses. **Selling in a dimension pays more**: dimension 1 gives 1.25x coins,
   dimension 2 gives 1.5x, dimension 4 gives 2x, and so on.
   **Every 5th dimension is a ✨ SHINY dimension**: it glows, sparkles and gives **2x gems**.
 - **Rebirths**: start over and earn more coins forever. You keep your pets, gadgets and Boss Shards.
@@ -116,11 +128,14 @@ Use this if the file doesn't open for some reason.
   **🏃 DIMENSION OBBY** circle too. The sign on each one shows how much it pays you.
 - Hold **Shift** to sprint.
 - Check the right side of the screen for your **quest**, **free gifts** and **daily reward**.
+- Spin the **🎡 Lucky Wheel** next to the shops at the spawn whenever the right side says it's ready.
+- Look around for **🎁 treasure chests** and press **E** to open them.
+- When you see **"🌠 A METEOR CRASHED"**, follow the glowing beam and mine the meteor.
 - Step into the **🌌 portal** circle (or click **🌌 DIMENSIONS**) and pick a dimension.
   Step into the **🏠 HOME** circle in a dimension to go back.
 - Walk to a gate and press **E** to unlock the next zone. You need that to keep leveling up!
 - Use **🌀 Teleport** to jump between zones you've unlocked.
-- At **75K coins** you can **♻️ Rebirth** for a permanent coin boost.
+- At **150K coins** you can **♻️ Rebirth** for a permanent coin boost.
 
 ## Getting a new version into Studio
 
@@ -161,6 +176,11 @@ Everything you'd want to tweak is in **`GameShared`** (in ReplicatedStorage):
 - `DimensionSellBonus = 0.25`: selling in dimension d gives 1 + 0.25 × d times more coins
 - `ShinyEvery = 5`: every 5th dimension is shiny. `GoldenChance = 0.02`: how often crystals are golden.
 - `ObbyRewardCrystals` and `ObbyCooldown`: how much the obbies pay and how often
+- `Shared.WheelPrizes` and `WheelCooldown`: the lucky wheel's prizes, their chances and how often you can spin
+- `ChestsPerZone`, `ChestCrystals`, `ChestRespawnTime`: the treasure chests
+- `MeteorEvery`, `MeteorHealth`, `MeteorRewardCrystals`, `MeteorShards`: the meteor showers
+- `BouncePower`: how high the bounce pads throw you
+- `MythicEggPrice`: how much more the Mythic egg costs than the normal dimension egg
 - `Shared.Gifts`, `Shared.DailyRewards`, `Shared.QuestKinds`: the free gifts, daily rewards and quests
 - `Shared.Gadgets`: the gadgets, what they do and their prices
 - `SprintSpeed`, `JumpHeight`: how fast you sprint and how high you jump

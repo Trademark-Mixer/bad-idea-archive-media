@@ -22,7 +22,7 @@ Shared.Settings = {
 	MineRange = 24, -- how close (in studs) you must be to mine a crystal
 	MineCooldown = 0.2, -- seconds between pickaxe swings
 	CrystalsPerZone = 16, -- how many crystals each zone has
-	CrystalRespawnTime = 7, -- seconds until a mined crystal grows back
+	CrystalRespawnTime = 9, -- seconds until a mined crystal grows back
 	GiantChance = 0.15, -- chance that a crystal is a GIANT crystal
 	GiantHealth = 5, -- giant crystals have 5x more health...
 	GiantGems = 6, -- ...and give 6x more gems
@@ -36,14 +36,15 @@ Shared.Settings = {
 	LevelsPerZone = 3, -- you can't level up past level 1 in the first zone; every zone you unlock lets you go 3 levels higher (the last zone has no limit)
 	LevelPowerBonus = 0.1, -- every level makes your pickaxe 10% stronger
 	DimensionCrystals = 14, -- crystals on each dimension island
-	DimensionHealth = 5, -- crystal health in dimension 1...
-	DimensionHealthGrowth = 1.8, -- ...and x1.8 for every dimension after that
+	DimensionHealth = 8, -- crystal health in dimension 1...
+	DimensionHealthGrowth = 1.9, -- ...and x1.9 for every dimension after that
 	DimensionGems = 4, -- gems per crystal in dimension 1...
 	DimensionGemGrowth = 2, -- ...and x2 for every dimension after that
 	MaxOpenDimensions = 8, -- how many dimension islands can exist at the same time
 	DimensionCloseTime = 30, -- seconds an empty dimension stays before it disappears
 	ShinyEvery = 5, -- every 5th dimension is a SHINY dimension (glowing, and 2x gems)
 	DimensionPetGrowth = 1.45, -- pets from dimension eggs get 45% stronger every dimension
+	MythicEggPrice = 12, -- the Mythic egg in every dimension costs 12x the normal one
 	DimensionPickaxePower = 6, -- the special pickaxe in dimension 1 has power 6...
 	DimensionPickaxeGrowth = 2.1, -- ...and x2.1 in every dimension after that
 	DimensionPickaxeShards = 5, -- it costs 5 Boss Shards in dimension 1...
@@ -71,19 +72,31 @@ Shared.Settings = {
 	DigRespawnTime = 15, -- seconds until a new buried gem appears
 
 	-- Diamond bosses (one in every zone and every dimension)
-	BossHealth = 80, -- a boss has as much health as 80 crystals
+	BossHealth = 120, -- a boss has as much health as 120 crystals
 	BossRewardCrystals = 150, -- beating it gives as many coins as 150 crystals
 	BossXP = 40, -- ...and this much XP (x the zone number)
 	BossRespawnTime = 75, -- seconds until the boss comes back
-	BossDamage = 8, -- how much a boss attack hurts (you have 100 health)
-	BossAttackEvery = 2.6, -- seconds between boss attacks
+	BossDamage = 12, -- how much a boss attack hurts (you have 100 health)
+	BossAttackEvery = 2.2, -- seconds between boss attacks
+
+	-- Fun extras
+	WheelCooldown = 600, -- seconds between free spins of the 🎡 Lucky Wheel at the spawn
+	ChestsPerZone = 2, -- hidden 🎁 treasure chests in every zone (and 1 in every dimension)
+	ChestCrystals = 60, -- a chest has up to as many coins as mining 60 crystals
+	ChestRespawnTime = 90, -- seconds until an opened chest shows up somewhere else
+	MeteorEvery = 240, -- about every 4 minutes a 🌠 meteor crashes down near a player
+	MeteorHealth = 40, -- a meteor is as tough as 40 crystals...
+	MeteorRewardCrystals = 150, -- ...and gives as many coins as 150 crystals
+	MeteorShards = 2, -- plus this many 💠 Boss Shards
+	MeteorLifetime = 150, -- seconds before an unmined meteor fades away
+	BouncePower = 110, -- how high the 🦘 bounce pads throw you
 
 	-- Background music. Paste song IDs from the Toolbox (Audio tab) here, like
 	-- MusicIds = { 1234567890, 9876543210 }. With none, a little music box plays.
 	MusicIds = {},
 	MusicVolume = 0.35,
 	RebirthBoost = 0.5, -- every rebirth gives +50% coins when selling
-	RebirthBaseCost = 75000, -- coins needed for your first rebirth
+	RebirthBaseCost = 150000, -- coins needed for your first rebirth
 	RebirthCostGrowth = 2.5, -- each rebirth costs this many times more
 	SaveData = true, -- save progress (needs the game to be published)
 	StudioStartCoins = 0, -- testing tip: set to 1000000 to get coins in Studio
@@ -133,7 +146,7 @@ Shared.Zones = {
 		Name = "Sunny Meadow",
 		Emoji = "🌻",
 		Price = 0,
-		Health = 4,
+		Health = 6,
 		Gems = 3,
 		-- emerald, citrine, aquamarine
 		CrystalColors = { Color3.fromRGB(30, 150, 80), Color3.fromRGB(215, 160, 40), Color3.fromRGB(70, 170, 195) },
@@ -146,8 +159,8 @@ Shared.Zones = {
 	{
 		Name = "Crystal Caves",
 		Emoji = "💜",
-		Price = 2000,
-		Health = 40,
+		Price = 4000,
+		Health = 60,
 		Gems = 30,
 		-- amethyst, rose quartz, sapphire
 		CrystalColors = { Color3.fromRGB(120, 60, 180), Color3.fromRGB(205, 120, 160), Color3.fromRGB(45, 80, 190) },
@@ -163,8 +176,8 @@ Shared.Zones = {
 	{
 		Name = "Lava Volcano",
 		Emoji = "🌋",
-		Price = 40000,
-		Health = 400,
+		Price = 80000,
+		Health = 600,
 		Gems = 300,
 		-- ruby, fire opal, garnet
 		CrystalColors = { Color3.fromRGB(175, 20, 40), Color3.fromRGB(220, 90, 30), Color3.fromRGB(120, 18, 35) },
@@ -180,8 +193,8 @@ Shared.Zones = {
 	{
 		Name = "Frozen Peaks",
 		Emoji = "❄️",
-		Price = 750000,
-		Health = 4000,
+		Price = 1500000,
+		Health = 6000,
 		Gems = 3000,
 		-- diamond, ice, sapphire
 		CrystalColors = { Color3.fromRGB(215, 232, 245), Color3.fromRGB(125, 185, 225), Color3.fromRGB(55, 100, 200) },
@@ -196,8 +209,8 @@ Shared.Zones = {
 	{
 		Name = "Galaxy Isles",
 		Emoji = "🌌",
-		Price = 15000000,
-		Health = 40000,
+		Price = 30000000,
+		Health = 60000,
 		Gems = 30000,
 		-- alexandrite, tanzanite, opal
 		CrystalColors = { Color3.fromRGB(105, 55, 160), Color3.fromRGB(70, 65, 190), Color3.fromRGB(185, 215, 230) },
@@ -476,14 +489,14 @@ end
 --------------------------------------------------------------------------------
 Shared.Pickaxes = {
 	{ Name = "Wooden Pickaxe", Power = 1, Price = 0, Color = Color3.fromRGB(150, 105, 60), Material = Enum.Material.Wood },
-	{ Name = "Stone Pickaxe", Power = 2, Price = 60, Color = Color3.fromRGB(140, 140, 150), Material = Enum.Material.Slate },
-	{ Name = "Copper Pickaxe", Power = 4, Price = 300, Color = Color3.fromRGB(215, 125, 70), Material = Enum.Material.Metal, Shine = 0.1 },
-	{ Name = "Iron Pickaxe", Power = 10, Price = 1200, Color = Color3.fromRGB(200, 205, 215), Material = Enum.Material.Metal, Shine = 0.15 },
-	{ Name = "Gold Pickaxe", Power = 25, Price = 6000, Color = Color3.fromRGB(255, 200, 50), Material = Enum.Material.Metal, Shine = 0.25 },
+	{ Name = "Stone Pickaxe", Power = 2, Price = 100, Color = Color3.fromRGB(140, 140, 150), Material = Enum.Material.Slate },
+	{ Name = "Copper Pickaxe", Power = 4, Price = 500, Color = Color3.fromRGB(215, 125, 70), Material = Enum.Material.Metal, Shine = 0.1 },
+	{ Name = "Iron Pickaxe", Power = 10, Price = 2000, Color = Color3.fromRGB(200, 205, 215), Material = Enum.Material.Metal, Shine = 0.15 },
+	{ Name = "Gold Pickaxe", Power = 25, Price = 10000, Color = Color3.fromRGB(255, 200, 50), Material = Enum.Material.Metal, Shine = 0.25 },
 	{
 		Name = "Diamond Pickaxe",
 		Power = 60,
-		Price = 25000,
+		Price = 40000,
 		Color = Color3.fromRGB(120, 230, 255),
 		Material = Enum.Material.Glass,
 		Glow = Color3.fromRGB(150, 240, 255),
@@ -491,7 +504,7 @@ Shared.Pickaxes = {
 	{
 		Name = "Ruby Pickaxe",
 		Power = 150,
-		Price = 120000,
+		Price = 200000,
 		Color = Color3.fromRGB(230, 40, 70),
 		Material = Enum.Material.Glass,
 		Glow = Color3.fromRGB(255, 80, 110),
@@ -499,7 +512,7 @@ Shared.Pickaxes = {
 	{
 		Name = "Lava Pickaxe",
 		Power = 400,
-		Price = 600000,
+		Price = 1000000,
 		Color = Color3.fromRGB(70, 45, 40),
 		Material = Enum.Material.CrackedLava,
 		Glow = Color3.fromRGB(255, 120, 30),
@@ -507,7 +520,7 @@ Shared.Pickaxes = {
 	{
 		Name = "Frost Pickaxe",
 		Power = 1200,
-		Price = 3000000,
+		Price = 5000000,
 		Color = Color3.fromRGB(170, 225, 255),
 		Material = Enum.Material.Ice,
 		Glow = Color3.fromRGB(190, 240, 255),
@@ -515,7 +528,7 @@ Shared.Pickaxes = {
 	{
 		Name = "Galaxy Pickaxe",
 		Power = 4000,
-		Price = 15000000,
+		Price = 25000000,
 		Color = Color3.fromRGB(120, 60, 220),
 		Material = Enum.Material.Glass,
 		Glow = Color3.fromRGB(220, 120, 255),
@@ -523,7 +536,7 @@ Shared.Pickaxes = {
 	{
 		Name = "Rainbow Pickaxe",
 		Power = 12000,
-		Price = 100000000,
+		Price = 160000000,
 		Color = Color3.fromRGB(255, 90, 200),
 		Material = Enum.Material.ForceField,
 		Glow = Color3.fromRGB(255, 255, 255),
@@ -535,21 +548,21 @@ Shared.Pickaxes = {
 --------------------------------------------------------------------------------
 Shared.Backpacks = {
 	{ Name = "Pouch", Capacity = 30, Price = 0, Color = Color3.fromRGB(150, 110, 70), Accent = Color3.fromRGB(115, 80, 50) },
-	{ Name = "Sack", Capacity = 75, Price = 40, Color = Color3.fromRGB(205, 175, 125), Accent = Color3.fromRGB(160, 130, 90) },
-	{ Name = "Backpack", Capacity = 250, Price = 300, Color = Color3.fromRGB(60, 140, 230), Accent = Color3.fromRGB(40, 90, 170) },
-	{ Name = "Big Backpack", Capacity = 800, Price = 1500, Color = Color3.fromRGB(230, 70, 70), Accent = Color3.fromRGB(160, 40, 40) },
-	{ Name = "Explorer Pack", Capacity = 2500, Price = 7500, Color = Color3.fromRGB(95, 175, 80), Accent = Color3.fromRGB(60, 110, 50) },
-	{ Name = "Crystal Pack", Capacity = 8000, Price = 30000, Color = Color3.fromRGB(150, 90, 230), Accent = Color3.fromRGB(100, 50, 170) },
-	{ Name = "Lava Pack", Capacity = 30000, Price = 150000, Color = Color3.fromRGB(65, 45, 45), Accent = Color3.fromRGB(255, 120, 30) },
-	{ Name = "Frost Pack", Capacity = 120000, Price = 700000, Color = Color3.fromRGB(215, 240, 255), Accent = Color3.fromRGB(110, 180, 240) },
-	{ Name = "Galaxy Pack", Capacity = 500000, Price = 3500000, Color = Color3.fromRGB(45, 30, 90), Accent = Color3.fromRGB(180, 90, 255) },
-	{ Name = "Infinity Pack", Capacity = 2500000, Price = 20000000, Color = Color3.fromRGB(255, 215, 80), Accent = Color3.fromRGB(255, 250, 235) },
+	{ Name = "Sack", Capacity = 75, Price = 60, Color = Color3.fromRGB(205, 175, 125), Accent = Color3.fromRGB(160, 130, 90) },
+	{ Name = "Backpack", Capacity = 250, Price = 500, Color = Color3.fromRGB(60, 140, 230), Accent = Color3.fromRGB(40, 90, 170) },
+	{ Name = "Big Backpack", Capacity = 800, Price = 2500, Color = Color3.fromRGB(230, 70, 70), Accent = Color3.fromRGB(160, 40, 40) },
+	{ Name = "Explorer Pack", Capacity = 2500, Price = 12000, Color = Color3.fromRGB(95, 175, 80), Accent = Color3.fromRGB(60, 110, 50) },
+	{ Name = "Crystal Pack", Capacity = 8000, Price = 50000, Color = Color3.fromRGB(150, 90, 230), Accent = Color3.fromRGB(100, 50, 170) },
+	{ Name = "Lava Pack", Capacity = 30000, Price = 250000, Color = Color3.fromRGB(65, 45, 45), Accent = Color3.fromRGB(255, 120, 30) },
+	{ Name = "Frost Pack", Capacity = 120000, Price = 1100000, Color = Color3.fromRGB(215, 240, 255), Accent = Color3.fromRGB(110, 180, 240) },
+	{ Name = "Galaxy Pack", Capacity = 500000, Price = 6000000, Color = Color3.fromRGB(45, 30, 90), Accent = Color3.fromRGB(180, 90, 255) },
+	{ Name = "Infinity Pack", Capacity = 2500000, Price = 32000000, Color = Color3.fromRGB(255, 215, 80), Accent = Color3.fromRGB(255, 250, 235) },
 }
 
 --------------------------------------------------------------------------------
 -- PETS  (Bonus = extra gems. 0.25 means +25% gems)
 --   Kind picks the look: dog, cat, bunny, fox, panda, dragon, unicorn, cosmic,
---                        bee, slime, penguin, phoenix
+--                        bee, slime, penguin, phoenix, owl, turtle, octopus
 --   Price  = pets with a price are sold in the Shop. The rest come from eggs!
 --   Rarity = Common, Uncommon, Rare, Epic, Legendary, Mythic or Secret
 --   Extra looks you can add: Material, Shine (0 to 1), Glow (a color),
@@ -821,10 +834,11 @@ end
 
 --------------------------------------------------------------------------------
 -- SPECIAL THINGS IN EVERY DIMENSION
---   Every dimension has its own shop and its own egg.
+--   Every dimension has its own shop and two eggs.
 --   * a special pickaxe (you pay with 💠 Boss Shards, which you only get from bosses)
 --   * a special backpack (you pay with coins)
 --   * an egg with 4 pets you can only find there
+--   * a MYTHIC egg (much more expensive) with 5 rarer pets, and a tiny chance of a SECRET one
 --   The further you go, the better they get. Shiny dimensions have shiny versions!
 --------------------------------------------------------------------------------
 local METAL = Enum.Material.Metal
@@ -843,87 +857,150 @@ Shared.DimensionItems = {
 	{ Pickaxe = "Magma Pickaxe", Pack = "Magma Pack", Egg = "Magma Egg", Material = Enum.Material.CrackedLava },
 }
 
--- The 4 pets in each dimension's egg (Common, Uncommon, Rare, Legendary)
+-- The pets of each dimension:
+--   1-4 come from the normal egg (Common, Uncommon, Rare, Legendary)
+--   5-9 come from the Mythic egg (Rare, Epic, Legendary, Mythic, Secret)
 Shared.DimensionPets = {
 	{ -- Candy World
 		{ Name = "Gummy Slime", Kind = "slime", Color = RGB(255, 120, 190), Accent = RGB(255, 230, 120) },
 		{ Name = "Lollipop Bunny", Kind = "bunny", Color = RGB(255, 235, 245), Accent = RGB(255, 110, 180) },
 		{ Name = "Candy Unicorn", Kind = "unicorn", Color = RGB(255, 210, 235), Accent = RGB(120, 230, 210) },
 		{ Name = "Sugar Dragon", Kind = "dragon", Color = RGB(255, 150, 210), Accent = RGB(255, 245, 160) },
+		{ Name = "Marshmallow Owl", Kind = "owl", Color = RGB(255, 245, 240), Accent = RGB(255, 150, 200) },
+		{ Name = "Cupcake Turtle", Kind = "turtle", Color = RGB(255, 190, 220), Accent = RGB(150, 95, 60) },
+		{ Name = "Jelly Octopus", Kind = "octopus", Color = RGB(255, 110, 200), Accent = RGB(255, 240, 140) },
+		{ Name = "Cotton Candy Phoenix", Kind = "phoenix", Color = RGB(255, 180, 230), Accent = RGB(150, 220, 255) },
+		{ Name = "Gummy King", Kind = "slime", Color = RGB(255, 215, 80), Accent = RGB(255, 120, 190) },
 	},
 	{ -- Neon City
 		{ Name = "Neon Cat", Kind = "cat", Color = RGB(40, 40, 70), Accent = RGB(0, 235, 255) },
 		{ Name = "Laser Fox", Kind = "fox", Color = RGB(255, 60, 200), Accent = RGB(40, 40, 70) },
 		{ Name = "Pixel Panda", Kind = "panda", Color = RGB(230, 240, 255), Accent = RGB(150, 60, 255) },
 		{ Name = "Neon Phoenix", Kind = "phoenix", Color = RGB(30, 30, 60), Accent = RGB(0, 240, 255) },
+		{ Name = "Neon Owl", Kind = "owl", Color = RGB(30, 30, 60), Accent = RGB(255, 60, 200) },
+		{ Name = "Disco Turtle", Kind = "turtle", Color = RGB(60, 40, 90), Accent = RGB(0, 240, 255) },
+		{ Name = "Synth Octopus", Kind = "octopus", Color = RGB(120, 40, 255), Accent = RGB(0, 255, 200) },
+		{ Name = "Laser Dragon", Kind = "dragon", Color = RGB(25, 25, 45), Accent = RGB(255, 40, 180) },
+		{ Name = "Hologram Cat", Kind = "cosmic", Color = RGB(150, 240, 255), Accent = RGB(255, 90, 230) },
 	},
 	{ -- Cyber Grid
 		{ Name = "Robo Dog", Kind = "dog", Color = RGB(170, 180, 195), Accent = RGB(60, 255, 180), Material = METAL },
 		{ Name = "Cyber Bee", Kind = "bee", Color = RGB(60, 255, 180), Accent = RGB(35, 45, 60) },
 		{ Name = "Glitch Cat", Kind = "cat", Color = RGB(60, 140, 255), Accent = RGB(255, 255, 255) },
 		{ Name = "Mecha Dragon", Kind = "dragon", Color = RGB(120, 130, 150), Accent = RGB(60, 255, 180), Material = METAL },
+		{ Name = "Drone Owl", Kind = "owl", Color = RGB(150, 160, 175), Accent = RGB(60, 255, 180), Material = METAL },
+		{ Name = "Tank Turtle", Kind = "turtle", Color = RGB(110, 120, 135), Accent = RGB(60, 255, 180), Material = METAL },
+		{ Name = "Circuit Octopus", Kind = "octopus", Color = RGB(40, 60, 80), Accent = RGB(60, 255, 180) },
+		{ Name = "Robo Unicorn", Kind = "unicorn", Color = RGB(190, 200, 215), Accent = RGB(60, 255, 180), Material = METAL },
+		{ Name = "Mainframe Phoenix", Kind = "phoenix", Color = RGB(30, 40, 55), Accent = RGB(60, 255, 180) },
 	},
 	{ -- Ocean Reef
 		{ Name = "Bubble Slime", Kind = "slime", Color = RGB(80, 210, 255), Accent = RGB(255, 255, 255) },
 		{ Name = "Reef Penguin", Kind = "penguin", Color = RGB(30, 70, 110), Accent = RGB(255, 130, 110) },
 		{ Name = "Coral Bunny", Kind = "bunny", Color = RGB(255, 140, 130), Accent = RGB(255, 230, 220) },
 		{ Name = "Tide Dragon", Kind = "dragon", Color = RGB(40, 150, 200), Accent = RGB(120, 255, 220) },
+		{ Name = "Puffer Slime", Kind = "slime", Color = RGB(255, 220, 120), Accent = RGB(255, 140, 60) },
+		{ Name = "Sea Turtle", Kind = "turtle", Color = RGB(80, 170, 120), Accent = RGB(230, 200, 140) },
+		{ Name = "Reef Octopus", Kind = "octopus", Color = RGB(255, 110, 90), Accent = RGB(255, 230, 200) },
+		{ Name = "Pearl Unicorn", Kind = "unicorn", Color = RGB(245, 245, 255), Accent = RGB(120, 220, 255) },
+		{ Name = "Kraken King", Kind = "octopus", Color = RGB(40, 30, 90), Accent = RGB(120, 255, 220) },
 	},
 	{ -- Jungle
 		{ Name = "Jungle Bee", Kind = "bee", Color = RGB(180, 230, 60), Accent = RGB(40, 60, 30) },
 		{ Name = "Leaf Fox", Kind = "fox", Color = RGB(90, 170, 60), Accent = RGB(240, 250, 220) },
 		{ Name = "Jungle Panda", Kind = "panda", Color = RGB(240, 245, 225), Accent = RGB(60, 110, 40) },
 		{ Name = "Parrot Phoenix", Kind = "phoenix", Color = RGB(40, 180, 70), Accent = RGB(255, 200, 40) },
+		{ Name = "Jungle Owl", Kind = "owl", Color = RGB(130, 100, 60), Accent = RGB(255, 200, 60) },
+		{ Name = "Moss Turtle", Kind = "turtle", Color = RGB(90, 140, 60), Accent = RGB(200, 230, 120) },
+		{ Name = "Tiger Cat", Kind = "cat", Color = RGB(255, 150, 40), Accent = RGB(40, 30, 25) },
+		{ Name = "Toucan Phoenix", Kind = "phoenix", Color = RGB(35, 35, 40), Accent = RGB(255, 160, 30) },
+		{ Name = "Ancient Jungle Dragon", Kind = "dragon", Color = RGB(40, 110, 50), Accent = RGB(255, 215, 80) },
 	},
 	{ -- Desert Dunes
 		{ Name = "Sand Slime", Kind = "slime", Color = RGB(235, 195, 120), Accent = RGB(200, 140, 70) },
 		{ Name = "Desert Fox", Kind = "fox", Color = RGB(225, 170, 100), Accent = RGB(255, 245, 225) },
 		{ Name = "Pharaoh Cat", Kind = "cat", Color = RGB(60, 50, 45), Accent = RGB(255, 200, 60) },
 		{ Name = "Sun Dragon", Kind = "dragon", Color = RGB(255, 170, 40), Accent = RGB(255, 90, 50) },
+		{ Name = "Scarab Bee", Kind = "bee", Color = RGB(60, 150, 140), Accent = RGB(255, 200, 60) },
+		{ Name = "Dune Turtle", Kind = "turtle", Color = RGB(215, 170, 110), Accent = RGB(150, 100, 60) },
+		{ Name = "Mummy Panda", Kind = "panda", Color = RGB(240, 230, 205), Accent = RGB(120, 100, 80) },
+		{ Name = "Sphinx Cat", Kind = "cosmic", Color = RGB(225, 180, 110), Accent = RGB(80, 170, 255) },
+		{ Name = "Pharaoh Dragon", Kind = "dragon", Color = RGB(255, 200, 60), Accent = RGB(40, 90, 200) },
 	},
 	{ -- Toxic Swamp
 		{ Name = "Toxic Slime", Kind = "slime", Color = RGB(140, 255, 40), Accent = RGB(190, 80, 255) },
 		{ Name = "Swamp Bee", Kind = "bee", Color = RGB(150, 200, 60), Accent = RGB(50, 40, 60) },
 		{ Name = "Bog Panda", Kind = "panda", Color = RGB(200, 220, 160), Accent = RGB(70, 85, 45) },
 		{ Name = "Venom Dragon", Kind = "dragon", Color = RGB(110, 60, 160), Accent = RGB(140, 255, 40) },
+		{ Name = "Swamp Owl", Kind = "owl", Color = RGB(90, 110, 60), Accent = RGB(140, 255, 40) },
+		{ Name = "Sludge Turtle", Kind = "turtle", Color = RGB(100, 120, 50), Accent = RGB(190, 80, 255) },
+		{ Name = "Toxic Octopus", Kind = "octopus", Color = RGB(140, 255, 40), Accent = RGB(110, 60, 160) },
+		{ Name = "Plague Phoenix", Kind = "phoenix", Color = RGB(60, 40, 80), Accent = RGB(140, 255, 40) },
+		{ Name = "Mutant King Slime", Kind = "slime", Color = RGB(190, 80, 255), Accent = RGB(140, 255, 40) },
 	},
 	{ -- Cloud Kingdom
 		{ Name = "Cloud Bunny", Kind = "bunny", Color = RGB(250, 252, 255), Accent = RGB(170, 210, 255) },
 		{ Name = "Sky Penguin", Kind = "penguin", Color = RGB(110, 160, 230), Accent = RGB(255, 215, 90) },
 		{ Name = "Angel Cat", Kind = "cosmic", Color = RGB(255, 252, 245), Accent = RGB(255, 215, 90) },
 		{ Name = "Heaven Unicorn", Kind = "unicorn", Color = RGB(255, 255, 255), Accent = RGB(255, 215, 90) },
+		{ Name = "Sky Owl", Kind = "owl", Color = RGB(235, 245, 255), Accent = RGB(150, 190, 255) },
+		{ Name = "Cloud Turtle", Kind = "turtle", Color = RGB(250, 252, 255), Accent = RGB(255, 215, 90) },
+		{ Name = "Storm Fox", Kind = "fox", Color = RGB(120, 140, 190), Accent = RGB(255, 240, 120) },
+		{ Name = "Thunder Dragon", Kind = "dragon", Color = RGB(90, 110, 170), Accent = RGB(255, 235, 90) },
+		{ Name = "Celestial Pegasus", Kind = "unicorn", Color = RGB(255, 255, 255), Accent = RGB(150, 210, 255) },
 	},
 	{ -- Shadow Realm
 		{ Name = "Shadow Slime", Kind = "slime", Color = RGB(60, 40, 80), Accent = RGB(255, 40, 70) },
 		{ Name = "Night Fox", Kind = "fox", Color = RGB(45, 35, 60), Accent = RGB(255, 60, 90) },
 		{ Name = "Ghost Cat", Kind = "cosmic", Color = RGB(200, 200, 225), Accent = RGB(150, 40, 255) },
 		{ Name = "Shadow Dragon", Kind = "dragon", Color = RGB(30, 20, 40), Accent = RGB(255, 40, 70) },
+		{ Name = "Bat Owl", Kind = "owl", Color = RGB(50, 35, 65), Accent = RGB(255, 40, 70) },
+		{ Name = "Crypt Turtle", Kind = "turtle", Color = RGB(55, 50, 65), Accent = RGB(150, 40, 255) },
+		{ Name = "Phantom Octopus", Kind = "octopus", Color = RGB(200, 200, 230), Accent = RGB(150, 40, 255) },
+		{ Name = "Nightmare Unicorn", Kind = "unicorn", Color = RGB(30, 20, 40), Accent = RGB(255, 40, 70) },
+		{ Name = "Void Phoenix", Kind = "phoenix", Color = RGB(15, 10, 25), Accent = RGB(190, 110, 255) },
 	},
 	{ -- Rainbow Road
 		{ Name = "Rainbow Slime", Kind = "slime", Color = RGB(255, 120, 200), Accent = RGB(120, 220, 255) },
 		{ Name = "Prism Bunny", Kind = "bunny", Color = RGB(250, 250, 255), Accent = RGB(255, 120, 200) },
 		{ Name = "Rainbow Cat", Kind = "cat", Color = RGB(255, 200, 80), Accent = RGB(120, 140, 255) },
 		{ Name = "Rainbow Unicorn", Kind = "unicorn", Color = RGB(255, 245, 255), Accent = RGB(255, 90, 140) },
+		{ Name = "Rainbow Owl", Kind = "owl", Color = RGB(255, 240, 250), Accent = RGB(255, 120, 200) },
+		{ Name = "Prism Turtle", Kind = "turtle", Color = RGB(180, 240, 255), Accent = RGB(255, 150, 90) },
+		{ Name = "Rainbow Octopus", Kind = "octopus", Color = RGB(255, 150, 90), Accent = RGB(140, 120, 255) },
+		{ Name = "Rainbow Dragon", Kind = "dragon", Color = RGB(255, 110, 190), Accent = RGB(120, 240, 255) },
+		{ Name = "Spectrum Cat", Kind = "cosmic", Color = RGB(255, 250, 255), Accent = RGB(255, 120, 200) },
 	},
 	{ -- Crystal Glacier
 		{ Name = "Frost Penguin", Kind = "penguin", Color = RGB(60, 100, 150), Accent = RGB(160, 230, 255) },
 		{ Name = "Glacier Fox", Kind = "fox", Color = RGB(200, 235, 255), Accent = RGB(100, 150, 255) },
 		{ Name = "Crystal Panda", Kind = "panda", Color = RGB(235, 248, 255), Accent = RGB(110, 200, 255), Material = Enum.Material.Glass },
 		{ Name = "Ice Phoenix", Kind = "phoenix", Color = RGB(160, 225, 255), Accent = RGB(230, 250, 255) },
+		{ Name = "Snow Owl", Kind = "owl", Color = RGB(245, 250, 255), Accent = RGB(140, 200, 255) },
+		{ Name = "Glacier Turtle", Kind = "turtle", Color = RGB(180, 225, 250), Accent = RGB(90, 150, 230), Material = Enum.Material.Ice },
+		{ Name = "Frost Octopus", Kind = "octopus", Color = RGB(150, 210, 255), Accent = RGB(240, 250, 255) },
+		{ Name = "Crystal Dragon", Kind = "dragon", Color = RGB(200, 235, 255), Accent = RGB(110, 200, 255), Material = Enum.Material.Glass },
+		{ Name = "Diamond Phoenix", Kind = "phoenix", Color = RGB(230, 248, 255), Accent = RGB(120, 220, 255) },
 	},
 	{ -- Magma Core
 		{ Name = "Ember Slime", Kind = "slime", Color = RGB(255, 110, 30), Accent = RGB(255, 220, 60) },
 		{ Name = "Magma Dog", Kind = "dog", Color = RGB(70, 40, 35), Accent = RGB(255, 110, 30) },
 		{ Name = "Lava Cat", Kind = "cat", Color = RGB(255, 80, 40), Accent = RGB(60, 35, 30) },
 		{ Name = "Magma Phoenix", Kind = "phoenix", Color = RGB(255, 90, 30), Accent = RGB(255, 220, 60) },
+		{ Name = "Ash Owl", Kind = "owl", Color = RGB(70, 60, 60), Accent = RGB(255, 120, 40) },
+		{ Name = "Volcano Turtle", Kind = "turtle", Color = RGB(60, 40, 35), Accent = RGB(255, 110, 30) },
+		{ Name = "Lava Octopus", Kind = "octopus", Color = RGB(255, 90, 30), Accent = RGB(255, 220, 60) },
+		{ Name = "Magma Dragon", Kind = "dragon", Color = RGB(60, 35, 30), Accent = RGB(255, 110, 30) },
+		{ Name = "Core Titan", Kind = "unicorn", Color = RGB(40, 25, 25), Accent = RGB(255, 140, 40) },
 	},
 }
 
 local DIM_PET = 100000 -- dimension pets have numbers like 100000 + dimension x 10 + slot
 local DIM_EGG = 1000 -- dimension eggs have numbers like 1000 + dimension
-local DIM_RARITY = { "Common", "Uncommon", "Rare", "Legendary" }
-local DIM_BONUS = { 0.4, 0.8, 2, 5 } -- pet boosts in dimension 1 (they grow every dimension)
-local DIM_CHANCE = { 60, 30, 9, 1 }
+local MYTHIC_EGG = 200000 -- Mythic dimension eggs have numbers like 200000 + dimension
+local DIM_RARITY = { "Common", "Uncommon", "Rare", "Legendary", "Rare", "Epic", "Legendary", "Mythic", "Secret" }
+local DIM_BONUS = { 0.4, 0.8, 2, 5, 3, 6, 12, 30, 100 } -- pet boosts in dimension 1 (they grow every dimension)
+local DIM_CHANCE = { 60, 30, 9, 1, 50, 32, 14, 3.8, 0.2 }
 
 local function dimensionInfo(d: number)
 	local themes = Shared.DimensionThemes
@@ -947,13 +1024,18 @@ function Shared.GetPet(index: number)
 		return petCache[index]
 	end
 	local d, slot = (index - DIM_PET) // 10, (index - DIM_PET) % 10
-	if index ~= math.floor(index) or d < 1 or d > 100000 or slot < 1 or slot > 4 then
+	if index ~= math.floor(index) or d < 1 or d > 100000 or slot < 1 or slot > #DIM_RARITY then
 		return nil
 	end
 	local dim = Shared.GetDimension(d)
 	local themeIndex, roman, hue = dimensionInfo(d)
 	local template = Shared.DimensionPets[themeIndex][slot]
+	if not template then
+		return nil
+	end
 	local color, accent = shiftHue(template.Color, hue), shiftHue(template.Accent, hue)
+	local mythic = slot >= 5
+	local big = slot == 4 or slot >= 7
 	def = {
 		Name = (if dim.Shiny then "Shiny " else "") .. template.Name .. roman,
 		Kind = template.Kind,
@@ -962,11 +1044,12 @@ function Shared.GetPet(index: number)
 		Color = color,
 		Accent = accent,
 		Material = template.Material,
+		Shine = if mythic then 0.15 else nil,
 		Glow = if slot >= 3 or dim.Shiny then accent else nil,
-		Aura = if slot == 4 then accent else nil,
-		Size = if slot == 4 then 1.2 else nil,
+		Aura = if big then accent else nil,
+		Size = if slot >= 8 then 1.3 elseif big then 1.2 else nil,
 		Dimension = d,
-		From = (if dim.Shiny then "Shiny " else "") .. Shared.DimensionItems[themeIndex].Egg .. roman,
+		From = (if dim.Shiny then "Shiny " else "") .. (if mythic then "Mythic " else "") .. Shared.DimensionItems[themeIndex].Egg .. roman,
 	}
 	petCache[index] = def
 	return def
@@ -982,21 +1065,46 @@ function Shared.GetEgg(id: number)
 	if eggCache[id] then
 		return eggCache[id]
 	end
-	local d = id - DIM_EGG
-	if id ~= math.floor(id) or d < 1 or d > 100000 then
+	if id ~= math.floor(id) then
+		return nil
+	end
+	local mythic = id > MYTHIC_EGG
+	local d = id - (if mythic then MYTHIC_EGG else DIM_EGG)
+	if d < 1 or d > 100000 then
 		return nil
 	end
 	local dim = Shared.GetDimension(d)
 	local themeIndex, roman = dimensionInfo(d)
 	local pets = {}
-	for slot = 1, 4 do
+	for slot = if mythic then 5 else 1, if mythic then 9 else 4 do
 		table.insert(pets, { Index = Shared.DimensionPetIndex(d, slot), Chance = DIM_CHANCE[slot] })
+	end
+	local normalPrice = math.floor(dim.Gems * math.min(40 + 25 * (d - 1), 1000))
+	if mythic then
+		local gold = RGB(255, 205, 90)
+		egg = {
+			Id = id,
+			Name = (if dim.Shiny then "Shiny " else "") .. "Mythic " .. Shared.DimensionItems[themeIndex].Egg .. roman,
+			Dimension = d,
+			Mythic = true,
+			Price = normalPrice * Shared.Settings.MythicEggPrice,
+			Color = dim.CrystalColors[1]:Lerp(RGB(40, 30, 60), 0.35),
+			Cap = gold,
+			Spots = dim.Accent,
+			SpotMaterial = if dim.Shiny then Enum.Material.Neon else Enum.Material.Glass,
+			Pattern = "gems",
+			Stars = dim.Shiny,
+			Shine = 0.3,
+			Pets = pets,
+		}
+		eggCache[id] = egg
+		return egg
 	end
 	egg = {
 		Id = id,
 		Name = (if dim.Shiny then "Shiny " else "") .. Shared.DimensionItems[themeIndex].Egg .. roman,
 		Dimension = d,
-		Price = math.floor(dim.Gems * math.min(40 + 25 * (d - 1), 1000)),
+		Price = normalPrice,
 		Color = dim.Accent:Lerp(Color3.new(1, 1, 1), 0.45),
 		Cap = dim.CrystalColors[1],
 		Spots = dim.CrystalColors[2],
@@ -1010,8 +1118,9 @@ function Shared.GetEgg(id: number)
 	return egg
 end
 
-function Shared.DimensionEggId(d: number): number
-	return DIM_EGG + d
+-- The egg of dimension d (mythic = the expensive Mythic egg)
+function Shared.DimensionEggId(d: number, mythic: boolean?): number
+	return (if mythic then MYTHIC_EGG else DIM_EGG) + d
 end
 
 -- The special pickaxe sold in dimension d (costs 💠 Boss Shards)
@@ -1181,6 +1290,21 @@ Shared.Gifts = {
 	{ Minutes = 30, Crystals = 75 },
 	{ Minutes = 45, Egg = true },
 	{ Minutes = 60, Crystals = 150 },
+}
+
+-- The 🎡 Lucky Wheel at the spawn: one free spin every few minutes.
+--   Crystals = coins (as much as mining that many crystals), Eggs = free eggs,
+--   Shards = 💠 Boss Shards, XP = part of a level, Boost = seconds of 2x gems
+--   Chance = how likely it is (they add up to 100)
+Shared.WheelPrizes = {
+	{ Text = "💰 Coins", Crystals = 25, Chance = 27, Color = RGB(255, 205, 70) },
+	{ Text = "⭐ XP", XP = 0.3, Chance = 13, Color = RGB(120, 200, 255) },
+	{ Text = "🥚 Free Egg", Eggs = 1, Chance = 14, Color = RGB(150, 230, 120) },
+	{ Text = "💰💰 More Coins", Crystals = 80, Chance = 17, Color = RGB(255, 150, 60) },
+	{ Text = "💠 Boss Shards", Shards = 3, Chance = 12, Color = RGB(90, 230, 230) },
+	{ Text = "⚡ 2x Gems (5 min)", Boost = 300, Chance = 12, Color = RGB(190, 120, 255) },
+	{ Text = "🥚🥚 2 Free Eggs", Eggs = 2, Chance = 3, Color = RGB(255, 120, 190) },
+	{ Text = "💎 JACKPOT!", Crystals = 400, Chance = 2, Color = RGB(255, 80, 90) },
 }
 
 -- Daily rewards: come back every day to keep your streak!
@@ -1466,7 +1590,7 @@ function Shared.BuildPet(index: number): Model
 	local dark = Color3.fromRGB(25, 25, 35)
 	local pink = Color3.fromRGB(255, 140, 170)
 	local face = if kind == "slime" then 0.2 else 0 -- slimes are a bit wider
-	local hasFeet = kind ~= "slime" and kind ~= "bee"
+	local hasFeet = kind ~= "slime" and kind ~= "bee" and kind ~= "octopus"
 	-- very dark pets get glowing eyes so you can still see their face
 	local eyeColor, eyeMaterial = dark, Enum.Material.SmoothPlastic
 	if def.Color.R + def.Color.G + def.Color.B < 0.65 and kind ~= "penguin" then
@@ -1719,6 +1843,71 @@ function Shared.BuildPet(index: number): Model
 		flames.Speed = NumberRange.new(1, 2)
 		flames.Rate = 12
 		flames.Parent = body
+	elseif kind == "owl" then
+		-- big round eyes, ear tufts, a little beak and folded wings
+		for _, side in ipairs({ -1, 1 }) do
+			part(model, { Name = "EyeRing", Shape = BALL, Size = Vector3.one * 0.8, CFrame = CFrame.new(0.42 * side, 0.22, -0.62), Color = WHITE:Lerp(def.Accent, 0.15) })
+			part(model, {
+				Name = "Tuft",
+				Size = Vector3.new(0.28, 0.62, 0.28),
+				CFrame = CFrame.new(0.6 * side, 1.05, -0.1) * CFrame.Angles(0, 0, math.rad(-25 * side)),
+				Color = def.Accent,
+			})
+			part(model, {
+				Name = "Wing",
+				Size = Vector3.new(0.22, 1.15, 1.05),
+				CFrame = CFrame.new(1.02 * side, -0.05, 0.2) * CFrame.Angles(math.rad(10), 0, math.rad(12 * side)),
+				Color = def.Accent,
+			})
+		end
+		part(model, { Name = "Beak", Size = Vector3.new(0.26, 0.26, 0.26), CFrame = CFrame.new(0, -0.08, -1.08) * CFrame.Angles(math.rad(45), 0, 0), Color = Color3.fromRGB(255, 195, 60) })
+		part(model, { Name = "Belly", Shape = BALL, Size = Vector3.one * 1.4, CFrame = CFrame.new(0, -0.42, -0.42), Color = def.Color:Lerp(WHITE, 0.5) })
+	elseif kind == "turtle" then
+		-- a round shell with plates, the head sticks out in front
+		local shellPos = Vector3.new(0, 0.3, 0.85)
+		part(model, {
+			Name = "Shell",
+			Shape = BALL,
+			Size = Vector3.one * 2.5,
+			CFrame = CFrame.new(shellPos),
+			Color = def.Accent,
+			Material = bodyMaterial,
+			Reflectance = def.Shine or 0,
+		})
+		part(model, {
+			Name = "ShellRim",
+			Shape = CYLINDER,
+			Size = Vector3.new(0.3, 2.7, 2.7),
+			CFrame = CFrame.new(shellPos + Vector3.new(0, -0.45, 0)) * CFrame.Angles(0, 0, math.rad(90)),
+			Color = def.Accent:Lerp(dark, 0.3),
+		})
+		local plateColor = def.Accent:Lerp(WHITE, 0.3)
+		for i = 0, 6 do
+			local dir = if i == 6 then Vector3.yAxis else Vector3.new(math.cos(i / 6 * math.pi * 2) * 0.7, 0.72, math.sin(i / 6 * math.pi * 2) * 0.7).Unit
+			part(model, {
+				Name = "Plate",
+				Shape = CYLINDER,
+				Size = Vector3.new(0.12, 0.72, 0.72),
+				CFrame = CFrame.lookAt(shellPos + dir * 1.2, shellPos + dir * 3) * CFrame.Angles(0, math.rad(90), 0),
+				Color = plateColor,
+			})
+		end
+		for _, side in ipairs({ -1, 1 }) do
+			part(model, { Name = "BackFoot", Shape = BALL, Size = Vector3.one * 0.6, CFrame = CFrame.new(0.85 * side, -0.95, 1.45), Color = def.Color })
+		end
+		part(model, { Name = "Tail", Shape = BALL, Size = Vector3.one * 0.35, CFrame = CFrame.new(0, -0.35, 2.1), Color = def.Color })
+	elseif kind == "octopus" then
+		-- eight wiggly arms under a round head
+		for i = 0, 7 do
+			local a = (i + 0.5) / 8 * math.pi * 2
+			local out = Vector3.new(math.cos(a), 0, math.sin(a))
+			part(model, { Name = "Arm", Shape = BALL, Size = Vector3.one * 0.55, CFrame = CFrame.new(out * 0.75 + Vector3.new(0, -0.85, 0)), Color = def.Color })
+			part(model, { Name = "Arm", Shape = BALL, Size = Vector3.one * 0.42, CFrame = CFrame.new(out * 1.12 + Vector3.new(0, -1.05, 0)), Color = def.Color })
+			part(model, { Name = "ArmTip", Shape = BALL, Size = Vector3.one * 0.3, CFrame = CFrame.new(out * 1.42 + Vector3.new(0, -0.92, 0)), Color = def.Accent })
+		end
+		for i, pos in ipairs({ Vector3.new(0.35, 0.85, 0.45), Vector3.new(-0.45, 0.7, 0.6), Vector3.new(0.05, 1.0, -0.15) }) do
+			part(model, { Name = "Spot" .. i, Shape = BALL, Size = Vector3.one * (0.42 - i * 0.05), CFrame = CFrame.new(pos), Color = def.Accent })
+		end
 	end
 
 	-- Extra looks for rare pets
