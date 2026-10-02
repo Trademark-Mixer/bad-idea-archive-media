@@ -25,12 +25,19 @@ sell them for coins, and spend the coins in the shop.
 - **✨ Golden crystals**: 2% of crystals are made of gold and sparkle. They give 10x gems and 5x XP.
 - **🏃 Sky obby** above the spawn: 3 checkpoints, lava, beams and pillars. Finish it to win a big pile
   of coins (as much as mining 80 crystals). It pays again every 4 minutes, and it remembers your best time.
+  **Every dimension has its own obby too**, floating high above the valley, and it pays more the
+  further the dimension is (dimension 1 pays 1.5x, dimension 2 pays 2x, …). Each one has its own timer.
+- **🌍 Worldwide leaderboards** behind the spawn: the top 10 players for 🌍 Top Players (level),
+  💎 Gems Mined, ♻️ Rebirths and **🏃 Fastest Obby** (the quickest finish times of any obby).
+  Once the game is published, they show the best players of **all** servers in the whole world,
+  not just the one you are in. They update every minute.
 - **⚡ Gadget shop**: Spring Shoes, Gravity Coil and Rocket Boots (jump higher), Running Shoes,
   Speed Coil and Turbo Boots (walk faster), Sprint Charm, Lucky Clover and Gem Magnet.
   The faster you get, the more it costs. Turn each gadget on or off, and they turn off in the obby.
 - **🏃 Sprint**: hold **Shift** (on a phone, press the Sprint button).
 - **🎒🪣 Tools**: your pickaxe is number 1 and your shovel number 2 in the tool bar. Click one
-  again to put it away.
+  again to put it away. **Left-click anywhere** to swing it, even at nothing (hold to keep swinging).
+  Other players see you swing too.
 - **📜 Quests**, **🎁 free gifts** for playing and **📅 daily rewards** (bigger for 7 days in a row).
 - **🎵 Music**: a calm music box plays in the background (turn it off on the right side).
   You can put real songs in too, see below.
@@ -41,12 +48,17 @@ sell them for coins, and spend the coins in the shop.
   **Click while an egg hatches** to make it go faster.
 - **🐾 Pets** give you more gems: a +30% pet makes every crystal give 30% more.
 - **⭐ Levels:** you earn XP for every crystal you mine. Each level makes your pickaxe 10% stronger.
+  Levels get a lot harder the higher you go. **You have to unlock zones to level up**: in Sunny Meadow
+  you stay level 1 (your XP bar fills up and waits). Unlocking Crystal Caves lets you go up to level 4,
+  Lava Volcano to level 7, Frozen Peaks to level 10, and in the Galaxy Isles there's no limit.
 - **🌌 Dimensions:** valleys surrounded by huge mountains, visited through the portal at the spawn
   (or at the end of the Galaxy Isles). Level 1 opens 3 dimensions, level 2 opens 6, level 3 opens 9,
   and it never stops. There are 12 themes (Candy World, Neon City, Ocean Reef, Jungle, …), and they
   come back with new colors and stronger crystals: Candy World II, Candy World III, and so on.
-  Every dimension has its own **💠 special shop** (a pickaxe for Boss Shards and a backpack for coins),
-  its own **egg**, a **boss** and buried gems, so you don't have to go home to buy things.
+  Every dimension has the **🛒 normal shop**, its own **💠 special shop** (a pickaxe for Boss Shards
+  and a backpack for coins), its own **egg**, an **obby**, a **boss** and buried gems, so you don't
+  have to go home to buy things. **Selling in a dimension pays more**: dimension 1 gives 1.25x coins,
+  dimension 2 gives 1.5x, dimension 4 gives 2x, and so on.
   **Every 5th dimension is a ✨ SHINY dimension**: it glows, sparkles and gives **2x gems**.
 - **Rebirths**: start over and earn more coins forever. You keep your pets, gadgets and Boss Shards.
 - **Gates** between zones: walk up and press **E** to unlock the next zone. The iron bars slide up when you do.
@@ -83,14 +95,14 @@ Use this if the file doesn't open for some reason.
 4. For the best graphics: click **Lighting** in the Explorer, then in Properties set **Technology** to **Future**.
 5. Click **Workspace** and turn **StreamingEnabled** off.
 6. For grass blades: open **Workspace**, click **Terrain**, turn on **Decoration** and set
-   **GrassLength** to `0.25`.
+   **GrassLength** to `0.1` (that's the shortest Roblox allows; turn **Decoration** off for no blades at all).
 7. Click **StarterPlayer** and turn **EnableMouseLockOption** off (so Shift is for sprinting).
 8. Press **▶ Play**.
 
 ## How to play
 
 - Hold your **pickaxe** (press **1**) and **click** (or **tap**) a crystal to mine it.
-  **Hold** the button to keep mining.
+  **Hold** the button to keep mining. Clicking anywhere else just swings it.
 - Hold your **shovel** (press **2**) and click a dirt pile to dig up the buried gem.
 - When the backpack is full, stand in a **💰 SELL** circle (or press **🌀 Teleport to Sell**).
   You can only sell in zones you have unlocked, and in the dimension you are in.
@@ -100,12 +112,13 @@ Use this if the file doesn't open for some reason.
   If you have a free egg, **Hatch 1** uses it.
 - Walk into the **👑 boss arena** in a zone and hit the diamond boss with your pickaxe.
   Watch out for the red circles!
-- Step into the **🏃 SKY OBBY** circle at the spawn to start the obby.
+- Step into the **🏃 SKY OBBY** circle at the spawn to start the obby. Every dimension has a
+  **🏃 DIMENSION OBBY** circle too. The sign on each one shows how much it pays you.
 - Hold **Shift** to sprint.
 - Check the right side of the screen for your **quest**, **free gifts** and **daily reward**.
 - Step into the **🌌 portal** circle (or click **🌌 DIMENSIONS**) and pick a dimension.
   Step into the **🏠 HOME** circle in a dimension to go back.
-- Walk to a gate and press **E** to unlock the next zone.
+- Walk to a gate and press **E** to unlock the next zone. You need that to keep leveling up!
 - Use **🌀 Teleport** to jump between zones you've unlocked.
 - At **75K coins** you can **♻️ Rebirth** for a permanent coin boost.
 
@@ -143,9 +156,11 @@ Everything you'd want to tweak is in **`GameShared`** (in ReplicatedStorage):
 - `Shared.Eggs`: egg prices and which pets come out (with their chances in %)
 - `Shared.DimensionThemes`: the dimension themes. Add your own and it joins the list!
 - In `Shared.Settings`, `DimensionsPerLevel = 3` sets how many dimensions each level unlocks,
-  and `XPBase` sets how much XP a level needs
+  `XPBase` and `XPPower` set how much XP a level needs (bigger `XPPower` = harder levels),
+  and `LevelsPerZone = 3` sets how many levels each zone you unlock allows
+- `DimensionSellBonus = 0.25`: selling in dimension d gives 1 + 0.25 × d times more coins
 - `ShinyEvery = 5`: every 5th dimension is shiny. `GoldenChance = 0.02`: how often crystals are golden.
-- `ObbyRewardCrystals` and `ObbyCooldown`: how much the obby pays and how often
+- `ObbyRewardCrystals` and `ObbyCooldown`: how much the obbies pay and how often
 - `Shared.Gifts`, `Shared.DailyRewards`, `Shared.QuestKinds`: the free gifts, daily rewards and quests
 - `Shared.Gadgets`: the gadgets, what they do and their prices
 - `SprintSpeed`, `JumpHeight`: how fast you sprint and how high you jump

@@ -26,7 +26,7 @@ local Format = Shared.Format
 
 local RemoteFolder = ReplicatedStorage:WaitForChild("Remotes")
 local R: { [string]: RemoteEvent } = {}
-for _, name in ipairs({ "Mine", "Buy", "Rebirth", "Teleport", "Sync", "Notify", "Effect", "OpenMenu", "EnterDimension", "GoSell", "Claim", "Dig", "Hatch", "GadgetToggle" }) do
+for _, name in ipairs({ "Mine", "Buy", "Rebirth", "Teleport", "Sync", "Notify", "Effect", "OpenMenu", "EnterDimension", "GoSell", "Claim", "Dig", "Hatch", "GadgetToggle", "Swing" }) do
 	R[name] = RemoteFolder:WaitForChild(name) :: RemoteEvent
 end
 
@@ -71,6 +71,7 @@ type State = {
 	DailyStreak: number,
 	ObbyBest: number,
 	ObbyWait: number, -- seconds until the obby pays out again
+	DimObbyWaits: { [string]: number }?, -- ["3"] = seconds until dimension 3's obby pays again
 	DimPets: { { Index: number, Count: number } }, -- pets from dimension eggs
 	Shards: number, -- 💠 Boss Shards
 	BossesBeaten: number,
@@ -289,6 +290,21 @@ local function placeModel(m: Model, cframe: CFrame)
 	for p, offset in pairs(offsets) do
 		p.CFrame = cframe * offset
 	end
+end
+
+-- Turns a model around its MIDDLE (its pivot can be at one end, which makes it wobble).
+-- base = where the model sits when it is not turned. lift moves it up, tilt leans it a bit.
+local modelCenters: { [Model]: Vector3 } = setmetatable({}, { __mode = "k" }) :: any
+local function turnModel(m: Model, base: CFrame, yaw: number, lift: number?, tiltX: number?, tiltZ: number?)
+	local offset = modelCenters[m]
+	if not offset then
+		local box = m:GetBoundingBox()
+		offset = m:GetPivot():PointToObjectSpace(box.Position)
+		modelCenters[m] = offset
+	end
+	local center = base * offset
+	local turn = CFrame.new(center + Vector3.new(0, lift or 0, 0)) * CFrame.Angles(tiltX or 0, yaw, tiltZ or 0) * CFrame.new(-center)
+	placeModel(m, turn * base)
 end
 
 -- Everything scales with the screen size (so it fits phones too)
@@ -565,7 +581,8 @@ button({
 --------------------------------------------------------------------------------
 local clockText: (seconds: number) -> string
 local playedSeconds: () -> number
-local obbyWait: () -> number
+local obbyWait: (d: number?) -> number
+local obbyReward: (d: number?) -> number
 local refreshSide: () -> ()
 local questPop: UIScale
 local obbyState = { Checkpoint = 0 }
@@ -747,12 +764,25 @@ do
 		return ready, nextIn
 	end
 
-	obbyWait = function(): number
+	-- seconds until an obby pays out again (d = nil is the one at the spawn)
+	obbyWait = function(d: number?): number
 		local s = state
 		if not s then
 			return 0
 		end
-		return math.max(0, s.ObbyWait - (os.clock() - syncedAt))
+		local wait = if d then (s.DimObbyWaits or {})[tostring(d)] or 0 else s.ObbyWait
+		return math.max(0, wait - (os.clock() - syncedAt))
+	end
+
+	-- how many coins an obby pays you
+	obbyReward = function(d: number?): number
+		local s = state
+		if not s then
+			return 0
+		end
+		local view: any = table.clone(s)
+		view.Pets = ownedPets -- dimension pets count too
+		return if d then Shared.DimensionObbyReward(view, d) else Shared.ObbyReward(view)
 	end
 
 	refreshSide = function()
@@ -785,8 +815,11 @@ do
 		dailyLabel.Text = if s.DailyReady then "📅 DAILY REWARD!" else "📅 Daily: day " .. s.DailyStreak .. " 🔥"
 		setColors(dailyGrad, if s.DailyReady then COLORS.Gold else COLORS.Blue)
 		-- obby
-		local wait = obbyWait()
-		obbyInfo.Text = if wait > 0 then "🏃 Obby reward in " .. clockText(wait) else "🏃 Sky Obby: win 💰 " .. Format(Shared.ObbyReward(s))
+		local here = player:GetAttribute("Dimension")
+		local d = if type(here) == "number" then here else nil
+		local wait = obbyWait(d)
+		local name = if d then "Dimension obby" else "Sky Obby"
+		obbyInfo.Text = if wait > 0 then "🏃 " .. name .. " reward in " .. clockText(wait) else "🏃 " .. name .. ": win 💰 " .. Format(obbyReward(d))
 		-- free eggs
 		eggsPill.Visible = s.FreeEggs > 0
 		eggsText.Text = "🥚 " .. s.FreeEggs .. " FREE " .. (if s.FreeEggs == 1 then "egg" else "eggs") .. "! Hatch 1 to use"
@@ -2403,7 +2436,7 @@ local function playHatch(eggIndex: number, results: { HatchResult })
 			slot.Rays.Rotation += dt * 25
 			local m = slot.Model
 			if m then
-				placeModel(m, CFrame.Angles(0, math.sin(t * 1.5) * 0.6, 0) * slot.Base)
+				turnModel(m, slot.Base, math.sin(t * 1.5) * 0.6)
 			end
 		end
 	end)
@@ -2484,12 +2517,13 @@ R.Effect.OnClientEvent:Connect(function(kind, a, b, c, d, e)
 		end
 	elseif kind == "sold" then
 		local coins: number = a
+		local bonus: number = if type(b) == "number" then b else 1
 		local position = rootPosition()
 		if position then
 			flyIcons(position, "💰", coinsPill, coinsPop, 8)
 			confetti(position + Vector3.new(0, 2, 0))
 		end
-		showBanner("💰 +" .. Format(coins) .. " COINS!", Color3.fromRGB(255, 220, 80))
+		showBanner("💰 +" .. Format(coins) .. " COINS!" .. (if bonus > 1 then "  (x" .. string.format("%g", bonus) .. " dimension bonus)" else ""), Color3.fromRGB(255, 220, 80))
 		chime(6, 1)
 	elseif kind == "full" then
 		backpackFull()
@@ -2571,7 +2605,8 @@ R.Effect.OnClientEvent:Connect(function(kind, a, b, c, d, e)
 	elseif kind == "obbystart" then
 		closeWindow()
 		obbyState.Checkpoint = 0
-		showBanner("🏃 SKY OBBY! Reach the 🏆 trophy!", Color3.fromRGB(255, 220, 140))
+		local title = if type(a) == "number" then "🏃 DIMENSION " .. a .. " OBBY!" else "🏃 SKY OBBY!"
+		showBanner(title .. " Reach the 🏆 trophy!", Color3.fromRGB(255, 220, 140))
 		chime(3, 1.2)
 	elseif kind == "checkpoint" then
 		obbyState.Checkpoint = a
@@ -2628,12 +2663,13 @@ end)
 --------------------------------------------------------------------------------
 -- TOOL ANIMATIONS (a swing with the pickaxe, a scoop with the shovel)
 --------------------------------------------------------------------------------
-local playSwing: (kind: string) -> ()
+local playSwing: (kind: string, who: Model?) -> ()
 do
 	local shoulderHome: { [Motor6D]: CFrame } = setmetatable({}, { __mode = "k" }) :: any
-	local swingToken = 0
-	playSwing = function(kind: string)
-		local char = player.Character
+	local swingTokens: { [Motor6D]: number } = setmetatable({}, { __mode = "k" }) :: any
+	-- who = someone else's character (you see other players swing too)
+	playSwing = function(kind: string, who: Model?)
+		local char = who or player.Character
 		local hum = char and char:FindFirstChildOfClass("Humanoid")
 		if not (char and hum) then
 			return
@@ -2646,24 +2682,28 @@ do
 		end
 		local home = shoulderHome[shoulder] or shoulder.C0
 		shoulderHome[shoulder] = home
-		swingToken += 1
-		local token = swingToken
+		local token = (swingTokens[shoulder] or 0) + 1
+		swingTokens[shoulder] = token
 		local started = os.clock()
 		local duration = if kind == "dig" then 0.3 else 0.22
 		local connection: RBXScriptConnection
 		connection = RunService.RenderStepped:Connect(function()
-			if token ~= swingToken or not shoulder.Parent then
+			if swingTokens[shoulder] ~= token or not shoulder.Parent then
 				connection:Disconnect()
 				return
 			end
 			local t = math.clamp((os.clock() - started) / duration, 0, 1)
+			-- smooth start and stop for every part of the move
+			local function ease(x: number): number
+				return x * x * (3 - 2 * x)
+			end
 			local angle
 			if kind == "dig" then
 				-- push down into the ground, then scoop up
-				angle = if t < 0.4 then -0.9 * (t / 0.4) elseif t < 0.75 then -0.9 + 1.3 * ((t - 0.4) / 0.35) else 0.4 * (1 - (t - 0.75) / 0.25)
+				angle = if t < 0.4 then -0.9 * ease(t / 0.4) elseif t < 0.75 then -0.9 + 1.3 * ease((t - 0.4) / 0.35) else 0.4 * (1 - ease((t - 0.75) / 0.25))
 			else
 				-- lift up, hit down hard, then come back
-				angle = if t < 0.35 then 0.95 * (t / 0.35) elseif t < 0.6 then 0.95 - 1.6 * ((t - 0.35) / 0.25) else -0.65 * (1 - (t - 0.6) / 0.4)
+				angle = if t < 0.35 then 0.95 * ease(t / 0.35) elseif t < 0.6 then 0.95 - 1.6 * ((t - 0.35) / 0.25) else -0.65 * (1 - ease((t - 0.6) / 0.4))
 			end
 			shoulder.C0 = home * (if r15 then CFrame.Angles(angle, 0, 0) else CFrame.Angles(0, 0, angle))
 			if t >= 1 then
@@ -2672,6 +2712,17 @@ do
 			end
 		end)
 	end
+
+	-- other players swinging near you
+	R.Effect.OnClientEvent:Connect(function(kind, userId, swingKind)
+		if kind ~= "swing" or type(userId) ~= "number" or type(swingKind) ~= "string" then
+			return
+		end
+		local other = Players:GetPlayerByUserId(userId)
+		if other and other ~= player and other.Character then
+			playSwing(swingKind, other.Character)
+		end
+	end)
 end
 
 --------------------------------------------------------------------------------
@@ -2953,7 +3004,7 @@ do
 		end
 		local t = os.clock()
 		for k, card in ipairs(eggCards) do
-			placeModel(card.Model, CFrame.Angles(0, math.sin(t * 1.4 + k) * 0.5, 0) * card.Base)
+			turnModel(card.Model, card.Base, math.sin(t * 1.4 + k) * 0.5)
 			card.Shine.Offset = Vector2.new(((t * 0.5 + k * 0.2) % 2) - 1, 0)
 		end
 	end)
@@ -3050,7 +3101,7 @@ do
 		end
 		local t = os.clock()
 		for _, card in ipairs(gadgetCards) do
-			placeModel(card.Model, CFrame.Angles(0, t * 0.9, 0) * card.Base)
+			turnModel(card.Model, card.Base, t * 0.9)
 		end
 	end)
 end
@@ -3169,7 +3220,7 @@ do
 		for _, card in ipairs({ pickCard, packCard }) do
 			local m = card.Model
 			if m then
-				placeModel(m, CFrame.Angles(0, t * 0.9, 0) * CFrame.new())
+				turnModel(m, CFrame.new(), t * 0.9)
 			end
 		end
 	end)
@@ -3452,17 +3503,34 @@ do
 		return if tool then tool.Name else nil
 	end
 
+	-- Swinging at nothing (or something you can't mine): just a swing, everyone sees it
+	local FREE_SWING_TIME = 0.32
+	local function freeSwing(tool: string?, now: number)
+		if tool ~= "Pickaxe" and tool ~= "Shovel" then
+			return
+		end
+		if now - lastSwing < FREE_SWING_TIME then
+			return
+		end
+		lastSwing = now
+		local kind = if tool == "Shovel" then "dig" else "swing"
+		playSwing(kind)
+		R.Swing:FireServer(kind)
+		playSound("Click", 0.45, 0.15)
+	end
+
 	local function tryMine(point: Vector2, isViewportPoint: boolean)
 		local now = os.clock()
 		if now - lastSwing < Settings.MineCooldown then
 			return
 		end
+		local tool = heldTool()
 		local m = crystalAt(point, isViewportPoint)
 		if not m then
+			freeSwing(tool, now)
 			return
 		end
 		local digSpot = m:GetAttribute("IsDigSpot") == true
-		local tool = heldTool()
 		local needed = if digSpot then "Shovel" else "Pickaxe"
 		if tool ~= needed then
 			if now - lastToolHint > 2.5 then
@@ -3473,6 +3541,7 @@ do
 					toast("⛏️ Hold your PICKAXE (press 1) to mine!", "info")
 				end
 			end
+			freeSwing(tool, now)
 			return
 		end
 		if not inRange(m) then
@@ -3480,25 +3549,30 @@ do
 				lastFarHint = now
 				toast("🏃 Walk closer!", "info")
 			end
+			freeSwing(tool, now)
 			return
 		end
 		local s = state
 		local isBoss = m:GetAttribute("IsBoss") == true
 		if s and s.Gems >= s.Capacity and not isBoss then
 			backpackFull()
+			freeSwing(tool, now)
 			return
 		end
 		local zone = m:GetAttribute("Zone")
 		if s and type(zone) == "number" and zone > s.Zone then
+			freeSwing(tool, now)
 			return
 		end
 		lastSwing = now
 		if digSpot then
 			R.Dig:FireServer(m)
 			playSwing("dig")
+			R.Swing:FireServer("dig")
 		else
 			R.Mine:FireServer(m)
 			playSwing("swing")
+			R.Swing:FireServer("swing")
 		end
 		swings += 1
 		if swings == 6 then
@@ -3589,7 +3663,8 @@ do
 
 	local petCFrames: { [Model]: CFrame } = setmetatable({}, { __mode = "k" }) :: any
 
-	type Spinner = { Base: CFrame, Speed: number, Bob: number, Phase: number }
+	-- Angle = how far it has turned. It speeds up smoothly when it first shows up.
+	type Spinner = { Base: CFrame, Speed: number, Bob: number, Phase: number, Angle: number, Ease: number }
 	local spinners: { [Instance]: Spinner } = {}
 
 	local function addSpinner(inst: Instance)
@@ -3601,11 +3676,14 @@ do
 		else
 			return
 		end
+		local phase = math.random() * 6
 		spinners[inst] = {
 			Base = base,
 			Speed = inst:GetAttribute("SpinSpeed") or 1,
 			Bob = inst:GetAttribute("Bob") or 0,
-			Phase = math.random() * 6,
+			Phase = phase,
+			Angle = phase,
+			Ease = 0,
 		}
 	end
 	for _, inst in ipairs(CollectionService:GetTagged("Spin")) do
@@ -3643,16 +3721,20 @@ do
 			end
 		end
 
-		-- spinning things
+		-- spinning things: a calm turn, a soft float up and down and a little sway
+		local step = math.min(dt, 0.1)
 		for inst, info in pairs(spinners) do
 			if inst.Parent then
-				local cf = CFrame.new(info.Base.Position + Vector3.new(0, math.sin(t * 1.6 + info.Phase) * info.Bob, 0))
-					* CFrame.Angles(0, t * info.Speed + info.Phase, 0)
-					* info.Base.Rotation
+				info.Ease = math.min(1, info.Ease + step * 0.8)
+				info.Angle += step * info.Speed * 0.75 * info.Ease
+				local wave = t * 1.2 + info.Phase
+				local lift = math.sin(wave) * info.Bob
+				local swayX = math.sin(wave * 0.7) * 0.05
+				local swayZ = math.cos(wave * 0.55) * 0.05
 				if inst:IsA("BasePart") then
-					inst.CFrame = cf
+					inst.CFrame = CFrame.new(info.Base.Position + Vector3.new(0, lift, 0)) * CFrame.Angles(swayX, info.Angle, swayZ) * info.Base.Rotation
 				elseif inst:IsA("Model") then
-					placeModel(inst, cf)
+					turnModel(inst, info.Base, info.Angle, lift, swayX, swayZ)
 				end
 			end
 		end
@@ -3661,12 +3743,12 @@ do
 		if openName == "Shop" then
 			for _, card in ipairs(cards) do
 				if card.Frame.Visible then
-					placeModel(card.Model, CFrame.Angles(0, t * 0.9, 0) * card.Base)
+					turnModel(card.Model, card.Base, t * 0.9)
 				end
 			end
 		elseif openName == "Pets" then
 			for _, card in ipairs(petCards) do
-				placeModel(card.Model, CFrame.Angles(0, t * 0.9, 0) * card.Base)
+				turnModel(card.Model, card.Base, t * 0.9)
 			end
 		end
 	end)
@@ -3865,7 +3947,12 @@ local function refreshAll()
 	setColors(gemsFillGrad, if fill >= 1 then COLORS.Gold else COLORS.Cyan)
 	local needed = Shared.XPNeeded(s.Level)
 	levelText.Text = "⭐ Level " .. s.Level
-	xpText.Text = Format(s.XP) .. " / " .. Format(needed) .. " XP"
+	local nextZone = Shared.Zones[s.Zone + 1]
+	if s.Level >= Shared.MaxLevel(s.Zone) and s.XP >= needed and nextZone then
+		xpText.Text = "🔒 Unlock " .. nextZone.Name .. " to level up!"
+	else
+		xpText.Text = Format(s.XP) .. " / " .. Format(needed) .. " XP"
+	end
 	tween(levelFill, 0.25, { Size = UDim2.fromScale(math.clamp(s.XP / needed, 0, 1), 1) })
 	refreshShop()
 	refreshTeleport()
@@ -3994,8 +4081,7 @@ task.spawn(function()
 	end
 end)
 
--- Once a second: timers on the right side, the gifts window and the obby sign
-local obbySign: Instance? = nil
+-- Once a second: timers on the right side, the gifts window and the obby signs
 task.spawn(function()
 	while true do
 		local s = state
@@ -4006,14 +4092,15 @@ task.spawn(function()
 			elseif openName == "Daily" then
 				refreshDaily()
 			end
-			if not obbySign then
-				local map = Workspace:FindFirstChild("Map")
-				obbySign = map and map:FindFirstChild("ObbySign", true)
-			end
-			local subtitle = obbySign and obbySign:FindFirstChild("Subtitle", true)
-			if subtitle and subtitle:IsA("TextLabel") then
-				local wait = obbyWait()
-				subtitle.Text = if wait > 0 then "Reward again in " .. clockText(wait) else "Win 💰 " .. Format(Shared.ObbyReward(s)) .. "!"
+			-- every obby sign shows what that obby pays YOU
+			for _, obbySign in ipairs(CollectionService:GetTagged("ObbySign")) do
+				local subtitle = obbySign:FindFirstChild("Subtitle", true)
+				if subtitle and subtitle:IsA("TextLabel") then
+					local here = obbySign:GetAttribute("Dimension")
+					local d = if type(here) == "number" then here else nil
+					local wait = obbyWait(d)
+					subtitle.Text = if wait > 0 then "Reward again in " .. clockText(wait) else "Win 💰 " .. Format(obbyReward(d)) .. "!"
+				end
 			end
 		end
 		task.wait(1)

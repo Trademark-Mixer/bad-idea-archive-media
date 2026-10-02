@@ -41,7 +41,7 @@ do
 	end
 	local folder = Instance.new("Folder")
 	folder.Name = "Remotes"
-	for _, name in ipairs({ "Mine", "Buy", "Rebirth", "Teleport", "Sync", "Notify", "Effect", "OpenMenu", "EnterDimension", "GoSell", "Claim", "Dig", "Hatch", "GadgetToggle" }) do
+	for _, name in ipairs({ "Mine", "Buy", "Rebirth", "Teleport", "Sync", "Notify", "Effect", "OpenMenu", "EnterDimension", "GoSell", "Claim", "Dig", "Hatch", "GadgetToggle", "Swing" }) do
 		local remote = Instance.new("RemoteEvent")
 		remote.Name = name
 		remote.Parent = folder
@@ -1365,7 +1365,8 @@ local function buildSellPad(pos: Vector3, size: number, zone: number, dimension:
 	holder.PrimaryPart = coin
 	spin(holder, 1.2, 0.4)
 	light(sack, gold, 14, 0.6)
-	fancySign(coin, "💰", "SELL", "Step in the circle to sell", gold, 10, 3.2)
+	local bonus = Shared.DimensionSellBonus(dimension)
+	fancySign(coin, "💰", "SELL", if bonus > 1 then "Coins x" .. string.format("%g", bonus) .. " here!" else "Step in the circle to sell", gold, 10, 3.2)
 	local target = Instance.new("Attachment")
 	target.Name = "GuideTarget"
 	target.Position = Vector3.new(0.5, 0, 0)
@@ -1437,24 +1438,42 @@ local function eggMachineSpots(zoneIndex: number): { [number]: Vector3 }
 end
 
 --------------------------------------------------------------------------------
--- SKY OBBY (floats above the spawn)
+-- SKY OBBIES (one floats above the spawn, and every dimension has its own)
 --------------------------------------------------------------------------------
 type ObbyCheckpoint = { Part: BasePart, Spawn: CFrame }
-local Obby = {
-	Start = CFrame.new(),
-	Checkpoints = {} :: { ObbyCheckpoint },
-	Lava = {} :: { BasePart },
-	Finish = nil :: BasePart?,
-	FallY = 100,
+type ObbyCourse = {
+	Model: Model,
+	Start: CFrame,
+	Checkpoints: { ObbyCheckpoint },
+	Lava: { BasePart },
+	Finish: BasePart?,
+	FallY: number, -- below this you fell off
+	Circle: Vector3, -- step in this circle on the ground to start
+	Dimension: number?, -- nil = the obby at the spawn
 }
+local obbyCourses: { ObbyCourse } = {}
 local startObby -- defined later
 
-local function buildObby()
-	local f = model("SkyObby")
+-- Builds a whole obby course floating above origin (the ground in the middle below it)
+local function buildObby(origin: Vector3, circle: Vector3, dimension: number?, parent: Instance): ObbyCourse
+	local f = model(if dimension then "DimensionObby" else "SkyObby", parent)
+	local course: ObbyCourse = {
+		Model = f,
+		Start = CFrame.new(),
+		Checkpoints = {},
+		Lava = {},
+		Finish = nil,
+		FallY = origin.Y + 100,
+		Circle = circle,
+		Dimension = dimension,
+	}
 	local previous = buildParent
 	buildParent = f
 	local wood = Color3.fromRGB(140, 104, 72)
 	local stone = Color3.fromRGB(128, 124, 118)
+	local function at(x: number, y: number, z: number): Vector3
+		return origin + Vector3.new(x, y, z)
+	end
 
 	local function block(pos: Vector3, size: Vector3, material: Enum.Material?, color: Color3?, name: string?, yaw: number?)
 		return P({
@@ -1477,51 +1496,55 @@ local function buildObby()
 			CanCollide = false,
 		})
 		local spawnPos = pos + Vector3.new(0, 4, 0)
-		table.insert(Obby.Checkpoints, { Part = base, Spawn = CFrame.lookAt(spawnPos, spawnPos + facing) })
+		table.insert(course.Checkpoints, { Part = base, Spawn = CFrame.lookAt(spawnPos, spawnPos + facing) })
 	end
 
 	-- Start
-	local startPos = Vector3.new(20, 110, 40)
+	local startPos = at(20, 110, 40)
 	local startPart = block(startPos, Vector3.new(14, 2, 14), Enum.Material.Cobblestone, stone, "Start")
-	Obby.Start = CFrame.lookAt(startPos + Vector3.new(0, 4, 0), startPos + Vector3.new(-10, 4, 0))
-	sign(startPart, "🏃 SKY OBBY", "Reach the trophy for a big reward!", Color3.fromRGB(255, 220, 140), 22, 6, 9)
+	course.Start = CFrame.lookAt(startPos + Vector3.new(0, 4, 0), startPos + Vector3.new(-10, 4, 0))
+	if dimension then
+		sign(startPart, "🏃 DIMENSION " .. dimension .. " OBBY", "Pays more than the spawn obby!", Color3.fromRGB(255, 220, 140), 22, 6, 9)
+	else
+		sign(startPart, "🏃 SKY OBBY", "Reach the trophy for a big reward!", Color3.fromRGB(255, 220, 140), 22, 6, 9)
+	end
 
 	-- Stage 1: stepping stones
 	for k, x in ipairs({ 8, -2, -12, -22 }) do
-		block(Vector3.new(x, 110.5 + k * 0.6, 40 + rng:NextNumber(-1.5, 1.5)), Vector3.new(5, 1, 5), Enum.Material.Slate, Color3.fromRGB(112, 110, 106), "Stone", rng:NextNumber(0, 1))
+		block(at(x, 110.5 + k * 0.6, 40 + rng:NextNumber(-1.5, 1.5)), Vector3.new(5, 1, 5), Enum.Material.Slate, Color3.fromRGB(112, 110, 106), "Stone", rng:NextNumber(0, 1))
 	end
-	checkpoint(Vector3.new(-36, 112, 40), Vector3.new(0, 0, -1))
+	checkpoint(at(-36, 112, 40), Vector3.new(0, 0, -1))
 
 	-- Stage 2: a long walkway with hot lava strips to jump over
-	block(Vector3.new(-36, 112.5, 16), Vector3.new(6, 1, 34))
+	block(at(-36, 112.5, 16), Vector3.new(6, 1, 34))
 	for _, z in ipairs({ 26, 17, 8 }) do
 		local lava = P({
 			Name = "Lava",
 			Size = Vector3.new(6.2, 0.5, 3),
-			CFrame = CFrame.new(-36, 113.2, z),
+			CFrame = CFrame.new(at(-36, 113.2, z)),
 			Color = Color3.fromRGB(230, 92, 30),
 			Material = Enum.Material.CrackedLava,
 		})
 		light(lava, Color3.fromRGB(255, 120, 40), 10, 1)
-		table.insert(Obby.Lava, lava)
+		table.insert(course.Lava, lava)
 	end
-	block(Vector3.new(-36, 112.5, -4), Vector3.new(8, 1, 8))
+	block(at(-36, 112.5, -4), Vector3.new(8, 1, 8))
 
 	-- Stage 3: climb the truss
 	local truss = Instance.new("TrussPart")
 	truss.Name = "Truss"
 	truss.Anchored = true
 	truss.Size = Vector3.new(2, 16, 2)
-	truss.CFrame = CFrame.new(-36, 121, -9)
+	truss.CFrame = CFrame.new(at(-36, 121, -9))
 	truss.Color = Color3.fromRGB(70, 70, 76)
 	truss.Material = Enum.Material.Metal
 	truss.Parent = f
-	checkpoint(Vector3.new(-36, 128, -16), Vector3.new(1, 0, 0))
+	checkpoint(at(-36, 128, -16), Vector3.new(1, 0, 0))
 
 	-- Stage 4: narrow beams
-	block(Vector3.new(-21, 128.5, -16), Vector3.new(18, 1, 1.4), Enum.Material.Wood, Color3.fromRGB(120, 88, 60), "Beam")
-	block(Vector3.new(-9, 128.5, -16), Vector3.new(5, 1, 5))
-	local a, b = Vector3.new(-6.5, 128.5, -17.5), Vector3.new(6.5, 128.5, -22.5)
+	block(at(-21, 128.5, -16), Vector3.new(18, 1, 1.4), Enum.Material.Wood, Color3.fromRGB(120, 88, 60), "Beam")
+	block(at(-9, 128.5, -16), Vector3.new(5, 1, 5))
+	local a, b = at(-6.5, 128.5, -17.5), at(6.5, 128.5, -22.5)
 	P({
 		Name = "Beam",
 		Size = Vector3.new(1.4, 1, (b - a).Magnitude + 1),
@@ -1529,20 +1552,20 @@ local function buildObby()
 		Color = Color3.fromRGB(120, 88, 60),
 		Material = Enum.Material.Wood,
 	})
-	block(Vector3.new(9, 128.5, -24), Vector3.new(5, 1, 5))
+	block(at(9, 128.5, -24), Vector3.new(5, 1, 5))
 
 	-- Stage 5: shrinking pillars
 	for k, info in ipairs({ { 16, 3.6 }, { 23, 3 }, { 30, 2.6 } }) do
 		local topY = 129 + k * 0.5
-		block(Vector3.new(info[1], topY - 15, -24), Vector3.new(info[2], 30, info[2]), Enum.Material.Cobblestone, stone, "Pillar")
+		block(at(info[1], topY - 15, -24), Vector3.new(info[2], 30, info[2]), Enum.Material.Cobblestone, stone, "Pillar")
 	end
-	checkpoint(Vector3.new(40, 130, -24), Vector3.new(0, 0, 1))
+	checkpoint(at(40, 130, -24), Vector3.new(0, 0, 1))
 
 	-- Stage 6: floating steps up to the finish
 	for k = 0, 3 do
-		block(Vector3.new(40, 132.5 + k * 2, -12 + k * 8), Vector3.new(4, 1, 4), Enum.Material.Slate, Color3.fromRGB(112, 110, 106), "Step")
+		block(at(40, 132.5 + k * 2, -12 + k * 8), Vector3.new(4, 1, 4), Enum.Material.Slate, Color3.fromRGB(112, 110, 106), "Step")
 	end
-	local finishPos = Vector3.new(40, 139, 24)
+	local finishPos = at(40, 139, 24)
 	block(finishPos, Vector3.new(14, 2, 14), Enum.Material.Marble, Color3.fromRGB(225, 220, 210), "FinishPlatform")
 	local finish = P({
 		Name = "FinishPad",
@@ -1553,7 +1576,7 @@ local function buildObby()
 		Material = Enum.Material.Metal,
 		Reflectance = 0.25,
 	})
-	Obby.Finish = finish
+	course.Finish = finish
 	-- a golden trophy
 	local gold = Color3.fromRGB(220, 175, 60)
 	local trophyBase = finishPos + Vector3.new(0, 2, 5)
@@ -1573,10 +1596,20 @@ local function buildObby()
 	sign(finish, "🏆 FINISH", nil, Color3.fromRGB(255, 220, 120), 12, 3.5, 7)
 
 	-- clouds drifting around the course
-	for _ = 1, 10 do
-		Decor.Cloud(Vector3.new(rng:NextNumber(-70, 70), rng:NextNumber(96, 120), rng:NextNumber(-45, 50)), rng:NextNumber(1.2, 2.2))
+	for _ = 1, if dimension then 6 else 10 do
+		Decor.Cloud(at(rng:NextNumber(-70, 70), rng:NextNumber(96, 120), rng:NextNumber(-45, 50)), rng:NextNumber(1.2, 2.2))
 	end
 	buildParent = previous
+	table.insert(obbyCourses, course)
+	return course
+end
+
+local function removeObby(course: ObbyCourse)
+	local k = table.find(obbyCourses, course)
+	if k then
+		table.remove(obbyCourses, k)
+	end
+	course.Model:Destroy()
 end
 
 --------------------------------------------------------------------------------
@@ -1654,6 +1687,145 @@ local function buildPortal(pos: Vector3, parent: Instance)
 	actionCircle(pos, 8, Color3.fromRGB(160, 120, 255), "Dimensions", nil, portal)
 	fancySign(swirl, "🌌", "DIMENSIONS", "Step in to pick one!", Color3.fromRGB(175, 140, 255), 12, 10)
 	return portal
+end
+
+-- The circle on the ground that starts an obby (the course itself floats high above)
+local function buildObbyEntrance(pos: Vector3, title: string, dimension: number?, parent: Instance)
+	local obby = model("ObbyEntrance", parent)
+	P({
+		Name = "Floor",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(0.3, 13, 13),
+		CFrame = CFrame.new(pos + Vector3.new(0, 0.05, 0)) * CFrame.Angles(0, 0, rad(90)),
+		Color = Color3.fromRGB(152, 146, 136),
+		Material = Enum.Material.Pavement,
+		Parent = obby,
+	})
+	actionCircle(pos, 6, Color3.fromRGB(235, 95, 85), "Obby", dimension, obby)
+	local post = P({
+		Name = "SignPost",
+		Size = Vector3.new(0.5, 7, 0.5),
+		CFrame = CFrame.new(pos + Vector3.new(0, 3.5, -7)),
+		Color = Color3.fromRGB(95, 70, 50),
+		Material = Enum.Material.Wood,
+		Parent = obby,
+	})
+	-- every player's screen writes their own reward on this sign
+	local board = fancySign(post, "🏃", title, "Win 💰 coins!", Color3.fromRGB(240, 120, 100), 11, 5)
+	board.Name = "ObbySign"
+	board:AddTag("ObbySign")
+	if dimension then
+		board:SetAttribute("Dimension", dimension)
+	end
+	return obby
+end
+
+--------------------------------------------------------------------------------
+-- LEADERBOARDS (big boards behind the spawn with the best players of ALL servers, worldwide)
+--------------------------------------------------------------------------------
+type BoardRow = { PlayerName: TextLabel, Score: TextLabel }
+type LeaderboardInfo = { Stat: string, Icon: string, Title: string, Color: Color3, Fastest: boolean? }
+type Leaderboard = { Info: LeaderboardInfo, Rows: { BoardRow } }
+local leaderboards: { Leaderboard } = {}
+-- Fastest = smaller is better (obby times)
+local LEADERBOARD_STATS: { LeaderboardInfo } = {
+	{ Stat = "Level", Icon = "🌍", Title = "TOP PLAYERS", Color = Color3.fromRGB(255, 215, 90) },
+	{ Stat = "TotalGems", Icon = "💎", Title = "MOST GEMS MINED", Color = Color3.fromRGB(120, 220, 255) },
+	{ Stat = "Rebirths", Icon = "♻️", Title = "MOST REBIRTHS", Color = Color3.fromRGB(205, 145, 255) },
+	{ Stat = "ObbyBest", Icon = "🏃", Title = "FASTEST OBBY", Color = Color3.fromRGB(255, 150, 120), Fastest = true },
+}
+
+-- The number a player has on a board (nil = not on it). Obby times are saved in tenths of a second.
+local function boardValue(info: LeaderboardInfo, data): number?
+	local value = tonumber(data[info.Stat])
+	if not value then
+		return nil
+	end
+	if info.Fastest then
+		return if value > 0 then math.floor(value * 10 + 0.5) else nil
+	end
+	return math.floor(value)
+end
+
+local function boardText(info: LeaderboardInfo, value: number): string
+	if info.Fastest then
+		return string.format("%.1fs", value / 10)
+	elseif info.Stat == "Level" then
+		return "⭐ " .. Format(value)
+	end
+	return Format(value)
+end
+
+-- One board on two stone posts. It faces -Z (towards the spawn).
+local function buildLeaderboard(pos: Vector3, info: LeaderboardInfo, parent: Instance)
+	local m = model("Leaderboard_" .. info.Stat, parent)
+	local stone = Color3.fromRGB(124, 120, 114)
+	local wood = Color3.fromRGB(96, 68, 46)
+	P({ Name = "Base", Size = Vector3.new(14.5, 0.6, 3.4), CFrame = CFrame.new(pos + Vector3.new(0, 0.3, 0.4)), Color = stone, Material = Enum.Material.Cobblestone, Parent = m })
+	for _, side in ipairs({ -1, 1 }) do
+		P({ Name = "Post", Size = Vector3.new(1.3, 15, 1.3), CFrame = CFrame.new(pos + Vector3.new(side * 6.4, 7.8, 0.4)), Color = stone, Material = Enum.Material.Cobblestone, Parent = m })
+		P({ Name = "PostCap", Size = Vector3.new(1.8, 0.6, 1.8), CFrame = CFrame.new(pos + Vector3.new(side * 6.4, 15.6, 0.4)), Color = stone:Lerp(Color3.new(1, 1, 1), 0.15), Material = Enum.Material.Slate, Parent = m })
+	end
+	local board = P({ Name = "Board", Size = Vector3.new(11.2, 13, 0.4), CFrame = CFrame.new(pos + Vector3.new(0, 8.6, 0)), Color = Color3.fromRGB(32, 34, 48), Parent = m })
+	P({ Name = "Frame", Size = Vector3.new(11.8, 13.6, 0.4), CFrame = CFrame.new(pos + Vector3.new(0, 8.6, 0.35)), Color = wood, Material = Enum.Material.Wood, Parent = m })
+	P({ Name = "Roof", Size = Vector3.new(14.6, 0.7, 2.8), CFrame = CFrame.new(pos + Vector3.new(0, 16.2, 0.4)), Color = wood, Material = Enum.Material.WoodPlanks, Parent = m })
+	local lamp = P({ Name = "Lamp", Size = Vector3.new(8, 0.3, 0.5), CFrame = CFrame.new(pos + Vector3.new(0, 15.6, -0.6)), Color = Color3.fromRGB(255, 236, 190), Material = Enum.Material.Neon, CanCollide = false, Parent = m })
+	local spot = Instance.new("SpotLight")
+	spot.Face = Enum.NormalId.Bottom
+	spot.Angle = 70
+	spot.Range = 16
+	spot.Brightness = 1.2
+	spot.Color = Color3.fromRGB(255, 236, 200)
+	spot.Parent = lamp
+
+	local gui = Instance.new("SurfaceGui")
+	gui.Name = "Board"
+	gui.Face = Enum.NormalId.Front
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	gui.PixelsPerStud = 40
+	gui.LightInfluence = 0
+	gui.MaxDistance = 220
+	local function text(name: string, value: string, x: number, y: number, w: number, h: number, color: Color3, align: Enum.TextXAlignment, frameParent: Instance): TextLabel
+		local lbl = Instance.new("TextLabel")
+		lbl.Name = name
+		lbl.BackgroundTransparency = 1
+		lbl.Position = UDim2.fromScale(x, y)
+		lbl.Size = UDim2.fromScale(w, h)
+		lbl.Font = Enum.Font.FredokaOne
+		lbl.TextScaled = true
+		lbl.TextXAlignment = align
+		lbl.TextColor3 = color
+		lbl.Text = value
+		lbl.Parent = frameParent
+		local stroke = Instance.new("UIStroke")
+		stroke.Thickness = 2
+		stroke.Color = Color3.fromRGB(12, 12, 20)
+		stroke.Parent = lbl
+		return lbl
+	end
+	text("Title", info.Icon .. " " .. info.Title, 0.04, 0.015, 0.92, 0.11, info.Color, Enum.TextXAlignment.Center, gui)
+	local rows: { BoardRow } = {}
+	local medals = { Color3.fromRGB(255, 210, 80), Color3.fromRGB(215, 222, 235), Color3.fromRGB(225, 150, 95) }
+	for k = 1, 10 do
+		local row = Instance.new("Frame")
+		row.Name = "Row" .. k
+		row.Position = UDim2.fromScale(0.04, 0.14 + (k - 1) * 0.085)
+		row.Size = UDim2.fromScale(0.92, 0.075)
+		row.BackgroundColor3 = if k % 2 == 1 then Color3.fromRGB(52, 56, 78) else Color3.fromRGB(42, 45, 64)
+		row.BorderSizePixel = 0
+		row.Parent = gui
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0.3, 0)
+		corner.Parent = row
+		local color = medals[k] or Color3.fromRGB(235, 238, 248)
+		text("Rank", "#" .. k, 0.02, 0.1, 0.14, 0.8, color, Enum.TextXAlignment.Left, row)
+		local nameLabel = text("PlayerName", "---", 0.17, 0.1, 0.5, 0.8, color, Enum.TextXAlignment.Left, row)
+		local scoreLabel = text("Score", "", 0.67, 0.1, 0.31, 0.8, info.Color, Enum.TextXAlignment.Right, row)
+		table.insert(rows, { PlayerName = nameLabel, Score = scoreLabel })
+	end
+	gui.Parent = board
+	table.insert(leaderboards, { Info = info, Rows = rows })
+	return m
 end
 
 --------------------------------------------------------------------------------
@@ -1801,29 +1973,7 @@ local function buildHub()
 		buildShopCircle(HUB.Rebirth, 6.5, Color3.fromRGB(185, 115, 235), "Rebirth", nil, gem, "♻️", "REBIRTH", "Start over, earn MORE coins", hub)
 	end
 	buildPortal(HUB.Portal, hub)
-	do
-		local obby = model("ObbyEntrance", hub)
-		P({
-			Name = "Floor",
-			Shape = Enum.PartType.Cylinder,
-			Size = Vector3.new(0.3, 13, 13),
-			CFrame = CFrame.new(HUB.Obby + Vector3.new(0, 0.05, 0)) * CFrame.Angles(0, 0, rad(90)),
-			Color = Color3.fromRGB(152, 146, 136),
-			Material = Enum.Material.Pavement,
-			Parent = obby,
-		})
-		actionCircle(HUB.Obby, 6, Color3.fromRGB(235, 95, 85), "Obby", nil, obby)
-		local post = P({
-			Name = "SignPost",
-			Size = Vector3.new(0.5, 7, 0.5),
-			CFrame = CFrame.new(HUB.Obby + Vector3.new(0, 3.5, -7)),
-			Color = Color3.fromRGB(95, 70, 50),
-			Material = Enum.Material.Wood,
-			Parent = obby,
-		})
-		local board = fancySign(post, "🏃", "SKY OBBY", "Win 💰 coins!", Color3.fromRGB(240, 120, 100), 11, 5)
-		board.Name = "ObbySign"
-	end
+	buildObbyEntrance(HUB.Obby, "SKY OBBY", nil, hub)
 
 	-- Eggs at the spawn
 	local busy = {
@@ -1831,6 +1981,14 @@ local function buildHub()
 		{ Vector3.new(0, 0, 32), 11 }, -- spawn
 		{ Vector3.new(60, 0, 38), 15 }, -- pond
 	}
+	-- Leaderboards behind the spawn, with a big sign above them
+	for k, info in ipairs(LEADERBOARD_STATS) do
+		local pos = Vector3.new((k - (#LEADERBOARD_STATS + 1) / 2) * 17, 0, 51)
+		buildLeaderboard(pos, info, hub)
+		table.insert(busy, { pos, 9 })
+	end
+	local boardSign = P({ Name = "LeaderboardSign", Size = Vector3.one, CFrame = CFrame.new(0, 19.5, 51), Transparency = 1, CanCollide = false, Parent = hub })
+	sign(boardSign, "🌍 WORLDWIDE LEADERBOARDS", "The best players of every server", Color3.fromRGB(255, 220, 120), 34, 6, 0)
 	for _, pos in pairs(HUB) do
 		table.insert(busy, { pos, 11 })
 	end
@@ -2220,6 +2378,11 @@ end
 
 local addXP -- defined later
 local endObby -- defined later
+-- every dimension's obby pays out on its own timer: dimObbyLast[player][d] = os.time()
+local dimObbyLast: { [Player]: { [number]: number } } = {}
+type ObbyRun = { Course: ObbyCourse, Started: number, Checkpoint: number }
+local obbyRuns: { [Player]: ObbyRun } = {} -- who is doing an obby right now
+local lastObbyEnd: { [Player]: number } = {}
 
 local digSpots: { [Instance]: any } = {} -- buried gems (see DIGGING)
 
@@ -2602,6 +2765,19 @@ if Settings.SaveData then
 		warn("[Crystal Rush] Saving is off: " .. tostring(result))
 	end
 end
+-- The leaderboards remember the best players of ALL servers in OrderedDataStores
+local orderedStores: { [string]: OrderedDataStore } = {}
+local boardSaved: { [Player]: { [string]: number } } = {} -- what we last wrote, so we only write changes
+if store then
+	for _, info in ipairs(LEADERBOARD_STATS) do
+		local ok, result = pcall(function()
+			return DataStoreService:GetOrderedDataStore("CrystalRush_Top_" .. info.Stat)
+		end)
+		if ok then
+			orderedStores[info.Stat] = result
+		end
+	end
+end
 
 local Data: { [Player]: PlayerData } = {}
 local CanSave: { [Player]: boolean } = {}
@@ -2743,6 +2919,25 @@ local function saveData(player: Player)
 	end)
 	if not ok then
 		warn("[Crystal Rush] Could not save " .. player.Name .. ": " .. tostring(err))
+		return
+	end
+	-- the leaderboards (only numbers that changed, and never Studio test players)
+	if player.UserId <= 0 then
+		return
+	end
+	local saved = boardSaved[player] or {}
+	boardSaved[player] = saved
+	for _, info in ipairs(LEADERBOARD_STATS) do
+		local ordered = orderedStores[info.Stat]
+		local value = boardValue(info, data)
+		if ordered and value and saved[info.Stat] ~= value then
+			local done = pcall(function()
+				ordered:SetAsync(tostring(player.UserId), value)
+			end)
+			if done then
+				saved[info.Stat] = value
+			end
+		end
 	end
 end
 
@@ -2781,6 +2976,13 @@ local function sync(player: Player)
 	-- Pets[n] = how many of pet n you own
 	local pets = table.create(#Shared.Pets, 0)
 	local dimPets = {}
+	local dimWaits = {} -- ["3"] = seconds until dimension 3's obby pays again
+	for d, last in pairs(dimObbyLast[player] or {}) do
+		local wait = last + Settings.ObbyCooldown - os.time()
+		if wait > 0 then
+			dimWaits[tostring(d)] = wait
+		end
+	end
 	for index, count in pairs(data.Pets) do
 		if Shared.Pets[index] then
 			pets[index] = count
@@ -2810,6 +3012,7 @@ local function sync(player: Player)
 		DailyStreak = dailyStreak(data),
 		ObbyBest = data.ObbyBest,
 		ObbyWait = math.max(0, data.ObbyLast + Settings.ObbyCooldown - os.time()),
+		DimObbyWaits = dimWaits,
 		DimPets = dimPets,
 		Shards = data.Shards,
 		BossesBeaten = data.BossesBeaten,
@@ -2838,13 +3041,24 @@ end
 --------------------------------------------------------------------------------
 -- LEVELS
 --------------------------------------------------------------------------------
+local lastLevelLockNotice: { [Player]: number } = {}
 addXP = function(player: Player, data: PlayerData, amount: number)
 	data.XP += amount
 	local leveledUp = false
-	while data.XP >= Shared.XPNeeded(data.Level) do
+	local maxLevel = Shared.MaxLevel(data.Zone)
+	while data.Level < maxLevel and data.XP >= Shared.XPNeeded(data.Level) do
 		data.XP -= Shared.XPNeeded(data.Level)
 		data.Level += 1
 		leveledUp = true
+	end
+	if data.Level >= maxLevel and data.XP >= Shared.XPNeeded(data.Level) then
+		-- the XP bar is full: unlock the next zone to level up
+		data.XP = Shared.XPNeeded(data.Level)
+		local nextZone = Shared.Zones[data.Zone + 1]
+		if nextZone and amount > 0 and os.clock() - (lastLevelLockNotice[player] or -math.huge) > 30 then
+			lastLevelLockNotice[player] = os.clock()
+			notify(player, "🔒 Your XP bar is full! Unlock " .. nextZone.Name .. " to level up.", "info")
+		end
 	end
 	if leveledUp then
 		Remotes.Effect:FireAllClients("levelup", player.UserId, data.Level)
@@ -3729,6 +3943,7 @@ type Arena = {
 	Reserved: { { pos: Vector3, radius: number } },
 	DigSpots: { DigSpot },
 	Boss: Boss?,
+	Obby: ObbyCourse,
 	EmptySince: number?,
 	Alive: boolean,
 }
@@ -4000,15 +4215,21 @@ local function buildArena(d: number): Arena?
 	actionCircle(homePos, 5.5, Color3.fromRGB(120, 200, 235), "Home", nil, home)
 	fancySign(homeSwirl, "🏠", "HOME", "Step in to go back", Color3.fromRGB(130, 205, 240), 10, 8)
 
-	-- selling, the special shop and this dimension's egg
+	-- selling, the shops, this dimension's egg and its obby
 	local sellPos = center + Vector3.new(-24, 0, 40)
 	local sellPad = buildSellPad(sellPos, 14, 1, d)
-	local shopPos = center + Vector3.new(-40, 0, 10)
+	local shopPos = center + Vector3.new(-38, 0, 16)
 	local special = Shared.DimensionPickaxe(d)
 	buildShopCircle(shopPos, 6.5, dim.Accent, "DimShop", d, Shared.BuildPickaxe(special), "💠", "SPECIAL SHOP", "Only in this dimension!", f)
+	local regularShopPos = center + Vector3.new(-40, 0, -2)
+	local display = Shared.BuildPickaxe(math.min(#Shared.Pickaxes, 4 + d))
+	buildShopCircle(regularShopPos, 6, Color3.fromRGB(225, 165, 70), "Shop", nil, display, "🛒", "SHOP", "Pickaxes • Backpacks • Pets", f)
 	local eggId = Shared.DimensionEggId(d)
 	local eggPos = center + Vector3.new(40, 0, 10)
 	buildEggMachine(eggId, eggPos, f)
+	local obbyPos = center + Vector3.new(38, 0, -28)
+	buildObbyEntrance(obbyPos, "DIMENSION OBBY", d, f)
+	local obby = buildObby(center, obbyPos, d, f)
 	local bossCenter = center + Vector3.new(-24, 0, -32)
 
 	decorateArena(dim, center)
@@ -4030,10 +4251,13 @@ local function buildArena(d: number): Arena?
 			{ pos = sellPos, radius = 11 },
 			{ pos = homePos, radius = 9 },
 			{ pos = shopPos, radius = 10 },
+			{ pos = regularShopPos, radius = 10 },
 			{ pos = eggPos, radius = 11 },
+			{ pos = obbyPos, radius = 10 },
 			{ pos = bossCenter, radius = 19 },
 		},
 		DigSpots = {},
+		Obby = obby,
 		Alive = true,
 	}
 	arena.Boss = createBoss(bossCenter, 15, 0, d, center, f)
@@ -4094,6 +4318,12 @@ local function destroyArena(arena: Arena)
 	if arena.Boss then
 		removeBoss(arena.Boss)
 	end
+	for player, run in pairs(obbyRuns) do
+		if run.Course == arena.Obby then
+			endObby(player, false)
+		end
+	end
+	removeObby(arena.Obby)
 	eggMachines[Shared.DimensionEggId(arena.Number)] = nil
 	for k, pad in ipairs(sellPads) do
 		if pad.Model == arena.SellPad then
@@ -4171,6 +4401,36 @@ task.spawn(function()
 			end
 		end
 	end
+end)
+
+--------------------------------------------------------------------------------
+-- SWINGING (you can swing your pickaxe or shovel any time, and everyone near you sees it)
+--------------------------------------------------------------------------------
+local lastSwingRelay: { [Player]: number } = {}
+Remotes.Swing.OnServerEvent:Connect(function(player, kind)
+	if kind ~= "swing" and kind ~= "dig" then
+		return
+	end
+	local now = os.clock()
+	if now - (lastSwingRelay[player] or 0) < 0.15 then
+		return
+	end
+	lastSwingRelay[player] = now
+	local char = player.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if not (root and root:IsA("BasePart")) or not char:FindFirstChild(if kind == "dig" then "Shovel" else "Pickaxe") then
+		return
+	end
+	for _, other in ipairs(Players:GetPlayers()) do
+		local otherChar = other.Character
+		local otherRoot = otherChar and otherChar:FindFirstChild("HumanoidRootPart")
+		if other ~= player and otherRoot and otherRoot:IsA("BasePart") and (otherRoot.Position - root.Position).Magnitude < 200 then
+			Remotes.Effect:FireClient(other, "swing", player.UserId, kind)
+		end
+	end
+end)
+Players.PlayerRemoving:Connect(function(player)
+	lastSwingRelay[player] = nil
 end)
 
 --------------------------------------------------------------------------------
@@ -4295,29 +4555,33 @@ Remotes.Mine.OnServerEvent:Connect(function(player, crystal)
 end)
 
 --------------------------------------------------------------------------------
--- SKY OBBY
+-- SKY OBBIES (running them)
 --------------------------------------------------------------------------------
-type ObbyRun = { Started: number, Checkpoint: number }
-local obbyRuns: { [Player]: ObbyRun } = {}
-local lastObbyEnd: { [Player]: number } = {}
-
 local function obbySpawn(run: ObbyRun): CFrame
-	local checkpoint = Obby.Checkpoints[run.Checkpoint]
-	return if checkpoint then checkpoint.Spawn else Obby.Start
+	local checkpoint = run.Course.Checkpoints[run.Checkpoint]
+	return if checkpoint then checkpoint.Spawn else run.Course.Start
 end
 
-startObby = function(player: Player)
+-- Seconds until an obby pays out again (d = nil is the obby at the spawn)
+local function obbyWaitFor(player: Player, data: PlayerData, d: number?): number
+	local last = if d then (dimObbyLast[player] or {})[d] or 0 else data.ObbyLast
+	return math.max(0, last + Settings.ObbyCooldown - os.time())
+end
+
+startObby = function(player: Player, course: ObbyCourse)
 	local char = player.Character
 	if not Data[player] or not char then
 		return
 	end
 	endObby(player, false)
-	leaveDimension(player)
-	obbyRuns[player] = { Started = os.clock(), Checkpoint = 0 }
+	if not course.Dimension then
+		leaveDimension(player)
+	end
+	obbyRuns[player] = { Course = course, Started = os.clock(), Checkpoint = 0 }
 	player:SetAttribute("ObbyStart", Workspace:GetServerTimeNow())
 	applyMovement(player, true) -- no gadgets in the obby, that would be cheating!
-	char:PivotTo(Obby.Start)
-	Remotes.Effect:FireClient(player, "obbystart")
+	char:PivotTo(course.Start)
+	Remotes.Effect:FireClient(player, "obbystart", course.Dimension)
 end
 
 endObby = function(player: Player, finished: boolean)
@@ -4333,26 +4597,43 @@ endObby = function(player: Player, finished: boolean)
 	if not finished or not data then
 		return
 	end
+	local course = run.Course
+	local d = course.Dimension
 	local time = math.floor((os.clock() - run.Started) * 10) / 10
 	local record = data.ObbyBest == 0 or time < data.ObbyBest
 	if record then
 		data.ObbyBest = time
 	end
-	local wait = data.ObbyLast + Settings.ObbyCooldown - os.time()
+	local wait = obbyWaitFor(player, data, d)
 	local coins = 0
 	if wait <= 0 then
-		coins = Shared.ObbyReward(data)
+		if d then
+			-- dimension obbies pay more, and more the further the dimension is
+			coins = Shared.DimensionObbyReward(data, d)
+			local timers = dimObbyLast[player] or {}
+			dimObbyLast[player] = timers
+			timers[d] = os.time()
+		else
+			coins = Shared.ObbyReward(data)
+			data.ObbyLast = os.time()
+		end
 		data.Coins += coins
-		data.ObbyLast = os.time()
 	end
-	Remotes.Effect:FireClient(player, "obby", time, coins, record, math.max(wait, 0))
+	Remotes.Effect:FireClient(player, "obby", time, coins, record, wait)
 	questProgress(player, data, "obby", 1)
 	sync(player)
-	-- after a little party at the finish, back to the spawn
+	-- after a little party at the finish, back down to the ground
 	local char = player.Character
 	task.delay(3, function()
 		local root = char and char:FindFirstChild("HumanoidRootPart")
-		if player.Parent and player.Character == char and not obbyRuns[player] and root and root:IsA("BasePart") and root.Position.Y > Obby.FallY then
+		if not (player.Parent and player.Character == char and not obbyRuns[player] and root and root:IsA("BasePart") and root.Position.Y > course.FallY) then
+			return
+		end
+		local arena = d and arenas[d]
+		if arena and dimensionOf[player] == d then
+			char:PivotTo(arenaSpawn(arena))
+			Remotes.Effect:FireClient(player, "teleported")
+		else
 			teleport(player, 0)
 		end
 	end)
@@ -4366,14 +4647,15 @@ RunService.Heartbeat:Connect(function()
 		if not (char and root and root:IsA("BasePart")) then
 			continue
 		end
+		local course = run.Course
 		local pos = root.Position
-		if pos.Y < Obby.FallY then
+		if pos.Y < course.FallY then
 			char:PivotTo(obbySpawn(run))
 			Remotes.Effect:FireClient(player, "obbyfall")
 			continue
 		end
 		local burned = false
-		for _, lava in ipairs(Obby.Lava) do
+		for _, lava in ipairs(course.Lava) do
 			local rel = lava.CFrame:PointToObjectSpace(pos)
 			if math.abs(rel.X) < lava.Size.X / 2 + 0.6 and math.abs(rel.Z) < lava.Size.Z / 2 + 0.6 and rel.Y > 0 and rel.Y < lava.Size.Y / 2 + 3.4 then
 				burned = true
@@ -4385,16 +4667,16 @@ RunService.Heartbeat:Connect(function()
 			Remotes.Effect:FireClient(player, "obbylava")
 			continue
 		end
-		for k, checkpoint in ipairs(Obby.Checkpoints) do
+		for k, checkpoint in ipairs(course.Checkpoints) do
 			if k > run.Checkpoint then
 				local rel = checkpoint.Part.CFrame:PointToObjectSpace(pos)
 				if math.abs(rel.X) < 6.5 and math.abs(rel.Z) < 6.5 and rel.Y > 0 and rel.Y < 7 then
 					run.Checkpoint = k
-					Remotes.Effect:FireClient(player, "checkpoint", k, #Obby.Checkpoints)
+					Remotes.Effect:FireClient(player, "checkpoint", k, #course.Checkpoints)
 				end
 			end
 		end
-		local finish = Obby.Finish
+		local finish = course.Finish
 		if finish then
 			local flat = Vector3.new(pos.X - finish.Position.X, 0, pos.Z - finish.Position.Z)
 			local up = pos.Y - finish.Position.Y
@@ -4412,7 +4694,7 @@ local lastSell: { [Player]: number } = {}
 local lastGoSell: { [Player]: number } = {}
 local lastLockedPad: { [Player]: number } = {}
 
-local function sellAll(player: Player)
+local function sellAll(player: Player, pad: SellPad)
 	local data = Data[player]
 	if not data or data.Gems <= 0 then
 		return
@@ -4422,10 +4704,12 @@ local function sellAll(player: Player)
 		return
 	end
 	lastSell[player] = now
-	local coins = math.floor(data.Gems * Shared.CoinMultiplier(data.Rebirths))
+	-- the further the dimension, the more every gem is worth
+	local bonus = Shared.DimensionSellBonus(pad.Dimension)
+	local coins = math.floor(data.Gems * Shared.CoinMultiplier(data.Rebirths) * bonus)
 	data.Coins += coins
 	data.Gems = 0
-	Remotes.Effect:FireClient(player, "sold", coins)
+	Remotes.Effect:FireClient(player, "sold", coins, bonus)
 	questProgress(player, data, "sell", 1)
 	sync(player)
 end
@@ -4458,18 +4742,21 @@ task.spawn(function()
 		for player, data in pairs(Data) do
 			local char = player.Character
 			local root = char and char:FindFirstChild("HumanoidRootPart")
-			-- the obby circle at the spawn starts the obby
+			-- an obby circle (at the spawn or in a dimension) starts that obby
 			if root and root:IsA("BasePart") and not obbyRuns[player] and os.clock() - (lastObbyEnd[player] or -math.huge) > 3 then
-				local flat = Vector3.new(root.Position.X - HUB.Obby.X, 0, root.Position.Z - HUB.Obby.Z)
-				if flat.Magnitude < 6 and math.abs(root.Position.Y - HUB.Obby.Y) < 8 then
-					startObby(player)
+				for _, course in ipairs(obbyCourses) do
+					local flat = Vector3.new(root.Position.X - course.Circle.X, 0, root.Position.Z - course.Circle.Z)
+					if flat.Magnitude < 6 and math.abs(root.Position.Y - course.Circle.Y) < 8 and (course.Dimension == nil or dimensionOf[player] == course.Dimension) then
+						startObby(player, course)
+						break
+					end
 				end
 			end
 			if data.Gems > 0 and root and root:IsA("BasePart") then
 				local pad = padUnder(root.Position)
 				if pad then
 					if canUsePad(player, data, pad) then
-						sellAll(player)
+						sellAll(player, pad)
 					elseif os.clock() - (lastLockedPad[player] or 0) > 4 then
 						lastLockedPad[player] = os.clock()
 						notify(player, "🔒 Unlock this zone first to sell here!", "bad")
@@ -4541,6 +4828,7 @@ unlockZone = function(player: Player, i: number)
 	data.Zone = i
 	notify(player, "🔓 " .. zone.Name .. " unlocked!", "good")
 	Remotes.Effect:FireClient(player, "unlock", i)
+	addXP(player, data, 0) -- a full XP bar levels up now
 	sync(player)
 end
 
@@ -4893,6 +5181,9 @@ Players.PlayerRemoving:Connect(function(player)
 	lastLockedPad[player] = nil
 	lastDig[player] = nil
 	lastObbyEnd[player] = nil
+	dimObbyLast[player] = nil
+	lastLevelLockNotice[player] = nil
+	boardSaved[player] = nil
 	for _, boss in pairs(bosses) do
 		boss.Hitters[player] = nil
 	end
@@ -4925,6 +5216,93 @@ task.spawn(function()
 	end
 end)
 
+-- Leaderboards: the best of all servers (every minute) mixed with everyone here right now
+do
+	local nameCache: { [number]: string } = {}
+	local function nameOf(userId: number): string
+		local online = Players:GetPlayerByUserId(userId)
+		if online then
+			return online.Name
+		end
+		local cached = nameCache[userId]
+		if cached then
+			return cached
+		end
+		local ok, result = pcall(function()
+			return Players:GetNameFromUserIdAsync(userId)
+		end)
+		local name = if ok and type(result) == "string" then result else "Player"
+		nameCache[userId] = name
+		return name
+	end
+
+	local stored: { [string]: { [number]: number } } = {} -- best scores from the OrderedDataStores
+	local function loadStored()
+		for _, info in ipairs(LEADERBOARD_STATS) do
+			local ordered = orderedStores[info.Stat]
+			if not ordered then
+				continue
+			end
+			local ok, page = pcall(function()
+				-- fastest times are the smallest numbers, so they go up instead of down
+				return ordered:GetSortedAsync(info.Fastest == true, 10):GetCurrentPage()
+			end)
+			if ok and type(page) == "table" then
+				local scores = {}
+				for _, entry in ipairs(page) do
+					local id = tonumber(entry.key)
+					if id and type(entry.value) == "number" and (entry.value > 0 or not info.Fastest) then
+						scores[id] = entry.value
+					end
+				end
+				stored[info.Stat] = scores
+			end
+		end
+	end
+
+	local function refreshBoards()
+		for _, board in ipairs(leaderboards) do
+			local info = board.Info
+			local fastest = info.Fastest == true
+			local scores: { [number]: number } = table.clone(stored[info.Stat] or {})
+			for player, data in pairs(Data) do
+				local value = boardValue(info, data)
+				if value and player.Parent then
+					local old = scores[player.UserId]
+					scores[player.UserId] = if old == nil then value elseif fastest then math.min(old, value) else math.max(old, value)
+				end
+			end
+			local list = {}
+			for id, value in pairs(scores) do
+				table.insert(list, { Id = id, Value = value })
+			end
+			table.sort(list, function(a, b)
+				if a.Value ~= b.Value then
+					return if fastest then a.Value < b.Value else a.Value > b.Value
+				end
+				return a.Id < b.Id
+			end)
+			for k, row in ipairs(board.Rows) do
+				local entry = list[k]
+				row.PlayerName.Text = if entry then nameOf(entry.Id) else "---"
+				row.Score.Text = if entry then boardText(info, entry.Value) else ""
+			end
+		end
+	end
+
+	task.spawn(function()
+		local lastLoad = -math.huge
+		while true do
+			if os.clock() - lastLoad >= 60 then
+				lastLoad = os.clock()
+				loadStored()
+			end
+			refreshBoards()
+			task.wait(5)
+		end
+	end)
+end
+
 --------------------------------------------------------------------------------
 -- BUILD EVERYTHING, THEN LET PLAYERS IN
 --------------------------------------------------------------------------------
@@ -4934,7 +5312,7 @@ buildHub()
 for i = 1, #Shared.Zones do
 	buildZone(i)
 end
-buildObby()
+buildObby(Vector3.zero, HUB.Obby, nil, MapFolder)
 buildWalls()
 spawnCrystals()
 for i = 1, #Shared.Zones do

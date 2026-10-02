@@ -31,7 +31,9 @@ Shared.Settings = {
 
 	-- Levels and dimensions
 	DimensionsPerLevel = 3, -- level 1 = 3 dimensions, level 2 = 6, level 3 = 9, ...
-	XPBase = 60, -- XP needed for the next level = XPBase x level x level
+	XPBase = 100, -- XP needed for the next level = XPBase x level ^ XPPower
+	XPPower = 2.5, -- bigger = levels get harder faster
+	LevelsPerZone = 3, -- you can't level up past level 1 in the first zone; every zone you unlock lets you go 3 levels higher (the last zone has no limit)
 	LevelPowerBonus = 0.1, -- every level makes your pickaxe 10% stronger
 	DimensionCrystals = 14, -- crystals on each dimension island
 	DimensionHealth = 5, -- crystal health in dimension 1...
@@ -54,7 +56,8 @@ Shared.Settings = {
 
 	-- Sky obby
 	ObbyRewardCrystals = 80, -- the obby pays as much as mining this many crystals
-	ObbyCooldown = 240, -- seconds before the obby pays out again
+	ObbyCooldown = 240, -- seconds before the obby pays out again (every dimension has its own obby too)
+	DimensionSellBonus = 0.25, -- selling in dimension d gives (1 + 0.25 x d) times more coins
 
 	-- Moving around
 	SprintSpeed = 10, -- hold Shift (or press the Sprint button) to run this much faster
@@ -450,7 +453,16 @@ end
 
 -- XP needed to go from this level to the next one
 function Shared.XPNeeded(level: number): number
-	return Shared.Settings.XPBase * level * level
+	return math.floor(Shared.Settings.XPBase * level ^ Shared.Settings.XPPower)
+end
+
+-- The highest level you can reach with this many zones unlocked
+-- (zone 1: level 1, zone 2: level 4, zone 3: level 7, ... the last zone: no limit)
+function Shared.MaxLevel(zone: number): number
+	if zone >= #Shared.Zones then
+		return math.huge
+	end
+	return 1 + (math.max(zone, 1) - 1) * Shared.Settings.LevelsPerZone
 end
 
 -- How much stronger your pickaxe is at this level (1.2 = 20% stronger)
@@ -1224,6 +1236,21 @@ function Shared.ObbyReward(state): number
 	return math.max(300, Shared.RewardCoins(state, Shared.Settings.ObbyRewardCrystals))
 end
 
+-- Selling in a dimension gives more coins (the further, the more)
+function Shared.DimensionSellBonus(d: number?): number
+	if not d then
+		return 1
+	end
+	return 1 + Shared.Settings.DimensionSellBonus * d
+end
+
+-- The obby in dimension d pays more the further you go
+function Shared.DimensionObbyReward(state, d: number): number
+	local dim = Shared.GetDimension(d)
+	local coins = dim.Gems * Shared.Settings.ObbyRewardCrystals * Shared.GemMultiplier(state.Pets) * Shared.CoinMultiplier(state.Rebirths) * Shared.DimensionSellBonus(d)
+	return math.floor(math.max(Shared.ObbyReward(state) * (1 + d * 0.5), coins))
+end
+
 function Shared.QuestText(quest): string
 	local kind = Shared.QuestKinds[quest.Kind]
 	return kind.Emoji .. " " .. string.format(kind.Text, Shared.Format(quest.Target))
@@ -1869,81 +1896,138 @@ end
 -- index can be a pickaxe number or a pickaxe (like a dimension's special pickaxe)
 local UPRIGHT = CFrame.Angles(0, 0, math.rad(90)) -- turns a cylinder so it stands up
 
+-- A textured material for the plates on the side of a pickaxe head
+local PLATE_MATERIAL = {
+	[Enum.Material.Metal] = Enum.Material.DiamondPlate,
+	[Enum.Material.Wood] = Enum.Material.WoodPlanks,
+	[Enum.Material.Slate] = Enum.Material.Rock,
+	[Enum.Material.CrackedLava] = Enum.Material.Basalt,
+	[Enum.Material.Ice] = Enum.Material.Glacier,
+	[Enum.Material.Glass] = Enum.Material.Glass,
+	[Enum.Material.ForceField] = Enum.Material.Glass,
+	[Enum.Material.SmoothPlastic] = Enum.Material.SmoothPlastic,
+	[Enum.Material.Sandstone] = Enum.Material.Limestone,
+	[Enum.Material.Marble] = Enum.Material.Marble,
+}
+
 function Shared.BuildPickaxe(index: any): Model
 	local def = if type(index) == "table" then index else Shared.Pickaxes[index]
 	local model = Instance.new("Model")
 	model.Name = def.Name
 	local wood = Color3.fromRGB(122, 82, 50)
-	local leather = Color3.fromRGB(58, 38, 28)
-	local steel = Color3.fromRGB(70, 70, 76)
+	local woodDark = Color3.fromRGB(92, 60, 36)
+	local leather = Color3.fromRGB(70, 44, 30)
+	local leatherDark = Color3.fromRGB(46, 30, 22)
+	local rope = Color3.fromRGB(160, 130, 90)
+	-- fancy pickaxes get gold fittings, the others steel
+	local fancy = def.Glow ~= nil
+	local metal = if fancy then Color3.fromRGB(205, 165, 75) else Color3.fromRGB(78, 78, 84)
 
 	-- the Handle part is what your hand holds (it's invisible, the round shaft is what you see)
 	local handle = part(model, { Name = "Handle", Size = Vector3.new(0.34, 4.4, 0.34), Transparency = 1 })
 	model.PrimaryPart = handle
 	part(model, { Name = "Shaft", Shape = CYLINDER, Size = Vector3.new(4.4, 0.36, 0.36), CFrame = UPRIGHT, Color = wood, Material = Enum.Material.Wood })
-	for i, y in ipairs({ -1.05, -1.4, -1.75 }) do
+	-- wood grain lines along the handle
+	for k = 0, 2 do
+		local a = k * 2.1 + 0.4
 		part(model, {
-			Name = "Wrap" .. i,
+			Name = "Grain",
+			Size = Vector3.new(0.035, 3.2, 0.06),
+			CFrame = CFrame.new(math.cos(a) * 0.17, 0.4 + k * 0.15, math.sin(a) * 0.17) * CFrame.Angles(0, -a, 0),
+			Color = woodDark,
+			Material = Enum.Material.Wood,
+		})
+	end
+	-- a leather grip, wound with straps
+	part(model, { Name = "Grip", Shape = CYLINDER, Size = Vector3.new(1.5, 0.42, 0.42), CFrame = CFrame.new(0, -1.35, 0) * UPRIGHT, Color = leather, Material = Enum.Material.Fabric })
+	for k = 0, 3 do
+		part(model, {
+			Name = "Wrap",
 			Shape = CYLINDER,
-			Size = Vector3.new(0.3, 0.44, 0.44),
-			CFrame = CFrame.new(0, y, 0) * UPRIGHT * CFrame.Angles(math.rad(8 * i), 0, 0),
-			Color = leather,
+			Size = Vector3.new(0.11, 0.46, 0.46),
+			CFrame = CFrame.new(0, -0.72 - k * 0.38, 0) * UPRIGHT * CFrame.Angles(math.rad(if k % 2 == 0 then 12 else -12), 0, 0),
+			Color = leatherDark,
 			Material = Enum.Material.Fabric,
 		})
 	end
-	part(model, { Name = "Pommel", Shape = CYLINDER, Size = Vector3.new(0.22, 0.48, 0.48), CFrame = CFrame.new(0, -2.25, 0) * UPRIGHT, Color = steel, Material = Enum.Material.Metal })
+	part(model, { Name = "Pommel", Shape = CYLINDER, Size = Vector3.new(0.24, 0.5, 0.5), CFrame = CFrame.new(0, -2.2, 0) * UPRIGHT, Color = metal, Material = Enum.Material.Metal, Reflectance = 0.1 })
+	part(model, { Name = "PommelKnob", Shape = BALL, Size = Vector3.one * 0.34, CFrame = CFrame.new(0, -2.36, 0), Color = metal, Material = Enum.Material.Metal, Reflectance = 0.1 })
 
 	local headY = 2
+	local headMaterial = def.Material or Enum.Material.Metal
+	local plateMaterial = PLATE_MATERIAL[headMaterial] or headMaterial
+	local light = def.Color:Lerp(Color3.new(1, 1, 1), 0.3)
+	local dark = def.Color:Lerp(Color3.new(0, 0, 0), 0.35)
 	local function headPart(name: string, size: Vector3, cf: CFrame, color: Color3?, material: Enum.Material?)
 		return part(model, {
 			Name = name,
 			Size = size,
 			CFrame = cf,
 			Color = color or def.Color,
-			Material = material or def.Material,
+			Material = material or headMaterial,
 			Reflectance = def.Shine or 0,
 		})
 	end
-	-- a metal band that holds the head on
-	part(model, { Name = "Collar", Shape = CYLINDER, Size = Vector3.new(0.5, 0.5, 0.5), CFrame = CFrame.new(0, headY - 0.62, 0) * UPRIGHT, Color = steel, Material = Enum.Material.Metal })
+	-- the metal collar that holds the head on, tied with rope
+	part(model, { Name = "Collar", Shape = CYLINDER, Size = Vector3.new(0.62, 0.5, 0.5), CFrame = CFrame.new(0, headY - 0.64, 0) * UPRIGHT, Color = metal, Material = Enum.Material.Metal })
+	for k = 0, 1 do
+		part(model, { Name = "Rope", Shape = CYLINDER, Size = Vector3.new(0.09, 0.55, 0.55), CFrame = CFrame.new(0, headY - 0.48 - k * 0.3, 0) * UPRIGHT, Color = rope, Material = Enum.Material.Fabric })
+	end
+	for k = 0, 3 do
+		local a = k / 4 * math.pi * 2
+		part(model, { Name = "CollarRivet", Shape = BALL, Size = Vector3.one * 0.12, CFrame = CFrame.new(math.cos(a) * 0.25, headY - 0.75, math.sin(a) * 0.25), Color = metal:Lerp(Color3.new(1, 1, 1), 0.3), Material = Enum.Material.Metal })
+	end
+
+	-- the head: a center block with textured plates, a ridge, and two curved picks
 	headPart("HeadCenter", Vector3.new(0.62, 0.8, 1.0), CFrame.new(0, headY, 0))
-	headPart("HeadTop", Vector3.new(0.5, 0.12, 0.9), CFrame.new(0, headY + 0.45, 0), def.Color:Lerp(Color3.new(1, 1, 1), 0.2))
+	headPart("HeadTop", Vector3.new(0.5, 0.12, 0.92), CFrame.new(0, headY + 0.45, 0), light)
 	for _, side in ipairs({ -1, 1 }) do
+		headPart("Plate", Vector3.new(0.06, 0.6, 0.82), CFrame.new(0.33 * side, headY, 0), dark, plateMaterial)
 		headPart("Pick", Vector3.new(0.52, 0.52, 0.9), CFrame.new(0, headY - 0.05, 0.85 * side) * CFrame.Angles(math.rad(8 * side), 0, 0))
 		headPart("PickOuter", Vector3.new(0.42, 0.42, 0.8), CFrame.new(0, headY - 0.25, 1.55 * side) * CFrame.Angles(math.rad(22 * side), 0, 0))
+		-- a shiny sharpened edge under the pick
+		headPart("Edge", Vector3.new(0.3, 0.07, 0.78), CFrame.new(0, headY - 0.45, 1.5 * side) * CFrame.Angles(math.rad(22 * side), 0, 0), light, Enum.Material.Metal)
+		-- engraved lines on both sides of the pick
+		for _, face in ipairs({ -1, 1 }) do
+			headPart("Engraving", Vector3.new(0.03, 0.07, 0.7), CFrame.new(0.27 * face, headY - 0.05, 0.85 * side) * CFrame.Angles(math.rad(8 * side), 0, 0), dark, Enum.Material.Metal)
+		end
 		headPart(
 			"Tip",
 			Vector3.new(0.28, 0.28, 0.5),
 			CFrame.new(0, headY - 0.5, 2.05 * side) * CFrame.Angles(math.rad(38 * side), 0, 0),
-			def.Glow or def.Color:Lerp(Color3.new(1, 1, 1), 0.3),
-			if def.Glow then Enum.Material.Neon else def.Material
+			def.Glow or light,
+			if def.Glow then Enum.Material.Neon else headMaterial
 		)
 		-- rivets on the head
-		part(model, {
-			Name = "Rivet",
-			Shape = BALL,
-			Size = Vector3.one * 0.16,
-			CFrame = CFrame.new(0.32 * side, headY, 0),
-			Color = steel,
-			Material = Enum.Material.Metal,
-		})
+		for _, z in ipairs({ -0.28, 0.28 }) do
+			part(model, {
+				Name = "Rivet",
+				Shape = BALL,
+				Size = Vector3.one * 0.14,
+				CFrame = CFrame.new(0.37 * side, headY + 0.22, z),
+				Color = metal,
+				Material = Enum.Material.Metal,
+			})
+		end
 		if def.Glow then
+			-- a gem set into the head, with a gold frame
+			part(model, { Name = "GemFrame", Size = Vector3.new(0.05, 0.5, 0.5), CFrame = CFrame.new(0.37 * side, headY - 0.05, 0) * CFrame.Angles(math.rad(45), 0, 0), Color = metal, Material = Enum.Material.Metal })
 			part(model, {
 				Name = "Gem",
-				Size = Vector3.new(0.12, 0.42, 0.42),
-				CFrame = CFrame.new(0.33 * side, headY + 0.08, 0.32) * CFrame.Angles(math.rad(45), 0, 0),
+				Size = Vector3.new(0.12, 0.36, 0.36),
+				CFrame = CFrame.new(0.4 * side, headY - 0.05, 0) * CFrame.Angles(math.rad(45), 0, 0),
 				Color = def.Glow,
 				Material = Enum.Material.Glass,
-				Reflectance = 0.3,
+				Reflectance = 0.35,
 			})
 		end
 	end
 	if def.Glow then
-		local light = Instance.new("PointLight")
-		light.Color = def.Glow
-		light.Range = 8
-		light.Brightness = 1
-		light.Parent = handle
+		local glow = Instance.new("PointLight")
+		glow.Color = def.Glow
+		glow.Range = 8
+		glow.Brightness = 1
+		glow.Parent = handle
 	end
 	return model
 end
