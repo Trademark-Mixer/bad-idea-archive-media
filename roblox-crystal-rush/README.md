@@ -5,8 +5,10 @@ sell them for coins, and spend the coins in the shop.
 
 ## What's in the game
 
-- **5 zones** with natural-looking ground, hills, leafy trees, pine trees, rocks, lakes and their own sky:
-  🌻 Sunny Meadow → 💜 Crystal Caves → 🌋 Lava Volcano → ❄️ Frozen Peaks → 🌌 Galaxy Isles.
+- **8 worlds** with natural-looking ground, hills, leafy trees, pine trees, rocks, lakes and their own sky:
+  🌻 Sunny Meadow → 💜 Crystal Caves → 🌋 Lava Volcano → ❄️ Frozen Peaks → 🌌 Galaxy Isles →
+  🍄 Mushroom Forest (giant glowing mushrooms) → 🏜️ Ancient Desert (pyramids and ruins) →
+  👑 Golden Kingdom (castle towers). Every world has its own 2 eggs, a boss, a shop and treasure.
   Big stone arches with banners and lanterns stand at every zone entrance, and there's a portal
   to the dimensions at the very end.
 - **Circles on the ground**: every shop is an open circle with its item floating above it. Step in
@@ -43,14 +45,20 @@ sell them for coins, and spend the coins in the shop.
   Speed Coil and Turbo Boots (walk faster), Sprint Charm, Lucky Clover and Gem Magnet.
   The faster you get, the more it costs. Turn each gadget on or off, and they turn off in the obby.
 - **🏃 Sprint**: hold **Shift** (on a phone, press the Sprint button).
+- **🪣 Dig anywhere**: hold your shovel and click the ground to dig a hole. Every dig gives gems,
+  and sometimes you find a bag of coins, a 💠 Boss Shard or even a free egg! While you hold the
+  shovel, 💎 markers show where the buried gems are, and the screen says how far away they are.
+- **🤝 Trading**: press **🤝 Trade**, pick a player (👥 = your friend) and they get a pop-up.
+  Both put pets and coins in, both press **READY**, and after a 3 second countdown everything swaps.
+  If anyone changes something, both have to press READY again, so nobody gets tricked.
 - **🎒🪣 Tools**: your pickaxe is number 1 and your shovel number 2 in the tool bar. Click one
   again to put it away. **Left-click anywhere** to swing it, even at nothing (hold to keep swinging).
   Other players see you swing too.
 - **📜 Quests**, **🎁 free gifts** for playing and **📅 daily rewards** (bigger for 7 days in a row).
 - **🎵 Music**: a calm music box plays in the background (turn it off on the right side).
   You can put real songs in too, see below.
-- **Shop** with 11 pickaxes, 10 backpacks and 8 pets. Your best 3 pets follow you by themselves.
-- **🥚 Eggs**: 2 eggs in every zone (a normal one and a better, more expensive one) and a special
+- **Shop** with 14 pickaxes, 13 backpacks and 8 pets. Your best 3 pets follow you by themselves.
+- **🥚 Eggs**: 2 eggs in every world (a normal one and a better, more expensive one) and a special
   egg in every dimension with pets you can only find there. Step in an egg's circle to see its
   pets, their chances and what they do: pets you have shimmer green, the others gray.
   **Click while an egg hatches** to make it go faster.
@@ -60,9 +68,9 @@ sell them for coins, and spend the coins in the shop.
 - **⭐ Levels:** you earn XP for every crystal you mine. Each level makes your pickaxe 10% stronger.
   Levels get a lot harder the higher you go. **You have to unlock zones to level up**: in Sunny Meadow
   you stay level 1 (your XP bar fills up and waits). Unlocking Crystal Caves lets you go up to level 4,
-  Lava Volcano to level 7, Frozen Peaks to level 10, and in the Galaxy Isles there's no limit.
+  Lava Volcano to level 7, and so on (3 more levels per world). In the Golden Kingdom there's no limit.
 - **🌌 Dimensions:** valleys surrounded by huge mountains, visited through the portal at the spawn
-  (or at the end of the Galaxy Isles). Level 1 opens 3 dimensions, level 2 opens 6, level 3 opens 9,
+  (or at the end of the Golden Kingdom). Level 1 opens 3 dimensions, level 2 opens 6, level 3 opens 9,
   and it never stops. There are 12 themes (Candy World, Neon City, Ocean Reef, Jungle, …), and they
   come back with new colors and stronger crystals: Candy World II, Candy World III, and so on.
   Every dimension has the **🛒 normal shop**, its own **💠 special shop** (a pickaxe for Boss Shards
@@ -115,7 +123,9 @@ Use this if the file doesn't open for some reason.
 
 - Hold your **pickaxe** (press **1**) and **click** (or **tap**) a crystal to mine it.
   **Hold** the button to keep mining. Clicking anywhere else just swings it.
-- Hold your **shovel** (press **2**) and click a dirt pile to dig up the buried gem.
+- Hold your **shovel** (press **2**) and click the ground to dig. Click a dirt pile with a 💎
+  to dig up the buried gem (follow the 💎 markers).
+- Press **🤝 Trade** to trade pets and coins with a friend in the same server.
 - When the backpack is full, stand in a **💰 SELL** circle (or press **🌀 Teleport to Sell**).
   You can only sell in zones you have unlocked, and in the dimension you are in.
 - Step into a circle to shop: **⛏️ pickaxes**, **🎒 backpacks**, **🐾 pets**, **⚡ gadgets**.
@@ -134,7 +144,7 @@ Use this if the file doesn't open for some reason.
 - Step into the **🌌 portal** circle (or click **🌌 DIMENSIONS**) and pick a dimension.
   Step into the **🏠 HOME** circle in a dimension to go back.
 - Walk to a gate and press **E** to unlock the next zone. You need that to keep leveling up!
-- Use **🌀 Teleport** to jump between zones you've unlocked.
+- Use **🌀 Teleport** to jump between worlds you've unlocked.
 - At **150K coins** you can **♻️ Rebirth** for a permanent coin boost.
 
 ## Getting a new version into Studio
@@ -180,6 +190,8 @@ Everything you'd want to tweak is in **`GameShared`** (in ReplicatedStorage):
 - `ChestsPerZone`, `ChestCrystals`, `ChestRespawnTime`: the treasure chests
 - `MeteorEvery`, `MeteorHealth`, `MeteorRewardCrystals`, `MeteorShards`: the meteor showers
 - `BouncePower`: how high the bounce pads throw you
+- `GroundDigGems`, `DigFindCoins`, `DigFindShard`, `DigFindEgg`: digging anywhere with the shovel
+- `TradeFriendsOnly = false`: set it to `true` if players should only trade with their Roblox friends
 - `MythicEggPrice`: how much more the Mythic egg costs than the normal dimension egg
 - `Shared.Gifts`, `Shared.DailyRewards`, `Shared.QuestKinds`: the free gifts, daily rewards and quests
 - `Shared.Gadgets`: the gadgets, what they do and their prices

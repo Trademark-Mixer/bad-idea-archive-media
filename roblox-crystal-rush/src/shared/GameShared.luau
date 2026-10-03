@@ -70,6 +70,13 @@ Shared.Settings = {
 	DigHealth = 3, -- a buried gem needs as much digging as 3 crystals...
 	DigGems = 4, -- ...and gives the gems of 4 crystals
 	DigRespawnTime = 15, -- seconds until a new buried gem appears
+	GroundDigGems = 0.35, -- digging anywhere else gives the gems of 0.35 crystals...
+	GroundDigCooldown = 0.5, -- ...every half a second
+	GroundDigRange = 16, -- how far away you can dig
+	GroundHoleTime = 12, -- seconds until a hole fills up again
+	DigFindCoins = 0.06, -- 6% chance to dig up a bag of coins
+	DigFindShard = 0.015, -- 1.5% chance to dig up a Boss Shard
+	DigFindEgg = 0.004, -- 0.4% chance to dig up a free egg
 
 	-- Diamond bosses (one in every zone and every dimension)
 	BossHealth = 120, -- a boss has as much health as 120 crystals
@@ -90,6 +97,11 @@ Shared.Settings = {
 	MeteorShards = 2, -- plus this many 💠 Boss Shards
 	MeteorLifetime = 150, -- seconds before an unmined meteor fades away
 	BouncePower = 110, -- how high the 🦘 bounce pads throw you
+
+	-- 🤝 Trading
+	TradeFriendsOnly = false, -- true = you can only trade with your Roblox friends
+	TradeCountdown = 3, -- seconds after both press READY before the trade happens
+	TradeRequestTime = 30, -- seconds a trade request stays open
 
 	-- Background music. Paste song IDs from the Toolbox (Audio tab) here, like
 	-- MusicIds = { 1234567890, 9876543210 }. With none, a little music box plays.
@@ -221,6 +233,57 @@ Shared.Zones = {
 		Mood = zoneMood(23.6, 1.4, Color3.fromRGB(95, 92, 125), Color3.fromRGB(95, 90, 140), Color3.fromRGB(40, 35, 70), 0.3, 1, {
 			Exposure = 0.4,
 			Ambient = Color3.fromRGB(60, 58, 80),
+		}),
+	},
+	{
+		Name = "Mushroom Forest",
+		Emoji = "🍄",
+		Price = 600000000,
+		Health = 600000,
+		Gems = 300000,
+		-- teal, magenta and lime glowing crystals
+		CrystalColors = { Color3.fromRGB(40, 170, 160), Color3.fromRGB(190, 60, 160), Color3.fromRGB(140, 200, 60) },
+		Ground = Enum.Material.LeafyGrass,
+		Hills = Enum.Material.Mud,
+		RockColor = Color3.fromRGB(90, 80, 76),
+		Accent = Color3.fromRGB(205, 125, 225),
+		Mood = zoneMood(17.8, 1.8, Color3.fromRGB(110, 100, 130), Color3.fromRGB(170, 140, 190), Color3.fromRGB(90, 70, 110), 0.42, 2.2, {
+			Tint = Color3.fromRGB(250, 240, 255),
+			Saturation = 0.12,
+		}),
+	},
+	{
+		Name = "Ancient Desert",
+		Emoji = "🏜️",
+		Price = 12000000000,
+		Health = 6000000,
+		Gems = 3000000,
+		-- topaz, turquoise and carnelian
+		CrystalColors = { Color3.fromRGB(225, 150, 40), Color3.fromRGB(50, 190, 190), Color3.fromRGB(200, 70, 40) },
+		Ground = Enum.Material.Sand,
+		Hills = Enum.Material.Sandstone,
+		RockColor = Color3.fromRGB(170, 130, 90),
+		Accent = Color3.fromRGB(240, 190, 100),
+		Mood = zoneMood(13, 3.2, Color3.fromRGB(160, 145, 125), Color3.fromRGB(240, 215, 170), Color3.fromRGB(200, 160, 110), 0.35, 2.6, {
+			Glare = 0.5,
+			Tint = Color3.fromRGB(255, 246, 230),
+		}),
+	},
+	{
+		Name = "Golden Kingdom",
+		Emoji = "👑",
+		Price = 250000000000,
+		Health = 60000000,
+		Gems = 30000000,
+		-- gold, diamond and ruby
+		CrystalColors = { Color3.fromRGB(230, 180, 40), Color3.fromRGB(220, 235, 250), Color3.fromRGB(200, 30, 60) },
+		Ground = Enum.Material.Limestone,
+		Hills = Enum.Material.Sandstone,
+		RockColor = Color3.fromRGB(200, 190, 170),
+		Accent = Color3.fromRGB(255, 210, 90),
+		Mood = zoneMood(15.5, 3, Color3.fromRGB(165, 155, 140), Color3.fromRGB(250, 230, 190), Color3.fromRGB(220, 180, 120), 0.3, 1.6, {
+			Tint = Color3.fromRGB(255, 248, 230),
+			Saturation = 0.1,
 		}),
 	},
 }
@@ -541,6 +604,32 @@ Shared.Pickaxes = {
 		Material = Enum.Material.ForceField,
 		Glow = Color3.fromRGB(255, 255, 255),
 	},
+	{
+		Name = "Shroom Pickaxe",
+		Power = 40000,
+		Price = 2500000000,
+		Color = Color3.fromRGB(190, 70, 170),
+		Material = Enum.Material.Glass,
+		Glow = Color3.fromRGB(230, 120, 255),
+	},
+	{
+		Name = "Pharaoh Pickaxe",
+		Power = 400000,
+		Price = 50000000000,
+		Color = Color3.fromRGB(230, 180, 60),
+		Material = Enum.Material.Metal,
+		Shine = 0.3,
+		Glow = Color3.fromRGB(90, 200, 220),
+	},
+	{
+		Name = "Royal Crown Pickaxe",
+		Power = 4000000,
+		Price = 900000000000,
+		Color = Color3.fromRGB(255, 210, 80),
+		Material = Enum.Material.Metal,
+		Shine = 0.4,
+		Glow = Color3.fromRGB(255, 240, 180),
+	},
 }
 
 --------------------------------------------------------------------------------
@@ -557,6 +646,9 @@ Shared.Backpacks = {
 	{ Name = "Frost Pack", Capacity = 120000, Price = 1100000, Color = Color3.fromRGB(215, 240, 255), Accent = Color3.fromRGB(110, 180, 240) },
 	{ Name = "Galaxy Pack", Capacity = 500000, Price = 6000000, Color = Color3.fromRGB(45, 30, 90), Accent = Color3.fromRGB(180, 90, 255) },
 	{ Name = "Infinity Pack", Capacity = 2500000, Price = 32000000, Color = Color3.fromRGB(255, 215, 80), Accent = Color3.fromRGB(255, 250, 235) },
+	{ Name = "Spore Pack", Capacity = 12000000, Price = 1500000000, Color = Color3.fromRGB(120, 60, 120), Accent = Color3.fromRGB(150, 230, 90) },
+	{ Name = "Pharaoh Pack", Capacity = 60000000, Price = 25000000000, Color = Color3.fromRGB(220, 180, 90), Accent = Color3.fromRGB(40, 120, 160) },
+	{ Name = "Royal Pack", Capacity = 300000000, Price = 400000000000, Color = Color3.fromRGB(180, 30, 60), Accent = Color3.fromRGB(255, 210, 80) },
 }
 
 --------------------------------------------------------------------------------
@@ -640,6 +732,44 @@ Shared.Pets = {
 	{ Name = "Astro Penguin", Kind = "penguin", Rarity = "Uncommon", Bonus = 130, Color = RGB(30, 30, 70), Accent = RGB(255, 210, 90) },
 	{ Name = "Supernova Unicorn", Kind = "unicorn", Rarity = "Rare", Bonus = 280, Color = RGB(255, 225, 180), Accent = RGB(255, 110, 200), Glow = RGB(255, 200, 150) },
 	{ Name = "Black Hole Dragon", Kind = "dragon", Rarity = "Legendary", Bonus = 900, Color = RGB(15, 10, 25), Accent = RGB(190, 110, 255), Glow = RGB(190, 120, 255), Aura = RGB(160, 90, 255), Size = 1.35 },
+
+	-- (new pets always go at the END of this list, so everyone's saved pets stay the same)
+	-- Spore Egg pets
+	{ Name = "Spore Slime", Kind = "slime", Rarity = "Common", Bonus = 200, Color = RGB(150, 90, 200), Accent = RGB(170, 240, 90) },
+	{ Name = "Toadstool Turtle", Kind = "turtle", Rarity = "Uncommon", Bonus = 380, Color = RGB(230, 215, 190), Accent = RGB(210, 50, 50) },
+	{ Name = "Glowcap Fox", Kind = "fox", Rarity = "Rare", Bonus = 800, Color = RGB(60, 170, 170), Accent = RGB(200, 255, 240), Glow = RGB(120, 255, 230) },
+	{ Name = "Fairy Owl", Kind = "owl", Rarity = "Legendary", Bonus = 2600, Color = RGB(240, 200, 255), Accent = RGB(150, 90, 230), Glow = RGB(230, 170, 255), Aura = RGB(240, 200, 255), Size = 1.25 },
+
+	-- Mycelium Egg pets
+	{ Name = "Puffball Bunny", Kind = "bunny", Rarity = "Common", Bonus = 650, Color = RGB(245, 240, 230), Accent = RGB(190, 150, 110) },
+	{ Name = "Mossy Panda", Kind = "panda", Rarity = "Uncommon", Bonus = 1200, Color = RGB(220, 235, 200), Accent = RGB(70, 110, 50) },
+	{ Name = "Shroom Dragon", Kind = "dragon", Rarity = "Rare", Bonus = 2600, Color = RGB(190, 60, 160), Accent = RGB(255, 230, 120), Glow = RGB(255, 140, 220) },
+	{ Name = "Forest Spirit", Kind = "cosmic", Rarity = "Legendary", Bonus = 8500, Color = RGB(200, 255, 220), Accent = RGB(80, 200, 120), Glow = RGB(150, 255, 190), Aura = RGB(170, 255, 200), Size = 1.3 },
+
+	-- Sand Egg pets
+	{ Name = "Dune Slime", Kind = "slime", Rarity = "Common", Bonus = 2000, Color = RGB(235, 200, 130), Accent = RGB(200, 140, 60) },
+	{ Name = "Sand Fox", Kind = "fox", Rarity = "Uncommon", Bonus = 3800, Color = RGB(230, 185, 120), Accent = RGB(255, 245, 225) },
+	{ Name = "Desert Owl", Kind = "owl", Rarity = "Rare", Bonus = 8000, Color = RGB(200, 160, 110), Accent = RGB(90, 60, 40), Glow = RGB(255, 210, 120) },
+	{ Name = "Scarab Dragon", Kind = "dragon", Rarity = "Legendary", Bonus = 26000, Color = RGB(40, 140, 130), Accent = RGB(255, 200, 60), Shine = 0.3, Glow = RGB(90, 230, 210), Aura = RGB(255, 220, 120), Size = 1.3 },
+
+	-- Pyramid Egg pets
+	{ Name = "Mummy Bunny", Kind = "bunny", Rarity = "Common", Bonus = 6500, Color = RGB(235, 228, 205), Accent = RGB(150, 130, 100) },
+	{ Name = "Anubis Dog", Kind = "dog", Rarity = "Uncommon", Bonus = 12000, Color = RGB(30, 30, 40), Accent = RGB(230, 180, 60) },
+	{ Name = "Sphinx Unicorn", Kind = "unicorn", Rarity = "Rare", Bonus = 26000, Color = RGB(225, 180, 110), Accent = RGB(60, 140, 220), Glow = RGB(255, 210, 130) },
+	{ Name = "Pharaoh Phoenix", Kind = "phoenix", Rarity = "Legendary", Bonus = 85000, Color = RGB(40, 90, 200), Accent = RGB(255, 200, 60), Glow = RGB(255, 210, 90), Aura = RGB(255, 220, 140), Size = 1.3 },
+
+	-- Royal Egg pets
+	{ Name = "Knight Penguin", Kind = "penguin", Rarity = "Common", Bonus = 20000, Color = RGB(110, 115, 130), Accent = RGB(255, 200, 60), Material = Enum.Material.Metal },
+	{ Name = "Crown Cat", Kind = "cat", Rarity = "Uncommon", Bonus = 38000, Color = RGB(255, 240, 220), Accent = RGB(255, 190, 40) },
+	{ Name = "Royal Turtle", Kind = "turtle", Rarity = "Rare", Bonus = 80000, Color = RGB(150, 30, 60), Accent = RGB(255, 205, 70), Shine = 0.25, Glow = RGB(255, 210, 110) },
+	{ Name = "King Dragon", Kind = "dragon", Rarity = "Legendary", Bonus = 260000, Color = RGB(200, 30, 50), Accent = RGB(255, 210, 80), Glow = RGB(255, 200, 90), Aura = RGB(255, 225, 140), Size = 1.35 },
+
+	-- Crown Egg pets
+	{ Name = "Golden Owl", Kind = "owl", Rarity = "Common", Bonus = 65000, Color = RGB(240, 190, 60), Accent = RGB(255, 245, 200), Material = Enum.Material.Metal, Shine = 0.3 },
+	{ Name = "Treasure Octopus", Kind = "octopus", Rarity = "Uncommon", Bonus = 120000, Color = RGB(230, 170, 60), Accent = RGB(120, 220, 255) },
+	{ Name = "Queen Unicorn", Kind = "unicorn", Rarity = "Rare", Bonus = 260000, Color = RGB(255, 245, 250), Accent = RGB(255, 190, 60), Glow = RGB(255, 230, 150) },
+	{ Name = "Emperor Phoenix", Kind = "phoenix", Rarity = "Legendary", Bonus = 850000, Color = RGB(255, 200, 60), Accent = RGB(255, 90, 60), Glow = RGB(255, 200, 80), Aura = RGB(255, 230, 150), Size = 1.35 },
+	{ Name = "Diamond King", Kind = "cosmic", Rarity = "Secret", Bonus = 3000000, Color = RGB(220, 240, 255), Accent = RGB(255, 215, 90), Material = Enum.Material.Glass, Glow = RGB(220, 240, 255), Size = 1.4 },
 }
 
 --------------------------------------------------------------------------------
@@ -809,6 +939,107 @@ Shared.Eggs = {
 			{ Name = "Astro Penguin", Chance = 30 },
 			{ Name = "Supernova Unicorn", Chance = 9 },
 			{ Name = "Black Hole Dragon", Chance = 1 },
+		},
+	},
+
+	-- The eggs of the newer worlds (a normal one and a better one in each)
+	{
+		Name = "Spore Egg",
+		Zone = 6,
+		Price = 1200000000,
+		Color = RGB(210, 70, 80),
+		Cap = RGB(240, 235, 225),
+		Spots = RGB(255, 255, 255),
+		Pets = {
+			{ Name = "Spore Slime", Chance = 60 },
+			{ Name = "Toadstool Turtle", Chance = 30 },
+			{ Name = "Glowcap Fox", Chance = 9 },
+			{ Name = "Fairy Owl", Chance = 1 },
+		},
+	},
+	{
+		Name = "Mycelium Egg",
+		Zone = 6,
+		Price = 6000000000,
+		Color = RGB(90, 70, 110),
+		Cap = RGB(170, 240, 90),
+		Spots = RGB(120, 255, 230),
+		SpotMaterial = Enum.Material.Glass,
+		Pattern = "stripes",
+		Pets = {
+			{ Name = "Puffball Bunny", Chance = 60 },
+			{ Name = "Mossy Panda", Chance = 30 },
+			{ Name = "Shroom Dragon", Chance = 9 },
+			{ Name = "Forest Spirit", Chance = 1 },
+		},
+	},
+	{
+		Name = "Sand Egg",
+		Zone = 7,
+		Price = 20000000000,
+		Color = RGB(230, 200, 140),
+		Material = Enum.Material.Sandstone,
+		Cap = RGB(200, 140, 70),
+		Spots = RGB(60, 190, 190),
+		SpotMaterial = Enum.Material.Glass,
+		Pattern = "gems",
+		Pets = {
+			{ Name = "Dune Slime", Chance = 60 },
+			{ Name = "Sand Fox", Chance = 30 },
+			{ Name = "Desert Owl", Chance = 9 },
+			{ Name = "Scarab Dragon", Chance = 1 },
+		},
+	},
+	{
+		Name = "Pyramid Egg",
+		Zone = 7,
+		Price = 100000000000,
+		Color = RGB(60, 100, 190),
+		Cap = RGB(255, 200, 60),
+		Spots = RGB(255, 215, 90),
+		Pattern = "stripes",
+		Shine = 0.2,
+		Pets = {
+			{ Name = "Mummy Bunny", Chance = 60 },
+			{ Name = "Anubis Dog", Chance = 30 },
+			{ Name = "Sphinx Unicorn", Chance = 9 },
+			{ Name = "Pharaoh Phoenix", Chance = 1 },
+		},
+	},
+	{
+		Name = "Royal Egg",
+		Zone = 8,
+		Price = 350000000000,
+		Color = RGB(170, 30, 60),
+		Cap = RGB(255, 205, 70),
+		Spots = RGB(255, 240, 200),
+		Pattern = "gems",
+		Shine = 0.2,
+		Pets = {
+			{ Name = "Knight Penguin", Chance = 60 },
+			{ Name = "Crown Cat", Chance = 30 },
+			{ Name = "Royal Turtle", Chance = 9 },
+			{ Name = "King Dragon", Chance = 1 },
+		},
+	},
+	{
+		Name = "Crown Egg",
+		Zone = 8,
+		Price = 1800000000000,
+		Color = RGB(255, 215, 90),
+		Material = Enum.Material.Metal,
+		Cap = RGB(255, 245, 220),
+		Spots = RGB(230, 40, 70),
+		SpotMaterial = Enum.Material.Glass,
+		Pattern = "gems",
+		Stars = true,
+		Shine = 0.35,
+		Pets = {
+			{ Name = "Golden Owl", Chance = 59.9 },
+			{ Name = "Treasure Octopus", Chance = 30 },
+			{ Name = "Queen Unicorn", Chance = 9 },
+			{ Name = "Emperor Phoenix", Chance = 1 },
+			{ Name = "Diamond King", Chance = 0.1 },
 		},
 	},
 }

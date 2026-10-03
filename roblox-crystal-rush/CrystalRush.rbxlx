@@ -87,6 +87,13 @@ Shared.Settings = {
 	DigHealth = 3, -- a buried gem needs as much digging as 3 crystals...
 	DigGems = 4, -- ...and gives the gems of 4 crystals
 	DigRespawnTime = 15, -- seconds until a new buried gem appears
+	GroundDigGems = 0.35, -- digging anywhere else gives the gems of 0.35 crystals...
+	GroundDigCooldown = 0.5, -- ...every half a second
+	GroundDigRange = 16, -- how far away you can dig
+	GroundHoleTime = 12, -- seconds until a hole fills up again
+	DigFindCoins = 0.06, -- 6% chance to dig up a bag of coins
+	DigFindShard = 0.015, -- 1.5% chance to dig up a Boss Shard
+	DigFindEgg = 0.004, -- 0.4% chance to dig up a free egg
 
 	-- Diamond bosses (one in every zone and every dimension)
 	BossHealth = 120, -- a boss has as much health as 120 crystals
@@ -107,6 +114,11 @@ Shared.Settings = {
 	MeteorShards = 2, -- plus this many 💠 Boss Shards
 	MeteorLifetime = 150, -- seconds before an unmined meteor fades away
 	BouncePower = 110, -- how high the 🦘 bounce pads throw you
+
+	-- 🤝 Trading
+	TradeFriendsOnly = false, -- true = you can only trade with your Roblox friends
+	TradeCountdown = 3, -- seconds after both press READY before the trade happens
+	TradeRequestTime = 30, -- seconds a trade request stays open
 
 	-- Background music. Paste song IDs from the Toolbox (Audio tab) here, like
 	-- MusicIds = { 1234567890, 9876543210 }. With none, a little music box plays.
@@ -238,6 +250,57 @@ Shared.Zones = {
 		Mood = zoneMood(23.6, 1.4, Color3.fromRGB(95, 92, 125), Color3.fromRGB(95, 90, 140), Color3.fromRGB(40, 35, 70), 0.3, 1, {
 			Exposure = 0.4,
 			Ambient = Color3.fromRGB(60, 58, 80),
+		}),
+	},
+	{
+		Name = "Mushroom Forest",
+		Emoji = "🍄",
+		Price = 600000000,
+		Health = 600000,
+		Gems = 300000,
+		-- teal, magenta and lime glowing crystals
+		CrystalColors = { Color3.fromRGB(40, 170, 160), Color3.fromRGB(190, 60, 160), Color3.fromRGB(140, 200, 60) },
+		Ground = Enum.Material.LeafyGrass,
+		Hills = Enum.Material.Mud,
+		RockColor = Color3.fromRGB(90, 80, 76),
+		Accent = Color3.fromRGB(205, 125, 225),
+		Mood = zoneMood(17.8, 1.8, Color3.fromRGB(110, 100, 130), Color3.fromRGB(170, 140, 190), Color3.fromRGB(90, 70, 110), 0.42, 2.2, {
+			Tint = Color3.fromRGB(250, 240, 255),
+			Saturation = 0.12,
+		}),
+	},
+	{
+		Name = "Ancient Desert",
+		Emoji = "🏜️",
+		Price = 12000000000,
+		Health = 6000000,
+		Gems = 3000000,
+		-- topaz, turquoise and carnelian
+		CrystalColors = { Color3.fromRGB(225, 150, 40), Color3.fromRGB(50, 190, 190), Color3.fromRGB(200, 70, 40) },
+		Ground = Enum.Material.Sand,
+		Hills = Enum.Material.Sandstone,
+		RockColor = Color3.fromRGB(170, 130, 90),
+		Accent = Color3.fromRGB(240, 190, 100),
+		Mood = zoneMood(13, 3.2, Color3.fromRGB(160, 145, 125), Color3.fromRGB(240, 215, 170), Color3.fromRGB(200, 160, 110), 0.35, 2.6, {
+			Glare = 0.5,
+			Tint = Color3.fromRGB(255, 246, 230),
+		}),
+	},
+	{
+		Name = "Golden Kingdom",
+		Emoji = "👑",
+		Price = 250000000000,
+		Health = 60000000,
+		Gems = 30000000,
+		-- gold, diamond and ruby
+		CrystalColors = { Color3.fromRGB(230, 180, 40), Color3.fromRGB(220, 235, 250), Color3.fromRGB(200, 30, 60) },
+		Ground = Enum.Material.Limestone,
+		Hills = Enum.Material.Sandstone,
+		RockColor = Color3.fromRGB(200, 190, 170),
+		Accent = Color3.fromRGB(255, 210, 90),
+		Mood = zoneMood(15.5, 3, Color3.fromRGB(165, 155, 140), Color3.fromRGB(250, 230, 190), Color3.fromRGB(220, 180, 120), 0.3, 1.6, {
+			Tint = Color3.fromRGB(255, 248, 230),
+			Saturation = 0.1,
 		}),
 	},
 }
@@ -558,6 +621,32 @@ Shared.Pickaxes = {
 		Material = Enum.Material.ForceField,
 		Glow = Color3.fromRGB(255, 255, 255),
 	},
+	{
+		Name = "Shroom Pickaxe",
+		Power = 40000,
+		Price = 2500000000,
+		Color = Color3.fromRGB(190, 70, 170),
+		Material = Enum.Material.Glass,
+		Glow = Color3.fromRGB(230, 120, 255),
+	},
+	{
+		Name = "Pharaoh Pickaxe",
+		Power = 400000,
+		Price = 50000000000,
+		Color = Color3.fromRGB(230, 180, 60),
+		Material = Enum.Material.Metal,
+		Shine = 0.3,
+		Glow = Color3.fromRGB(90, 200, 220),
+	},
+	{
+		Name = "Royal Crown Pickaxe",
+		Power = 4000000,
+		Price = 900000000000,
+		Color = Color3.fromRGB(255, 210, 80),
+		Material = Enum.Material.Metal,
+		Shine = 0.4,
+		Glow = Color3.fromRGB(255, 240, 180),
+	},
 }
 
 --------------------------------------------------------------------------------
@@ -574,6 +663,9 @@ Shared.Backpacks = {
 	{ Name = "Frost Pack", Capacity = 120000, Price = 1100000, Color = Color3.fromRGB(215, 240, 255), Accent = Color3.fromRGB(110, 180, 240) },
 	{ Name = "Galaxy Pack", Capacity = 500000, Price = 6000000, Color = Color3.fromRGB(45, 30, 90), Accent = Color3.fromRGB(180, 90, 255) },
 	{ Name = "Infinity Pack", Capacity = 2500000, Price = 32000000, Color = Color3.fromRGB(255, 215, 80), Accent = Color3.fromRGB(255, 250, 235) },
+	{ Name = "Spore Pack", Capacity = 12000000, Price = 1500000000, Color = Color3.fromRGB(120, 60, 120), Accent = Color3.fromRGB(150, 230, 90) },
+	{ Name = "Pharaoh Pack", Capacity = 60000000, Price = 25000000000, Color = Color3.fromRGB(220, 180, 90), Accent = Color3.fromRGB(40, 120, 160) },
+	{ Name = "Royal Pack", Capacity = 300000000, Price = 400000000000, Color = Color3.fromRGB(180, 30, 60), Accent = Color3.fromRGB(255, 210, 80) },
 }
 
 --------------------------------------------------------------------------------
@@ -657,6 +749,44 @@ Shared.Pets = {
 	{ Name = "Astro Penguin", Kind = "penguin", Rarity = "Uncommon", Bonus = 130, Color = RGB(30, 30, 70), Accent = RGB(255, 210, 90) },
 	{ Name = "Supernova Unicorn", Kind = "unicorn", Rarity = "Rare", Bonus = 280, Color = RGB(255, 225, 180), Accent = RGB(255, 110, 200), Glow = RGB(255, 200, 150) },
 	{ Name = "Black Hole Dragon", Kind = "dragon", Rarity = "Legendary", Bonus = 900, Color = RGB(15, 10, 25), Accent = RGB(190, 110, 255), Glow = RGB(190, 120, 255), Aura = RGB(160, 90, 255), Size = 1.35 },
+
+	-- (new pets always go at the END of this list, so everyone's saved pets stay the same)
+	-- Spore Egg pets
+	{ Name = "Spore Slime", Kind = "slime", Rarity = "Common", Bonus = 200, Color = RGB(150, 90, 200), Accent = RGB(170, 240, 90) },
+	{ Name = "Toadstool Turtle", Kind = "turtle", Rarity = "Uncommon", Bonus = 380, Color = RGB(230, 215, 190), Accent = RGB(210, 50, 50) },
+	{ Name = "Glowcap Fox", Kind = "fox", Rarity = "Rare", Bonus = 800, Color = RGB(60, 170, 170), Accent = RGB(200, 255, 240), Glow = RGB(120, 255, 230) },
+	{ Name = "Fairy Owl", Kind = "owl", Rarity = "Legendary", Bonus = 2600, Color = RGB(240, 200, 255), Accent = RGB(150, 90, 230), Glow = RGB(230, 170, 255), Aura = RGB(240, 200, 255), Size = 1.25 },
+
+	-- Mycelium Egg pets
+	{ Name = "Puffball Bunny", Kind = "bunny", Rarity = "Common", Bonus = 650, Color = RGB(245, 240, 230), Accent = RGB(190, 150, 110) },
+	{ Name = "Mossy Panda", Kind = "panda", Rarity = "Uncommon", Bonus = 1200, Color = RGB(220, 235, 200), Accent = RGB(70, 110, 50) },
+	{ Name = "Shroom Dragon", Kind = "dragon", Rarity = "Rare", Bonus = 2600, Color = RGB(190, 60, 160), Accent = RGB(255, 230, 120), Glow = RGB(255, 140, 220) },
+	{ Name = "Forest Spirit", Kind = "cosmic", Rarity = "Legendary", Bonus = 8500, Color = RGB(200, 255, 220), Accent = RGB(80, 200, 120), Glow = RGB(150, 255, 190), Aura = RGB(170, 255, 200), Size = 1.3 },
+
+	-- Sand Egg pets
+	{ Name = "Dune Slime", Kind = "slime", Rarity = "Common", Bonus = 2000, Color = RGB(235, 200, 130), Accent = RGB(200, 140, 60) },
+	{ Name = "Sand Fox", Kind = "fox", Rarity = "Uncommon", Bonus = 3800, Color = RGB(230, 185, 120), Accent = RGB(255, 245, 225) },
+	{ Name = "Desert Owl", Kind = "owl", Rarity = "Rare", Bonus = 8000, Color = RGB(200, 160, 110), Accent = RGB(90, 60, 40), Glow = RGB(255, 210, 120) },
+	{ Name = "Scarab Dragon", Kind = "dragon", Rarity = "Legendary", Bonus = 26000, Color = RGB(40, 140, 130), Accent = RGB(255, 200, 60), Shine = 0.3, Glow = RGB(90, 230, 210), Aura = RGB(255, 220, 120), Size = 1.3 },
+
+	-- Pyramid Egg pets
+	{ Name = "Mummy Bunny", Kind = "bunny", Rarity = "Common", Bonus = 6500, Color = RGB(235, 228, 205), Accent = RGB(150, 130, 100) },
+	{ Name = "Anubis Dog", Kind = "dog", Rarity = "Uncommon", Bonus = 12000, Color = RGB(30, 30, 40), Accent = RGB(230, 180, 60) },
+	{ Name = "Sphinx Unicorn", Kind = "unicorn", Rarity = "Rare", Bonus = 26000, Color = RGB(225, 180, 110), Accent = RGB(60, 140, 220), Glow = RGB(255, 210, 130) },
+	{ Name = "Pharaoh Phoenix", Kind = "phoenix", Rarity = "Legendary", Bonus = 85000, Color = RGB(40, 90, 200), Accent = RGB(255, 200, 60), Glow = RGB(255, 210, 90), Aura = RGB(255, 220, 140), Size = 1.3 },
+
+	-- Royal Egg pets
+	{ Name = "Knight Penguin", Kind = "penguin", Rarity = "Common", Bonus = 20000, Color = RGB(110, 115, 130), Accent = RGB(255, 200, 60), Material = Enum.Material.Metal },
+	{ Name = "Crown Cat", Kind = "cat", Rarity = "Uncommon", Bonus = 38000, Color = RGB(255, 240, 220), Accent = RGB(255, 190, 40) },
+	{ Name = "Royal Turtle", Kind = "turtle", Rarity = "Rare", Bonus = 80000, Color = RGB(150, 30, 60), Accent = RGB(255, 205, 70), Shine = 0.25, Glow = RGB(255, 210, 110) },
+	{ Name = "King Dragon", Kind = "dragon", Rarity = "Legendary", Bonus = 260000, Color = RGB(200, 30, 50), Accent = RGB(255, 210, 80), Glow = RGB(255, 200, 90), Aura = RGB(255, 225, 140), Size = 1.35 },
+
+	-- Crown Egg pets
+	{ Name = "Golden Owl", Kind = "owl", Rarity = "Common", Bonus = 65000, Color = RGB(240, 190, 60), Accent = RGB(255, 245, 200), Material = Enum.Material.Metal, Shine = 0.3 },
+	{ Name = "Treasure Octopus", Kind = "octopus", Rarity = "Uncommon", Bonus = 120000, Color = RGB(230, 170, 60), Accent = RGB(120, 220, 255) },
+	{ Name = "Queen Unicorn", Kind = "unicorn", Rarity = "Rare", Bonus = 260000, Color = RGB(255, 245, 250), Accent = RGB(255, 190, 60), Glow = RGB(255, 230, 150) },
+	{ Name = "Emperor Phoenix", Kind = "phoenix", Rarity = "Legendary", Bonus = 850000, Color = RGB(255, 200, 60), Accent = RGB(255, 90, 60), Glow = RGB(255, 200, 80), Aura = RGB(255, 230, 150), Size = 1.35 },
+	{ Name = "Diamond King", Kind = "cosmic", Rarity = "Secret", Bonus = 3000000, Color = RGB(220, 240, 255), Accent = RGB(255, 215, 90), Material = Enum.Material.Glass, Glow = RGB(220, 240, 255), Size = 1.4 },
 }
 
 --------------------------------------------------------------------------------
@@ -826,6 +956,107 @@ Shared.Eggs = {
 			{ Name = "Astro Penguin", Chance = 30 },
 			{ Name = "Supernova Unicorn", Chance = 9 },
 			{ Name = "Black Hole Dragon", Chance = 1 },
+		},
+	},
+
+	-- The eggs of the newer worlds (a normal one and a better one in each)
+	{
+		Name = "Spore Egg",
+		Zone = 6,
+		Price = 1200000000,
+		Color = RGB(210, 70, 80),
+		Cap = RGB(240, 235, 225),
+		Spots = RGB(255, 255, 255),
+		Pets = {
+			{ Name = "Spore Slime", Chance = 60 },
+			{ Name = "Toadstool Turtle", Chance = 30 },
+			{ Name = "Glowcap Fox", Chance = 9 },
+			{ Name = "Fairy Owl", Chance = 1 },
+		},
+	},
+	{
+		Name = "Mycelium Egg",
+		Zone = 6,
+		Price = 6000000000,
+		Color = RGB(90, 70, 110),
+		Cap = RGB(170, 240, 90),
+		Spots = RGB(120, 255, 230),
+		SpotMaterial = Enum.Material.Glass,
+		Pattern = "stripes",
+		Pets = {
+			{ Name = "Puffball Bunny", Chance = 60 },
+			{ Name = "Mossy Panda", Chance = 30 },
+			{ Name = "Shroom Dragon", Chance = 9 },
+			{ Name = "Forest Spirit", Chance = 1 },
+		},
+	},
+	{
+		Name = "Sand Egg",
+		Zone = 7,
+		Price = 20000000000,
+		Color = RGB(230, 200, 140),
+		Material = Enum.Material.Sandstone,
+		Cap = RGB(200, 140, 70),
+		Spots = RGB(60, 190, 190),
+		SpotMaterial = Enum.Material.Glass,
+		Pattern = "gems",
+		Pets = {
+			{ Name = "Dune Slime", Chance = 60 },
+			{ Name = "Sand Fox", Chance = 30 },
+			{ Name = "Desert Owl", Chance = 9 },
+			{ Name = "Scarab Dragon", Chance = 1 },
+		},
+	},
+	{
+		Name = "Pyramid Egg",
+		Zone = 7,
+		Price = 100000000000,
+		Color = RGB(60, 100, 190),
+		Cap = RGB(255, 200, 60),
+		Spots = RGB(255, 215, 90),
+		Pattern = "stripes",
+		Shine = 0.2,
+		Pets = {
+			{ Name = "Mummy Bunny", Chance = 60 },
+			{ Name = "Anubis Dog", Chance = 30 },
+			{ Name = "Sphinx Unicorn", Chance = 9 },
+			{ Name = "Pharaoh Phoenix", Chance = 1 },
+		},
+	},
+	{
+		Name = "Royal Egg",
+		Zone = 8,
+		Price = 350000000000,
+		Color = RGB(170, 30, 60),
+		Cap = RGB(255, 205, 70),
+		Spots = RGB(255, 240, 200),
+		Pattern = "gems",
+		Shine = 0.2,
+		Pets = {
+			{ Name = "Knight Penguin", Chance = 60 },
+			{ Name = "Crown Cat", Chance = 30 },
+			{ Name = "Royal Turtle", Chance = 9 },
+			{ Name = "King Dragon", Chance = 1 },
+		},
+	},
+	{
+		Name = "Crown Egg",
+		Zone = 8,
+		Price = 1800000000000,
+		Color = RGB(255, 215, 90),
+		Material = Enum.Material.Metal,
+		Cap = RGB(255, 245, 220),
+		Spots = RGB(230, 40, 70),
+		SpotMaterial = Enum.Material.Glass,
+		Pattern = "gems",
+		Stars = true,
+		Shine = 0.35,
+		Pets = {
+			{ Name = "Golden Owl", Chance = 59.9 },
+			{ Name = "Treasure Octopus", Chance = 30 },
+			{ Name = "Queen Unicorn", Chance = 9 },
+			{ Name = "Emperor Phoenix", Chance = 1 },
+			{ Name = "Diamond King", Chance = 0.1 },
 		},
 	},
 }
@@ -2462,7 +2693,7 @@ do
 	end
 	local folder = Instance.new("Folder")
 	folder.Name = "Remotes"
-	for _, name in ipairs({ "Mine", "Buy", "Rebirth", "Teleport", "Sync", "Notify", "Effect", "OpenMenu", "EnterDimension", "GoSell", "Claim", "Dig", "Hatch", "GadgetToggle", "Swing", "Spin" }) do
+	for _, name in ipairs({ "Mine", "Buy", "Rebirth", "Teleport", "Sync", "Notify", "Effect", "OpenMenu", "EnterDimension", "GoSell", "Claim", "Dig", "Hatch", "GadgetToggle", "Swing", "Spin", "Trade" }) do
 		local remote = Instance.new("RemoteEvent")
 		remote.Name = name
 		remote.Parent = folder
@@ -2946,7 +3177,9 @@ local function setupTerrain()
 		[Enum.Material.Salt] = Color3.fromRGB(80, 76, 92),
 		[Enum.Material.Cobblestone] = Color3.fromRGB(128, 124, 118),
 		[Enum.Material.Pavement] = Color3.fromRGB(150, 146, 140),
-		[Enum.Material.Sand] = Color3.fromRGB(205, 186, 145),
+		[Enum.Material.Sand] = Color3.fromRGB(215, 190, 140),
+		[Enum.Material.Sandstone] = Color3.fromRGB(196, 158, 112),
+		[Enum.Material.Limestone] = Color3.fromRGB(228, 220, 198),
 	}
 	for material, color in pairs(colors) do
 		Terrain:SetMaterialColor(material, color)
@@ -3011,13 +3244,13 @@ local function setupTerrain()
 	end
 
 	-- Bumpy, natural ground inside the zones (never right at the entrance)
-	local bumpMaterials = { Enum.Material.Grass, Enum.Material.Slate, Enum.Material.Basalt, Enum.Material.Snow, Enum.Material.Salt }
+	local bumpMaterials = { Enum.Material.Grass, Enum.Material.Slate, Enum.Material.Basalt, Enum.Material.Snow, Enum.Material.Salt, Enum.Material.LeafyGrass, Enum.Material.Sand, Enum.Material.Limestone }
 	for i = 1, #Shared.Zones do
 		local zs, ze = Shared.ZoneStart(i), Shared.ZoneEnd(i)
 		for _ = 1, 14 do
 			local radius = rng:NextNumber(14, 24)
 			local x, bz = rng:NextNumber(-62, 62), rng:NextNumber(ze + 12, zs - 40)
-			Terrain:FillBall(Vector3.new(x, -radius + rng:NextNumber(1.5, 4), bz), radius, bumpMaterials[i])
+			Terrain:FillBall(Vector3.new(x, -radius + rng:NextNumber(1.5, 4), bz), radius, bumpMaterials[i] or Shared.Zones[i].Ground)
 		end
 	end
 
@@ -3613,6 +3846,79 @@ function Decor.Cactus(pos: Vector3, scale: number)
 		rod(pos + Vector3.new(0, armY, 0), elbow, 1.1 * scale, { Name = "Arm", Color = green, Material = Enum.Material.Grass, Parent = m })
 		rod(elbow, elbow + Vector3.new(0, 2.6 * scale, 0), 1.1 * scale, { Name = "ArmUp", Color = green, Material = Enum.Material.Grass, Parent = m })
 	end
+end
+
+-- Broken sandstone columns (Ancient Desert)
+function Decor.Ruin(pos: Vector3, scale: number)
+	local m = model("Ruin")
+	local stone = Color3.fromRGB(205, 175, 125)
+	for _ = 1, rng:NextInteger(2, 3) do
+		local h = rng:NextNumber(4, 12) * scale
+		local spot = pos + Vector3.new(rng:NextNumber(-4, 4), 0, rng:NextNumber(-4, 4)) * scale
+		P({ Name = "ColumnBase", Size = Vector3.new(3, 0.8, 3) * scale, CFrame = CFrame.new(spot + Vector3.new(0, 0.4 * scale, 0)), Color = stone:Lerp(Color3.fromRGB(120, 100, 75), 0.2), Material = Enum.Material.Sandstone, Parent = m })
+		P({ Name = "Column", Shape = Enum.PartType.Cylinder, Size = Vector3.new(h, 2.2 * scale, 2.2 * scale), CFrame = CFrame.new(spot + Vector3.new(0, h / 2 + 0.8 * scale, 0)) * CFrame.Angles(0, 0, rad(90)), Color = stone, Material = Enum.Material.Sandstone, Parent = m })
+	end
+	P({
+		Name = "Fallen",
+		Size = Vector3.new(5, 2, 2.4) * scale,
+		CFrame = CFrame.new(pos + Vector3.new(rng:NextNumber(-3, 3), 0.9 * scale, rng:NextNumber(-3, 3))) * CFrame.Angles(0, rng:NextNumber(0, math.pi), rng:NextNumber(-0.2, 0.2)),
+		Color = stone,
+		Material = Enum.Material.Sandstone,
+		Parent = m,
+	})
+end
+
+-- A big stepped pyramid with a golden tip (Ancient Desert)
+function Decor.Pyramid(pos: Vector3, size: number)
+	local m = model("Pyramid")
+	local layers = 8
+	local step = size / layers * 0.85
+	for k = 0, layers - 1 do
+		local w = size * (1 - k / layers)
+		P({
+			Name = "Layer",
+			Size = Vector3.new(w, step, w),
+			CFrame = CFrame.new(pos + Vector3.new(0, (k + 0.5) * step, 0)),
+			Color = Color3.fromRGB(215, 180, 120):Lerp(Color3.fromRGB(185, 145, 92), k / layers),
+			Material = Enum.Material.Sandstone,
+			Parent = m,
+		})
+	end
+	local tip = P({
+		Name = "GoldTip",
+		Size = Vector3.new(size / layers, step, size / layers) * 0.9,
+		CFrame = CFrame.new(pos + Vector3.new(0, (layers + 0.45) * step, 0)),
+		Color = Color3.fromRGB(240, 190, 60),
+		Material = Enum.Material.Metal,
+		Reflectance = 0.3,
+		Parent = m,
+	})
+	light(tip, Color3.fromRGB(255, 210, 120), 20, 1)
+	P({ Name = "Door", Size = Vector3.new(0.6, step * 1.6, size * 0.12), CFrame = CFrame.new(pos + Vector3.new(size / 2 + 0.1, step * 0.8, 0)), Color = Color3.fromRGB(40, 30, 25), Parent = m })
+end
+
+-- A castle tower with a golden roof and a flag (Golden Kingdom)
+function Decor.Tower(pos: Vector3, scale: number)
+	local m = model("Tower")
+	local h = rng:NextNumber(18, 26) * scale
+	local r = 3.2 * scale
+	local stone = Color3.fromRGB(225, 215, 195)
+	local gold = Color3.fromRGB(230, 180, 50)
+	P({ Name = "Tower", Shape = Enum.PartType.Cylinder, Size = Vector3.new(h, r * 2, r * 2), CFrame = CFrame.new(pos + Vector3.new(0, h / 2, 0)) * CFrame.Angles(0, 0, rad(90)), Color = stone, Material = Enum.Material.Limestone, Parent = m })
+	for k = 0, 7 do
+		local a = k / 8 * math.pi * 2
+		P({ Name = "Merlon", Size = Vector3.new(1.2, 1.4, 1.2) * scale, CFrame = CFrame.new(pos + Vector3.new(math.cos(a) * r * 0.85, h + 0.7 * scale, math.sin(a) * r * 0.85)), Color = stone, Material = Enum.Material.Limestone, Parent = m })
+	end
+	for k = 0, 4 do
+		local ring = r * (1 - k / 5) * 0.9
+		P({ Name = "Roof", Shape = Enum.PartType.Cylinder, Size = Vector3.new(1.1 * scale, ring * 2, ring * 2), CFrame = CFrame.new(pos + Vector3.new(0, h + (1.6 + k * 1.05) * scale, 0)) * CFrame.Angles(0, 0, rad(90)), Color = gold, Material = Enum.Material.Metal, Reflectance = 0.2, Parent = m })
+	end
+	for _, y in ipairs({ 0.45, 0.75 }) do
+		P({ Name = "Window", Size = Vector3.new(0.4, 1.8, 1) * scale, CFrame = CFrame.new(pos + Vector3.new(r - 0.1, h * y, 0)), Color = Color3.fromRGB(60, 45, 35), Parent = m })
+	end
+	local top = pos + Vector3.new(0, h + 7 * scale, 0)
+	rod(top - Vector3.new(0, 2 * scale, 0), top + Vector3.new(0, 3 * scale, 0), 0.18, { Name = "FlagPole", Color = Color3.fromRGB(70, 60, 50), Material = Enum.Material.Metal, Parent = m })
+	P({ Name = "Flag", Size = Vector3.new(0.1, 1.5, 2.4) * scale, CFrame = CFrame.new(top + Vector3.new(0, 2.2 * scale, 1.25 * scale)), Color = Color3.fromRGB(200, 30, 60), Material = Enum.Material.Fabric, CanCollide = false, Parent = m })
 end
 
 function Decor.Cloud(pos: Vector3, scale: number)
@@ -4826,7 +5132,86 @@ local function buildZone(i: number)
 			Speed = NumberRange.new(0, 0.3),
 			Spread = Vector2.new(180, 180),
 		})
-		-- The end of the world, with a portal to the dimensions
+	elseif i == 6 then -- Mushroom Forest
+		local caps = { Color3.fromRGB(200, 60, 70), Color3.fromRGB(190, 80, 200), Color3.fromRGB(60, 170, 170), Color3.fromRGB(235, 150, 60) }
+		for _ = 1, 18 do
+			Decor.Mushroom(onGround(edgeSpot(i)), rng:NextNumber(1.6, 2.8), caps[rng:NextInteger(1, #caps)])
+		end
+		for _ = 1, 8 do
+			local pos = decorAt(4)
+			if pos then
+				Decor.Mushroom(pos, rng:NextNumber(0.6, 1), caps[rng:NextInteger(1, #caps)])
+			end
+		end
+		for _ = 1, 6 do
+			Decor.Tree(onGround(edgeSpot(i)), rng:NextNumber(1, 1.4))
+		end
+		-- glowing spores floating around
+		local spores = P({ Name = "Spores", Size = Vector3.new(160, 1, Layout.ZoneLength - 10), CFrame = CFrame.new(0, 12, mid), Transparency = 1, CanCollide = false })
+		particles(spores, {
+			Color = Color3.fromRGB(190, 255, 150),
+			Size = 0.25,
+			Rate = 35,
+			Lifetime = NumberRange.new(5, 8),
+			Speed = NumberRange.new(0.2, 0.8),
+			Spread = Vector2.new(180, 180),
+		})
+	elseif i == 7 then -- Ancient Desert
+		Decor.Pyramid(Vector3.new(-64, 0, mid + 10), 34)
+		reserve(i, Vector3.new(-64, 0, mid + 10), 24)
+		Decor.Pyramid(Vector3.new(-60, 0, mid - 55), 22) -- (the boss arena is on the other side)
+		reserve(i, Vector3.new(-60, 0, mid - 55), 16)
+		for _ = 1, 16 do
+			Decor.Cactus(onGround(edgeSpot(i)), rng:NextNumber(0.9, 1.4))
+		end
+		for _ = 1, 5 do
+			local pos = decorAt(8)
+			if pos then
+				Decor.Ruin(pos, rng:NextNumber(0.8, 1.2))
+			end
+		end
+		for _ = 1, 10 do
+			Decor.Rock(onGround(edgeSpot(i)), rng:NextNumber(1, 2), zone.RockColor, Enum.Material.Sandstone)
+		end
+		-- blowing sand
+		local sand = P({ Name = "BlowingSand", Size = Vector3.new(170, 1, Layout.ZoneLength), CFrame = CFrame.new(0, 6, mid), Transparency = 1, CanCollide = false })
+		particles(sand, {
+			Color = Color3.fromRGB(230, 205, 160),
+			LightEmission = 0,
+			Size = 0.35,
+			Rate = 45,
+			Lifetime = NumberRange.new(3, 5),
+			Speed = NumberRange.new(8, 12),
+			Spread = Vector2.new(10, 10),
+			Direction = Enum.NormalId.Right,
+			Transparency = 0.4,
+		})
+	elseif i == 8 then -- Golden Kingdom
+		for _ = 1, 10 do
+			Decor.Tower(onGround(edgeSpot(i)), rng:NextNumber(0.9, 1.3))
+		end
+		for _ = 1, 10 do
+			Decor.Spire(onGround(edgeSpot(i)), rng:NextNumber(0.8, 1.3), zone.CrystalColors[rng:NextInteger(1, 3)])
+		end
+		for _ = 1, 10 do
+			local pos = freeSpot(i, 2)
+			if pos then
+				Decor.Flowers(onGround(pos))
+			end
+		end
+		local glitter = P({ Name = "GoldGlitter", Size = Vector3.new(160, 1, Layout.ZoneLength - 10), CFrame = CFrame.new(0, 18, mid), Transparency = 1, CanCollide = false })
+		particles(glitter, {
+			Color = Color3.fromRGB(255, 215, 110),
+			Size = 0.25,
+			Rate = 30,
+			Lifetime = NumberRange.new(3, 6),
+			Speed = NumberRange.new(0.2, 0.6),
+			Spread = Vector2.new(180, 180),
+		})
+	end
+
+	-- The end of the world, with a portal to the dimensions
+	if i == #Shared.Zones then
 		local finale = buildArch(ze + 8, zone, MapFolder, "🏆 YOU MADE IT!", "Step in the portal to visit the dimensions")
 		finale.Name = "FinalArch"
 		reserve(i, Vector3.new(-24, 0, ze + 8), 6)
@@ -5249,6 +5634,7 @@ type PlayerData = {
 	GemBoostUntil: number, -- 2x gems until this time (os.time)
 	ChestsFound: number,
 	MeteorsBroken: number,
+	Trades: number, -- how many trades you finished
 }
 
 local store: DataStore? = nil
@@ -5312,6 +5698,7 @@ local function defaultData(): PlayerData
 		GemBoostUntil = 0,
 		ChestsFound = 0,
 		MeteorsBroken = 0,
+		Trades = 0,
 	}
 end
 
@@ -6002,17 +6389,19 @@ local function digOut(spot: DigSpot, player: Player, data: PlayerData)
 	sync(player)
 	-- a real hole in the ground (it fills up again later)
 	local restore: (() -> ())? = nil
-	if spot.OnTerrain then
+	if spot.OnTerrain and Fun.HoleFree(pos) then
 		local region = Region3.new(pos - Vector3.new(4, 5, 4), pos + Vector3.new(4, 3, 4)):ExpandToGrid(4)
 		local ok, materials, occupancies = pcall(function()
 			return Terrain:ReadVoxels(region, 4)
 		end)
 		if ok then
 			Terrain:FillBall(pos - Vector3.new(0, 0.8, 0), 2.6, Enum.Material.Air)
+			Fun.Holes[pos] = true
 			restore = function()
 				pcall(function()
 					Terrain:WriteVoxels(region, 4, materials, occupancies)
 				end)
+				Fun.Holes[pos] = nil
 			end
 		end
 	end
@@ -6038,9 +6427,106 @@ local function digOut(spot: DigSpot, player: Player, data: PlayerData)
 	end)
 end
 
+-- Holes in the terrain that are still open (they can't overlap, or they would fill up wrong)
+Fun.Holes = {} :: { [Vector3]: boolean }
+function Fun.HoleFree(pos: Vector3): boolean
+	local count = 0
+	for other in pairs(Fun.Holes) do
+		count += 1
+		if (other - pos).Magnitude < 10 then
+			return false
+		end
+	end
+	return count < 40
+end
+
+-- Digging anywhere with the shovel: a few gems every time, and sometimes a lucky find
+local lastGroundDig: { [Player]: number } = {}
+function Fun.DigGround(player: Player, data: PlayerData, pos: Vector3)
+	local char = player.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	if not (char and root and root:IsA("BasePart") and hum and hum.Health > 0) or not char:FindFirstChild("Shovel") then
+		return
+	end
+	if pos ~= pos or (root.Position - pos).Magnitude > Settings.GroundDigRange then
+		return -- too far away (or not a real position)
+	end
+	local now = os.clock()
+	if now - (lastGroundDig[player] or 0) < Settings.GroundDigCooldown * 0.8 then
+		return
+	end
+	local here = player:GetAttribute("Dimension")
+	local gemsHere
+	if type(here) == "number" then
+		gemsHere = Shared.GetDimension(here).Gems
+	else
+		local zone = math.max(1, Shared.ZoneAt(pos.Z))
+		if zone > data.Zone then
+			return
+		end
+		gemsHere = Shared.Zones[zone].Gems
+	end
+	local capacity = Shared.BestBackpack(data).Capacity
+	if data.Gems >= capacity then
+		Remotes.Effect:FireClient(player, "full")
+		return
+	end
+	lastGroundDig[player] = now
+	local boost = if data.GemBoostUntil > os.time() then 2 else 1
+	local gems = math.max(1, math.floor(gemsHere * Settings.GroundDigGems * Shared.GemMultiplier(data.Pets) * gadgetStats(data).Gems * boost))
+	local added = math.min(gems, capacity - data.Gems)
+	data.Gems += added
+	data.TotalGems += added
+	-- sometimes you find something special
+	local found: string? = nil
+	local roll = rng:NextNumber()
+	if roll < Settings.DigFindEgg then
+		data.FreeEggs += 1
+		found = "🥚 a FREE EGG"
+	elseif roll < Settings.DigFindEgg + Settings.DigFindShard then
+		data.Shards += 1
+		found = "💠 a Boss Shard"
+	elseif roll < Settings.DigFindEgg + Settings.DigFindShard + Settings.DigFindCoins then
+		local coins = Shared.RewardCoins(data, 8)
+		data.Coins += coins
+		found = "a bag of 💰 " .. Format(coins) .. " coins"
+	end
+	Remotes.Effect:FireClient(player, "digground", pos, added, found)
+	if found then
+		notify(player, "🪣 You dug up " .. found .. "!", "gold")
+	end
+	addXP(player, data, 1)
+	-- a little hole in the ground that fills up again
+	if type(here) ~= "number" and Fun.HoleFree(pos) then
+		local region = Region3.new(pos - Vector3.new(4, 4, 4), pos + Vector3.new(4, 4, 4)):ExpandToGrid(4)
+		local ok, materials, occupancies = pcall(function()
+			return Terrain:ReadVoxels(region, 4)
+		end)
+		if ok then
+			Fun.Holes[pos] = true
+			Terrain:FillBall(pos - Vector3.new(0, 0.5, 0), 1.6, Enum.Material.Air)
+			task.delay(Settings.GroundHoleTime, function()
+				pcall(function()
+					Terrain:WriteVoxels(region, 4, materials, occupancies)
+				end)
+				Fun.Holes[pos] = nil
+			end)
+		end
+	end
+	sync(player)
+end
+Players.PlayerRemoving:Connect(function(player)
+	lastGroundDig[player] = nil
+end)
+
 local lastDig: { [Player]: number } = {}
 Remotes.Dig.OnServerEvent:Connect(function(player, target)
 	local data = Data[player]
+	if data and typeof(target) == "Vector3" then
+		Fun.DigGround(player, data, target)
+		return
+	end
 	if not data or typeof(target) ~= "Instance" then
 		return
 	end
@@ -7896,6 +8382,228 @@ do
 end
 
 --------------------------------------------------------------------------------
+-- 🤝 TRADING (swap pets and coins with your friends)
+--   1. ask someone to trade   2. they say yes   3. both put pets and coins in
+--   4. both press READY       5. after a short countdown everything swaps
+--------------------------------------------------------------------------------
+do
+	type Offer = { Pets: { [number]: number }, Coins: number, Ready: boolean }
+	type Trade = { A: Player, B: Player, Offers: { [Player]: Offer }, Token: number, Counting: boolean, Done: boolean }
+	local trades: { [Player]: Trade } = {}
+	local requests: { [Player]: { [Player]: number } } = {} -- requests[to][from] = when it was sent
+	local lastRequest: { [Player]: number } = {}
+
+	local function partnerOf(trade: Trade, player: Player): Player
+		return if trade.A == player then trade.B else trade.A
+	end
+
+	-- What a player's screen needs to show about one side of the trade
+	local function offerInfo(offer: Offer)
+		local pets = {}
+		for index, count in pairs(offer.Pets) do
+			if count > 0 then
+				table.insert(pets, { Index = index, Count = count })
+			end
+		end
+		table.sort(pets, function(a, b)
+			return a.Index < b.Index
+		end)
+		return { Pets = pets, Coins = offer.Coins, Ready = offer.Ready }
+	end
+
+	local function sendTrade(trade: Trade)
+		for _, p in ipairs({ trade.A, trade.B }) do
+			local partner = partnerOf(trade, p)
+			Remotes.Trade:FireClient(p, "update", {
+				Partner = partner.UserId,
+				PartnerName = partner.DisplayName,
+				Mine = offerInfo(trade.Offers[p]),
+				Theirs = offerInfo(trade.Offers[partner]),
+				Counting = trade.Counting,
+				Countdown = Settings.TradeCountdown,
+			})
+		end
+	end
+
+	local function closeTrade(trade: Trade, reason: string)
+		trade.Done = true
+		trade.Token += 1
+		for _, p in ipairs({ trade.A, trade.B }) do
+			if trades[p] == trade then
+				trades[p] = nil
+			end
+			if p.Parent then
+				Remotes.Trade:FireClient(p, "closed", reason)
+			end
+		end
+	end
+
+	-- Something changed: nobody is ready anymore
+	local function unready(trade: Trade)
+		trade.Token += 1
+		trade.Counting = false
+		for _, offer in pairs(trade.Offers) do
+			offer.Ready = false
+		end
+	end
+
+	-- Swap everything (checked again first, in case something changed)
+	local function finishTrade(trade: Trade)
+		local a, b = trade.A, trade.B
+		if not (Data[a] and Data[b] and a.Parent and b.Parent) then
+			closeTrade(trade, "Someone left, so the trade stopped.")
+			return
+		end
+		for _, p in ipairs({ a, b }) do
+			local data, offer = Data[p], trade.Offers[p]
+			if offer.Coins > data.Coins then
+				closeTrade(trade, p.DisplayName .. " doesn't have enough coins anymore.")
+				return
+			end
+			for index, count in pairs(offer.Pets) do
+				if (data.Pets[index] or 0) < count then
+					closeTrade(trade, p.DisplayName .. " doesn't have all those pets anymore.")
+					return
+				end
+			end
+		end
+		local function give(from: Player, to: Player)
+			local fromData, toData, offer = Data[from], Data[to], trade.Offers[from]
+			fromData.Coins -= offer.Coins
+			toData.Coins += offer.Coins
+			for index, count in pairs(offer.Pets) do
+				local left = (fromData.Pets[index] or 0) - count
+				fromData.Pets[index] = if left > 0 then left else nil
+				toData.Pets[index] = (toData.Pets[index] or 0) + count
+			end
+		end
+		give(a, b)
+		give(b, a)
+		closeTrade(trade, "done")
+		for _, p in ipairs({ a, b }) do
+			Data[p].Trades += 1
+			refreshPets(p)
+			sync(p)
+			notify(p, "🤝 Trade with " .. partnerOf(trade, p).DisplayName .. " is done!", "good")
+			task.spawn(saveData, p) -- save right away
+		end
+	end
+
+	local function newOffer(): Offer
+		return { Pets = {}, Coins = 0, Ready = false }
+	end
+
+	Remotes.Trade.OnServerEvent:Connect(function(player, action, a, b)
+		local data = Data[player]
+		if not data or type(action) ~= "string" then
+			return
+		end
+		local trade = trades[player]
+		if action == "request" then
+			local target = if type(a) == "number" then Players:GetPlayerByUserId(a) else nil
+			if not target or target == player or not Data[target] then
+				return
+			end
+			if os.clock() - (lastRequest[player] or -math.huge) < 2 then
+				return
+			end
+			lastRequest[player] = os.clock()
+			if trade or trades[target] then
+				notify(player, "🤝 " .. target.DisplayName .. " is busy trading right now.", "info")
+				return
+			end
+			if Settings.TradeFriendsOnly then
+				local ok, friends = pcall(function()
+					return player:IsFriendsWith(target.UserId)
+				end)
+				if not (ok and friends) then
+					notify(player, "🤝 You can only trade with your friends.", "bad")
+					return
+				end
+			end
+			requests[target] = requests[target] or {}
+			requests[target][player] = os.clock()
+			Remotes.Trade:FireClient(target, "request", player.UserId, player.DisplayName)
+			notify(player, "🤝 Trade request sent to " .. target.DisplayName .. "!", "info")
+		elseif action == "respond" then
+			local from = if type(a) == "number" then Players:GetPlayerByUserId(a) else nil
+			local pending = requests[player]
+			local sentAt = if from and pending then pending[from] else nil
+			if not (from and pending and sentAt) then
+				return
+			end
+			pending[from] = nil
+			if os.clock() - sentAt > Settings.TradeRequestTime then
+				notify(player, "🤝 That trade request ran out. Ask again!", "info")
+				return
+			end
+			if b ~= true then
+				notify(from, "🤝 " .. player.DisplayName .. " said no thanks.", "info")
+				return
+			end
+			if trade or trades[from] or not Data[from] then
+				notify(player, "🤝 " .. from.DisplayName .. " is busy right now.", "info")
+				return
+			end
+			local started: Trade = { A = from, B = player, Offers = { [from] = newOffer(), [player] = newOffer() }, Token = 0, Counting = false, Done = false }
+			trades[from] = started
+			trades[player] = started
+			sendTrade(started)
+		elseif trade and not trade.Done then
+			local offer = trade.Offers[player]
+			if action == "pet" then
+				if type(a) ~= "number" or (b ~= 1 and b ~= -1) then
+					return
+				end
+				local current = offer.Pets[a] or 0
+				local count = math.clamp(current + b, 0, data.Pets[a] or 0)
+				if count == current then
+					return
+				end
+				offer.Pets[a] = if count > 0 then count else nil
+				unready(trade)
+				sendTrade(trade)
+			elseif action == "coins" then
+				if type(a) ~= "number" or a ~= a then
+					return
+				end
+				offer.Coins = math.clamp(math.floor(a), 0, data.Coins)
+				unready(trade)
+				sendTrade(trade)
+			elseif action == "ready" then
+				offer.Ready = a == true
+				local partner = trade.Offers[partnerOf(trade, player)]
+				trade.Token += 1
+				trade.Counting = offer.Ready and partner.Ready
+				sendTrade(trade)
+				if trade.Counting then
+					local token = trade.Token
+					task.delay(Settings.TradeCountdown, function()
+						if trade.Token == token and not trade.Done then
+							finishTrade(trade)
+						end
+					end)
+				end
+			elseif action == "cancel" then
+				closeTrade(trade, player.DisplayName .. " stopped the trade.")
+			end
+		end
+	end)
+
+	Players.PlayerRemoving:Connect(function(player)
+		local trade = trades[player]
+		if trade then
+			closeTrade(trade, player.DisplayName .. " left the game.")
+		end
+		requests[player] = nil
+		lastRequest[player] = nil
+		for _, list in pairs(requests) do
+			list[player] = nil
+		end
+	end)
+end
+
+--------------------------------------------------------------------------------
 -- REBIRTH
 --------------------------------------------------------------------------------
 Remotes.Rebirth.OnServerEvent:Connect(function(player)
@@ -8247,7 +8955,7 @@ local Format = Shared.Format
 
 local RemoteFolder = ReplicatedStorage:WaitForChild("Remotes")
 local R: { [string]: RemoteEvent } = {}
-for _, name in ipairs({ "Mine", "Buy", "Rebirth", "Teleport", "Sync", "Notify", "Effect", "OpenMenu", "EnterDimension", "GoSell", "Claim", "Dig", "Hatch", "GadgetToggle", "Swing", "Spin" }) do
+for _, name in ipairs({ "Mine", "Buy", "Rebirth", "Teleport", "Sync", "Notify", "Effect", "OpenMenu", "EnterDimension", "GoSell", "Claim", "Dig", "Hatch", "GadgetToggle", "Swing", "Spin", "Trade" }) do
 	R[name] = RemoteFolder:WaitForChild(name) :: RemoteEvent
 end
 
@@ -9579,9 +10287,11 @@ end
 --------------------------------------------------------------------------------
 -- TELEPORT
 --------------------------------------------------------------------------------
-local teleport = makeWindow("Teleport", "🌀 TELEPORT", 460, 590, COLORS.Blue)
-new("UIListLayout", {
-	Padding = UDim.new(0, 10),
+local teleport = makeWindow("Teleport", "🌀 TELEPORT", 660, 520, COLORS.Blue)
+-- two columns, so every world fits
+new("UIGridLayout", {
+	CellSize = UDim2.fromOffset(300, 60),
+	CellPadding = UDim2.fromOffset(12, 12),
 	HorizontalAlignment = Enum.HorizontalAlignment.Center,
 	SortOrder = Enum.SortOrder.LayoutOrder,
 	Parent = teleport.Body,
@@ -11711,6 +12421,17 @@ do
 		return nil
 	end
 
+	-- Where the mouse points on the ground (for digging anywhere with the shovel)
+	local function groundAt(point: Vector2, isViewportPoint: boolean): Vector3?
+		local ray = if isViewportPoint then camera:ViewportPointToRay(point.X, point.Y) else camera:ScreenPointToRay(point.X, point.Y)
+		local result = Workspace:Raycast(ray.Origin, ray.Direction * 400, rayParams)
+		if result and (result.Instance == Workspace.Terrain or result.Instance.Name == "Ground") then
+			return result.Position
+		end
+		return nil
+	end
+	local lastGroundDig = 0
+
 	local function inRange(m: Model): boolean
 		local root = myRoot()
 		if not root then
@@ -11754,6 +12475,24 @@ do
 		end
 		local tool = heldTool()
 		local m = crystalAt(point, isViewportPoint)
+		if not m and tool == "Shovel" then
+			-- dig anywhere: a hole in the ground with a few gems (and sometimes a surprise)
+			local spot = groundAt(point, isViewportPoint)
+			local root = myRoot()
+			if spot and root and (root.Position - spot).Magnitude <= Settings.GroundDigRange and now - lastGroundDig >= Settings.GroundDigCooldown then
+				local s = state
+				if s and s.Gems >= s.Capacity then
+					backpackFull()
+				else
+					lastGroundDig = now
+					lastSwing = now
+					R.Dig:FireServer(spot)
+					playSwing("dig")
+					R.Swing:FireServer("dig")
+				end
+				return
+			end
+		end
 		if not m then
 			freeSwing(tool, now)
 			return
@@ -12309,6 +13048,488 @@ task.spawn(function()
 		task.wait(0.3)
 	end
 end)
+
+do
+	-- 🪣 SHOVEL HELP: markers over buried gems while you hold the shovel, and dirt flying when you dig
+	local markers: { [Model]: BillboardGui } = setmetatable({}, { __mode = "k" }) :: any
+	local hintShown = false
+	local hint = new("Frame", {
+		Name = "ShovelHint",
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, -150),
+		Size = UDim2.fromOffset(420, 44),
+		BackgroundColor3 = DARK,
+		BackgroundTransparency = 0.15,
+		Visible = false,
+		Parent = gui,
+	})
+	autoScale(hint)
+	round(hint, 14)
+	outline(hint, 3)
+	local hintText = label({ Text = "", Size = UDim2.new(1, -20, 0.62, 0), Position = UDim2.fromScale(0.5, 0.5), AnchorPoint = Vector2.new(0.5, 0.5), Parent = hint })
+
+	local function markerFor(m: Model): BillboardGui?
+		local existing = markers[m]
+		if existing and existing.Parent then
+			return existing
+		end
+		local adornee = m.PrimaryPart or m:FindFirstChildWhichIsA("BasePart")
+		if not adornee then
+			return nil
+		end
+		local bb = new("BillboardGui", {
+			Name = "DigMarker",
+			Size = UDim2.fromScale(3.2, 3.2),
+			StudsOffset = Vector3.new(0, 5, 0),
+			AlwaysOnTop = true,
+			LightInfluence = 0,
+			MaxDistance = 220,
+			Adornee = adornee,
+			Enabled = false,
+			Parent = gui.Parent, -- billboards can't live inside a ScreenGui
+		})
+		label({ Text = "💎", Size = UDim2.fromScale(1, 0.6), Parent = bb })
+		label({ Text = "⬇", Size = UDim2.fromScale(1, 0.4), Position = UDim2.fromScale(0, 0.6), TextColor3 = Color3.fromRGB(255, 220, 120), Parent = bb })
+		markers[m] = bb
+		return bb
+	end
+
+	task.spawn(function()
+		while true do
+			local char = player.Character
+			local holding = char ~= nil and char:FindFirstChild("Shovel") ~= nil
+			local root = myRoot()
+			local nearest = math.huge
+			local digFolder = Workspace:FindFirstChild("DigSpots")
+			for m, bb in pairs(markers) do
+				if not holding or m.Parent ~= digFolder then
+					bb.Enabled = false
+				end
+			end
+			if holding and root and digFolder then
+				for _, m in ipairs(digFolder:GetChildren()) do
+					if m:IsA("Model") and m:GetAttribute("IsDigSpot") then
+						local distance = (m:GetPivot().Position - root.Position).Magnitude
+						local bb = markerFor(m)
+						if bb then
+							bb.Enabled = distance < 220
+						end
+						nearest = math.min(nearest, distance)
+					end
+				end
+			end
+			hint.Visible = holding
+			if holding then
+				hintText.Text = if nearest < math.huge
+					then "🪣 Click the ground to dig!  💎 Buried gem: " .. math.floor(nearest) .. " studs away"
+					else "🪣 Click the ground to dig for gems!"
+				if not hintShown then
+					hintShown = true
+					toast("🪣 Click the ground to dig! Dirt piles with a 💎 give the most gems.", "info")
+				end
+			end
+			task.wait(0.25)
+		end
+	end)
+
+	R.Effect.OnClientEvent:Connect(function(kind, a, b, c)
+		if kind == "digground" then
+			local position, gems, found = a :: Vector3, b :: number, c
+			burst(position + Vector3.new(0, 0.5, 0), Color3.fromRGB(120, 92, 64), 14, 16, 0.55)
+			burst(position + Vector3.new(0, 0.5, 0), Color3.fromRGB(150, 120, 85), 8, 12, 0.4)
+			playSound("Hit", 0.75, 0.35)
+			if gems > 0 then
+				flyIcons(position, "💎", gemsPill, gemsPop, math.min(3, gems))
+			end
+			if type(found) == "string" then
+				showBanner("🪣 YOU FOUND " .. string.upper(found) .. "!", Color3.fromRGB(255, 215, 110))
+				chime(5, 1.3)
+			end
+		end
+	end)
+end
+
+--------------------------------------------------------------------------------
+-- 🤝 TRADING (pick a player, put in pets and coins, both press READY)
+--------------------------------------------------------------------------------
+do
+	-- everything of the trade window lives in this table
+	local T: { [string]: any } = { Friends = {}, State = nil, PopupFrom = nil }
+	local window = makeWindow("Trade", "🤝 TRADE", 800, 600, COLORS.Cyan)
+
+	local function clear(list: Instance)
+		for _, child in ipairs(list:GetChildren()) do
+			if child:IsA("Frame") then
+				child:Destroy()
+			end
+		end
+	end
+
+	-- one line in a list: some text, and maybe a button on the right
+	local function row(list: Instance, text: string, color: Color3, order: number, buttonText: string?, buttonColors: { Color3 }?, onClick: (() -> ())?)
+		local frame = new("Frame", { Size = UDim2.new(1, -10, 0, 38), BackgroundColor3 = Color3.fromRGB(46, 50, 74), LayoutOrder = order, Parent = list })
+		round(frame, 10)
+		label({
+			Text = text,
+			Size = UDim2.new(1, if buttonText then -110 else -16, 1, -10),
+			Position = UDim2.fromOffset(10, 5),
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextColor3 = color,
+			Parent = frame,
+		})
+		if buttonText and onClick then
+			button({
+				Size = UDim2.fromOffset(94, 30),
+				Position = UDim2.new(1, -4, 0.5, 0),
+				AnchorPoint = Vector2.new(1, 0.5),
+				Text = buttonText,
+				Colors = buttonColors or COLORS.Green,
+				Radius = 10,
+				Parent = frame,
+				OnClick = onClick,
+			})
+		end
+		return frame
+	end
+
+	-- a dark box with a title and a scrolling list inside
+	local function box(parent: Instance, title: string, x: number, y: number, w: number, h: number): ScrollingFrame
+		local frame = new("Frame", { Size = UDim2.fromOffset(w, h), Position = UDim2.fromOffset(x, y), BackgroundColor3 = Color3.fromRGB(24, 26, 42), Parent = parent })
+		round(frame, 14)
+		outline(frame, 2)
+		label({ Text = title, Size = UDim2.new(1, -16, 0, 26), Position = UDim2.fromOffset(8, 6), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = Color3.fromRGB(255, 225, 140), Parent = frame })
+		local list = new("ScrollingFrame", {
+			Size = UDim2.new(1, -12, 1, -40),
+			Position = UDim2.fromOffset(6, 36),
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			ScrollBarThickness = 6,
+			CanvasSize = UDim2.new(),
+			AutomaticCanvasSize = Enum.AutomaticSize.Y,
+			Parent = frame,
+		})
+		new("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder, Parent = list })
+		return list
+	end
+
+	local function petText(index: number, count: number): (string, Color3)
+		local def = Shared.GetPet(index)
+		if not def then
+			return "? x" .. count, WHITE
+		end
+		return def.Name .. "  x" .. count .. "   💎 " .. Shared.BonusText(def.Bonus), Shared.RarityColor(def.Rarity)
+	end
+
+	-- Page 1: pick a player
+	T.ListPage = new("Frame", { Name = "ListPage", Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Parent = window.Body })
+	label({
+		Text = "Pick a player to trade pets and coins with.   👥 = your friend",
+		Size = UDim2.new(1, 0, 0, 28),
+		TextColor3 = Color3.fromRGB(220, 225, 240),
+		Stroke = 0,
+		Parent = T.ListPage,
+	})
+	T.List = new("ScrollingFrame", {
+		Size = UDim2.new(1, 0, 1, -40),
+		Position = UDim2.fromOffset(0, 40),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		ScrollBarThickness = 8,
+		CanvasSize = UDim2.new(),
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		Parent = T.ListPage,
+	})
+	new("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder, Parent = T.List })
+	T.Empty = label({
+		Text = "Nobody else is here yet. Invite your friends to play with you!",
+		Size = UDim2.new(1, 0, 0, 40),
+		Position = UDim2.fromOffset(0, 90),
+		TextColor3 = Color3.fromRGB(200, 205, 225),
+		Visible = false,
+		Parent = T.ListPage,
+	})
+
+	-- Page 2: the trade itself
+	T.TradePage = new("Frame", { Name = "TradePage", Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Visible = false, Parent = window.Body })
+	T.Header = label({ Text = "", Size = UDim2.new(1, 0, 0, 28), Parent = T.TradePage })
+	T.GiveList = box(T.TradePage, "🫴 YOU GIVE", 0, 34, 378, 170)
+	T.MineList = box(T.TradePage, "🐾 YOUR PETS  (press ➕ to add)", 0, 212, 378, 190)
+	T.GetList = box(T.TradePage, "🎁 YOU GET", 394, 34, 378, 368)
+	T.CoinsBox = new("TextBox", {
+		Name = "CoinsBox",
+		Size = UDim2.fromOffset(220, 44),
+		Position = UDim2.fromOffset(0, 412),
+		BackgroundColor3 = WHITE,
+		TextColor3 = Color3.fromRGB(30, 30, 40),
+		PlaceholderText = "💰 coins (like 500 or 2k)",
+		Text = "",
+		ClearTextOnFocus = false,
+		Font = FONT,
+		TextScaled = true,
+		Parent = T.TradePage,
+	})
+	round(T.CoinsBox, 12)
+	-- "2k" = 2,000 and "3m" = 3,000,000
+	local function giveCoins()
+		local typed = string.lower((string.gsub(T.CoinsBox.Text, "[%s,]", "")))
+		local digits, suffix = string.match(typed, "^(%d+%.?%d*)([kmbt]?)$")
+		local amount = tonumber(digits)
+		if not amount then
+			toast("💰 Type a number of coins, like 500 or 2k.", "info")
+			return
+		end
+		local times = ({ k = 1e3, m = 1e6, b = 1e9, t = 1e12 })[suffix] or 1
+		R.Trade:FireServer("coins", math.floor(amount * times))
+	end
+	button({
+		Size = UDim2.fromOffset(150, 44),
+		Position = UDim2.fromOffset(228, 412),
+		Text = "💰 Give coins",
+		Colors = COLORS.Gold,
+		Radius = 12,
+		Parent = T.TradePage,
+		OnClick = giveCoins,
+	})
+	local _, readyLabel, readyGrad = button({
+		Size = UDim2.fromOffset(200, 50),
+		Position = UDim2.fromOffset(394, 410),
+		Text = "☑️ READY",
+		Colors = COLORS.Gray,
+		Radius = 14,
+		Parent = T.TradePage,
+		OnClick = function()
+			local t = T.State
+			if t then
+				R.Trade:FireServer("ready", not t.Mine.Ready)
+			end
+		end,
+	})
+	T.ReadyLabel, T.ReadyGrad = readyLabel, readyGrad
+	button({
+		Size = UDim2.fromOffset(166, 50),
+		Position = UDim2.fromOffset(606, 410),
+		Text = "❌ Cancel",
+		Colors = COLORS.Red,
+		Radius = 14,
+		Parent = T.TradePage,
+		OnClick = function()
+			R.Trade:FireServer("cancel")
+		end,
+	})
+	T.Status = label({ Text = "", Size = UDim2.new(1, 0, 0, 28), Position = UDim2.fromOffset(0, 470), TextColor3 = Color3.fromRGB(255, 240, 180), Parent = T.TradePage })
+
+	local function renderList()
+		clear(T.List)
+		local others = 0
+		for _, other in ipairs(Players:GetPlayers()) do
+			if other ~= player then
+				others += 1
+				local friend = T.Friends[other.UserId]
+				if friend == nil then
+					T.Friends[other.UserId] = false
+					task.spawn(function()
+						local ok, result = pcall(function()
+							return player:IsFriendsWith(other.UserId)
+						end)
+						T.Friends[other.UserId] = ok and result == true
+						if ok and result == true and openName == "Trade" and not T.State then
+							T.RenderList()
+						end
+					end)
+				end
+				row(T.List, (if friend then "👥 " else "🙂 ") .. other.DisplayName, WHITE, if friend then 1 else 2, "🤝 Trade", COLORS.Cyan, function()
+					R.Trade:FireServer("request", other.UserId)
+				end)
+			end
+		end
+		T.Empty.Visible = others == 0
+	end
+	T.RenderList = renderList
+
+	local function render()
+		local t = T.State
+		T.ListPage.Visible = t == nil
+		T.TradePage.Visible = t ~= nil
+		if not t then
+			renderList()
+			return
+		end
+		T.Header.Text = "🤝 Trading with " .. t.PartnerName
+		clear(T.GiveList)
+		clear(T.GetList)
+		clear(T.MineList)
+		local offered = {}
+		for k, entry in ipairs(t.Mine.Pets) do
+			offered[entry.Index] = entry.Count
+			local text, color = petText(entry.Index, entry.Count)
+			row(T.GiveList, text, color, k, "➖", COLORS.Red, function()
+				R.Trade:FireServer("pet", entry.Index, -1)
+			end)
+		end
+		local gold = Color3.fromRGB(255, 220, 90)
+		local gray = Color3.fromRGB(170, 175, 195)
+		if t.Mine.Coins > 0 then
+			row(T.GiveList, "💰 " .. Format(t.Mine.Coins) .. " coins", gold, 0)
+		elseif #t.Mine.Pets == 0 then
+			row(T.GiveList, "Nothing yet. Add pets or coins!", gray, 0)
+		end
+		for k, entry in ipairs(t.Theirs.Pets) do
+			local text, color = petText(entry.Index, entry.Count)
+			row(T.GetList, text, color, k)
+		end
+		if t.Theirs.Coins > 0 then
+			row(T.GetList, "💰 " .. Format(t.Theirs.Coins) .. " coins", gold, 0)
+		elseif #t.Theirs.Pets == 0 then
+			row(T.GetList, t.PartnerName .. " hasn't added anything yet.", gray, 0)
+		end
+		-- the pets you can still add (best ones first)
+		local mine = {}
+		for index, count in pairs(ownedPets) do
+			local left = count - (offered[index] or 0)
+			if left > 0 and Shared.GetPet(index) then
+				table.insert(mine, { Index = index, Count = left })
+			end
+		end
+		table.sort(mine, function(a, b)
+			return Shared.GetPet(a.Index).Bonus > Shared.GetPet(b.Index).Bonus
+		end)
+		for k, entry in ipairs(mine) do
+			local text, color = petText(entry.Index, entry.Count)
+			row(T.MineList, text, color, k, "➕", COLORS.Green, function()
+				R.Trade:FireServer("pet", entry.Index, 1)
+			end)
+		end
+		if #mine == 0 then
+			row(T.MineList, "No more pets to add.", gray, 0)
+		end
+		T.ReadyLabel.Text = if t.Mine.Ready then "✅ READY!" else "☑️ READY"
+		setColors(T.ReadyGrad, if t.Mine.Ready then COLORS.Green else COLORS.Gray)
+		if t.Counting then
+			T.Status.Text = "⏳ Both are ready! Trading in a moment..."
+		elseif t.Theirs.Ready then
+			T.Status.Text = "✅ " .. t.PartnerName .. " is ready. Press READY too!"
+		elseif t.Mine.Ready then
+			T.Status.Text = "⏳ Waiting for " .. t.PartnerName .. " to press READY..."
+		else
+			T.Status.Text = "Add pets or coins, then press READY. (Changing anything un-readies you both.)"
+		end
+	end
+	window.OnOpen = render
+
+	-- the little "do you want to trade?" box at the top of the screen
+	T.Popup = new("Frame", {
+		Name = "TradeRequest",
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 96),
+		Size = UDim2.fromOffset(470, 124),
+		BackgroundColor3 = DARK,
+		Visible = false,
+		ZIndex = 6,
+		Parent = gui,
+	})
+	autoScale(T.Popup)
+	round(T.Popup, 18)
+	outline(T.Popup, 4)
+	T.PopupText = label({ Text = "", Size = UDim2.new(1, -24, 0, 40), Position = UDim2.fromOffset(12, 10), ZIndex = 6, Parent = T.Popup })
+	local function respond(accept: boolean)
+		local from = T.PopupFrom
+		T.PopupFrom = nil
+		T.Popup.Visible = false
+		if from then
+			R.Trade:FireServer("respond", from, accept)
+		end
+	end
+	button({
+		Size = UDim2.fromOffset(210, 52),
+		Position = UDim2.new(0.5, -6, 1, -12),
+		AnchorPoint = Vector2.new(1, 1),
+		Text = "✅ Yes, trade!",
+		Colors = COLORS.Green,
+		Radius = 14,
+		Parent = T.Popup,
+		OnClick = function()
+			respond(true)
+		end,
+	})
+	button({
+		Size = UDim2.fromOffset(210, 52),
+		Position = UDim2.new(0.5, 6, 1, -12),
+		AnchorPoint = Vector2.new(0, 1),
+		Text = "❌ No thanks",
+		Colors = COLORS.Red,
+		Radius = 14,
+		Parent = T.Popup,
+		OnClick = function()
+			respond(false)
+		end,
+	})
+
+	R.Trade.OnClientEvent:Connect(function(kind, a, b)
+		if kind == "request" and type(a) == "number" and type(b) == "string" then
+			T.PopupFrom = a
+			T.PopupText.Text = "🤝 " .. b .. " wants to trade with you!"
+			T.Popup.Visible = true
+			chime(3, 1.4)
+			task.delay(Settings.TradeRequestTime, function()
+				if T.PopupFrom == a then
+					T.PopupFrom = nil
+					T.Popup.Visible = false
+				end
+			end)
+		elseif kind == "update" and type(a) == "table" then
+			local wasTrading = T.State ~= nil
+			T.State = a
+			if not wasTrading then
+				showBanner("🤝 TRADING WITH " .. string.upper(a.PartnerName) .. "!", Color3.fromRGB(130, 230, 255))
+				playSound("Click", 1.2, 0.5)
+			end
+			if openName ~= "Trade" then
+				openWindow("Trade", true)
+			end
+			render()
+		elseif kind == "closed" then
+			T.State = nil
+			if a == "done" then
+				showBanner("🤝 TRADE COMPLETE!", Color3.fromRGB(130, 255, 160))
+				celebrate(8, 1.1)
+				if openName == "Trade" then
+					closeWindow()
+				end
+			else
+				toast("🤝 " .. tostring(a), "info")
+				if openName == "Trade" then
+					render()
+				end
+			end
+		end
+	end)
+
+	-- your pets changed (after hatching, or the trade): show the new list
+	R.Sync.OnClientEvent:Connect(function()
+		task.defer(function()
+			if openName == "Trade" then
+				render()
+			end
+		end)
+	end)
+	Players.PlayerAdded:Connect(function()
+		if openName == "Trade" and not T.State then
+			renderList()
+		end
+	end)
+	Players.PlayerRemoving:Connect(function()
+		task.defer(function()
+			if openName == "Trade" and not T.State then
+				renderList()
+			end
+		end)
+	end)
+
+	-- a TRADE button with the other menu buttons
+	menuGrid.Size = UDim2.fromOffset(250, 198)
+	hud.Size = UDim2.fromOffset(250, hud.Size.Y.Offset + 70)
+	menuButton(5, "🤝", "Trade", COLORS.Cyan, "Trade")
+end
 
 --------------------------------------------------------------------------------
 -- FUN EXTRAS: 🎡 LUCKY WHEEL, 🦘 BOUNCE PADS, 🎁 TREASURE CHESTS, 🌠 METEORS

@@ -26,7 +26,7 @@ local Format = Shared.Format
 
 local RemoteFolder = ReplicatedStorage:WaitForChild("Remotes")
 local R: { [string]: RemoteEvent } = {}
-for _, name in ipairs({ "Mine", "Buy", "Rebirth", "Teleport", "Sync", "Notify", "Effect", "OpenMenu", "EnterDimension", "GoSell", "Claim", "Dig", "Hatch", "GadgetToggle", "Swing", "Spin" }) do
+for _, name in ipairs({ "Mine", "Buy", "Rebirth", "Teleport", "Sync", "Notify", "Effect", "OpenMenu", "EnterDimension", "GoSell", "Claim", "Dig", "Hatch", "GadgetToggle", "Swing", "Spin", "Trade" }) do
 	R[name] = RemoteFolder:WaitForChild(name) :: RemoteEvent
 end
 
@@ -1358,9 +1358,11 @@ end
 --------------------------------------------------------------------------------
 -- TELEPORT
 --------------------------------------------------------------------------------
-local teleport = makeWindow("Teleport", "🌀 TELEPORT", 460, 590, COLORS.Blue)
-new("UIListLayout", {
-	Padding = UDim.new(0, 10),
+local teleport = makeWindow("Teleport", "🌀 TELEPORT", 660, 520, COLORS.Blue)
+-- two columns, so every world fits
+new("UIGridLayout", {
+	CellSize = UDim2.fromOffset(300, 60),
+	CellPadding = UDim2.fromOffset(12, 12),
 	HorizontalAlignment = Enum.HorizontalAlignment.Center,
 	SortOrder = Enum.SortOrder.LayoutOrder,
 	Parent = teleport.Body,
@@ -3490,6 +3492,17 @@ do
 		return nil
 	end
 
+	-- Where the mouse points on the ground (for digging anywhere with the shovel)
+	local function groundAt(point: Vector2, isViewportPoint: boolean): Vector3?
+		local ray = if isViewportPoint then camera:ViewportPointToRay(point.X, point.Y) else camera:ScreenPointToRay(point.X, point.Y)
+		local result = Workspace:Raycast(ray.Origin, ray.Direction * 400, rayParams)
+		if result and (result.Instance == Workspace.Terrain or result.Instance.Name == "Ground") then
+			return result.Position
+		end
+		return nil
+	end
+	local lastGroundDig = 0
+
 	local function inRange(m: Model): boolean
 		local root = myRoot()
 		if not root then
@@ -3533,6 +3546,24 @@ do
 		end
 		local tool = heldTool()
 		local m = crystalAt(point, isViewportPoint)
+		if not m and tool == "Shovel" then
+			-- dig anywhere: a hole in the ground with a few gems (and sometimes a surprise)
+			local spot = groundAt(point, isViewportPoint)
+			local root = myRoot()
+			if spot and root and (root.Position - spot).Magnitude <= Settings.GroundDigRange and now - lastGroundDig >= Settings.GroundDigCooldown then
+				local s = state
+				if s and s.Gems >= s.Capacity then
+					backpackFull()
+				else
+					lastGroundDig = now
+					lastSwing = now
+					R.Dig:FireServer(spot)
+					playSwing("dig")
+					R.Swing:FireServer("dig")
+				end
+				return
+			end
+		end
 		if not m then
 			freeSwing(tool, now)
 			return
@@ -4088,6 +4119,488 @@ task.spawn(function()
 		task.wait(0.3)
 	end
 end)
+
+do
+	-- 🪣 SHOVEL HELP: markers over buried gems while you hold the shovel, and dirt flying when you dig
+	local markers: { [Model]: BillboardGui } = setmetatable({}, { __mode = "k" }) :: any
+	local hintShown = false
+	local hint = new("Frame", {
+		Name = "ShovelHint",
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, -150),
+		Size = UDim2.fromOffset(420, 44),
+		BackgroundColor3 = DARK,
+		BackgroundTransparency = 0.15,
+		Visible = false,
+		Parent = gui,
+	})
+	autoScale(hint)
+	round(hint, 14)
+	outline(hint, 3)
+	local hintText = label({ Text = "", Size = UDim2.new(1, -20, 0.62, 0), Position = UDim2.fromScale(0.5, 0.5), AnchorPoint = Vector2.new(0.5, 0.5), Parent = hint })
+
+	local function markerFor(m: Model): BillboardGui?
+		local existing = markers[m]
+		if existing and existing.Parent then
+			return existing
+		end
+		local adornee = m.PrimaryPart or m:FindFirstChildWhichIsA("BasePart")
+		if not adornee then
+			return nil
+		end
+		local bb = new("BillboardGui", {
+			Name = "DigMarker",
+			Size = UDim2.fromScale(3.2, 3.2),
+			StudsOffset = Vector3.new(0, 5, 0),
+			AlwaysOnTop = true,
+			LightInfluence = 0,
+			MaxDistance = 220,
+			Adornee = adornee,
+			Enabled = false,
+			Parent = gui.Parent, -- billboards can't live inside a ScreenGui
+		})
+		label({ Text = "💎", Size = UDim2.fromScale(1, 0.6), Parent = bb })
+		label({ Text = "⬇", Size = UDim2.fromScale(1, 0.4), Position = UDim2.fromScale(0, 0.6), TextColor3 = Color3.fromRGB(255, 220, 120), Parent = bb })
+		markers[m] = bb
+		return bb
+	end
+
+	task.spawn(function()
+		while true do
+			local char = player.Character
+			local holding = char ~= nil and char:FindFirstChild("Shovel") ~= nil
+			local root = myRoot()
+			local nearest = math.huge
+			local digFolder = Workspace:FindFirstChild("DigSpots")
+			for m, bb in pairs(markers) do
+				if not holding or m.Parent ~= digFolder then
+					bb.Enabled = false
+				end
+			end
+			if holding and root and digFolder then
+				for _, m in ipairs(digFolder:GetChildren()) do
+					if m:IsA("Model") and m:GetAttribute("IsDigSpot") then
+						local distance = (m:GetPivot().Position - root.Position).Magnitude
+						local bb = markerFor(m)
+						if bb then
+							bb.Enabled = distance < 220
+						end
+						nearest = math.min(nearest, distance)
+					end
+				end
+			end
+			hint.Visible = holding
+			if holding then
+				hintText.Text = if nearest < math.huge
+					then "🪣 Click the ground to dig!  💎 Buried gem: " .. math.floor(nearest) .. " studs away"
+					else "🪣 Click the ground to dig for gems!"
+				if not hintShown then
+					hintShown = true
+					toast("🪣 Click the ground to dig! Dirt piles with a 💎 give the most gems.", "info")
+				end
+			end
+			task.wait(0.25)
+		end
+	end)
+
+	R.Effect.OnClientEvent:Connect(function(kind, a, b, c)
+		if kind == "digground" then
+			local position, gems, found = a :: Vector3, b :: number, c
+			burst(position + Vector3.new(0, 0.5, 0), Color3.fromRGB(120, 92, 64), 14, 16, 0.55)
+			burst(position + Vector3.new(0, 0.5, 0), Color3.fromRGB(150, 120, 85), 8, 12, 0.4)
+			playSound("Hit", 0.75, 0.35)
+			if gems > 0 then
+				flyIcons(position, "💎", gemsPill, gemsPop, math.min(3, gems))
+			end
+			if type(found) == "string" then
+				showBanner("🪣 YOU FOUND " .. string.upper(found) .. "!", Color3.fromRGB(255, 215, 110))
+				chime(5, 1.3)
+			end
+		end
+	end)
+end
+
+--------------------------------------------------------------------------------
+-- 🤝 TRADING (pick a player, put in pets and coins, both press READY)
+--------------------------------------------------------------------------------
+do
+	-- everything of the trade window lives in this table
+	local T: { [string]: any } = { Friends = {}, State = nil, PopupFrom = nil }
+	local window = makeWindow("Trade", "🤝 TRADE", 800, 600, COLORS.Cyan)
+
+	local function clear(list: Instance)
+		for _, child in ipairs(list:GetChildren()) do
+			if child:IsA("Frame") then
+				child:Destroy()
+			end
+		end
+	end
+
+	-- one line in a list: some text, and maybe a button on the right
+	local function row(list: Instance, text: string, color: Color3, order: number, buttonText: string?, buttonColors: { Color3 }?, onClick: (() -> ())?)
+		local frame = new("Frame", { Size = UDim2.new(1, -10, 0, 38), BackgroundColor3 = Color3.fromRGB(46, 50, 74), LayoutOrder = order, Parent = list })
+		round(frame, 10)
+		label({
+			Text = text,
+			Size = UDim2.new(1, if buttonText then -110 else -16, 1, -10),
+			Position = UDim2.fromOffset(10, 5),
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextColor3 = color,
+			Parent = frame,
+		})
+		if buttonText and onClick then
+			button({
+				Size = UDim2.fromOffset(94, 30),
+				Position = UDim2.new(1, -4, 0.5, 0),
+				AnchorPoint = Vector2.new(1, 0.5),
+				Text = buttonText,
+				Colors = buttonColors or COLORS.Green,
+				Radius = 10,
+				Parent = frame,
+				OnClick = onClick,
+			})
+		end
+		return frame
+	end
+
+	-- a dark box with a title and a scrolling list inside
+	local function box(parent: Instance, title: string, x: number, y: number, w: number, h: number): ScrollingFrame
+		local frame = new("Frame", { Size = UDim2.fromOffset(w, h), Position = UDim2.fromOffset(x, y), BackgroundColor3 = Color3.fromRGB(24, 26, 42), Parent = parent })
+		round(frame, 14)
+		outline(frame, 2)
+		label({ Text = title, Size = UDim2.new(1, -16, 0, 26), Position = UDim2.fromOffset(8, 6), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = Color3.fromRGB(255, 225, 140), Parent = frame })
+		local list = new("ScrollingFrame", {
+			Size = UDim2.new(1, -12, 1, -40),
+			Position = UDim2.fromOffset(6, 36),
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			ScrollBarThickness = 6,
+			CanvasSize = UDim2.new(),
+			AutomaticCanvasSize = Enum.AutomaticSize.Y,
+			Parent = frame,
+		})
+		new("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder, Parent = list })
+		return list
+	end
+
+	local function petText(index: number, count: number): (string, Color3)
+		local def = Shared.GetPet(index)
+		if not def then
+			return "? x" .. count, WHITE
+		end
+		return def.Name .. "  x" .. count .. "   💎 " .. Shared.BonusText(def.Bonus), Shared.RarityColor(def.Rarity)
+	end
+
+	-- Page 1: pick a player
+	T.ListPage = new("Frame", { Name = "ListPage", Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Parent = window.Body })
+	label({
+		Text = "Pick a player to trade pets and coins with.   👥 = your friend",
+		Size = UDim2.new(1, 0, 0, 28),
+		TextColor3 = Color3.fromRGB(220, 225, 240),
+		Stroke = 0,
+		Parent = T.ListPage,
+	})
+	T.List = new("ScrollingFrame", {
+		Size = UDim2.new(1, 0, 1, -40),
+		Position = UDim2.fromOffset(0, 40),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		ScrollBarThickness = 8,
+		CanvasSize = UDim2.new(),
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		Parent = T.ListPage,
+	})
+	new("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder, Parent = T.List })
+	T.Empty = label({
+		Text = "Nobody else is here yet. Invite your friends to play with you!",
+		Size = UDim2.new(1, 0, 0, 40),
+		Position = UDim2.fromOffset(0, 90),
+		TextColor3 = Color3.fromRGB(200, 205, 225),
+		Visible = false,
+		Parent = T.ListPage,
+	})
+
+	-- Page 2: the trade itself
+	T.TradePage = new("Frame", { Name = "TradePage", Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Visible = false, Parent = window.Body })
+	T.Header = label({ Text = "", Size = UDim2.new(1, 0, 0, 28), Parent = T.TradePage })
+	T.GiveList = box(T.TradePage, "🫴 YOU GIVE", 0, 34, 378, 170)
+	T.MineList = box(T.TradePage, "🐾 YOUR PETS  (press ➕ to add)", 0, 212, 378, 190)
+	T.GetList = box(T.TradePage, "🎁 YOU GET", 394, 34, 378, 368)
+	T.CoinsBox = new("TextBox", {
+		Name = "CoinsBox",
+		Size = UDim2.fromOffset(220, 44),
+		Position = UDim2.fromOffset(0, 412),
+		BackgroundColor3 = WHITE,
+		TextColor3 = Color3.fromRGB(30, 30, 40),
+		PlaceholderText = "💰 coins (like 500 or 2k)",
+		Text = "",
+		ClearTextOnFocus = false,
+		Font = FONT,
+		TextScaled = true,
+		Parent = T.TradePage,
+	})
+	round(T.CoinsBox, 12)
+	-- "2k" = 2,000 and "3m" = 3,000,000
+	local function giveCoins()
+		local typed = string.lower((string.gsub(T.CoinsBox.Text, "[%s,]", "")))
+		local digits, suffix = string.match(typed, "^(%d+%.?%d*)([kmbt]?)$")
+		local amount = tonumber(digits)
+		if not amount then
+			toast("💰 Type a number of coins, like 500 or 2k.", "info")
+			return
+		end
+		local times = ({ k = 1e3, m = 1e6, b = 1e9, t = 1e12 })[suffix] or 1
+		R.Trade:FireServer("coins", math.floor(amount * times))
+	end
+	button({
+		Size = UDim2.fromOffset(150, 44),
+		Position = UDim2.fromOffset(228, 412),
+		Text = "💰 Give coins",
+		Colors = COLORS.Gold,
+		Radius = 12,
+		Parent = T.TradePage,
+		OnClick = giveCoins,
+	})
+	local _, readyLabel, readyGrad = button({
+		Size = UDim2.fromOffset(200, 50),
+		Position = UDim2.fromOffset(394, 410),
+		Text = "☑️ READY",
+		Colors = COLORS.Gray,
+		Radius = 14,
+		Parent = T.TradePage,
+		OnClick = function()
+			local t = T.State
+			if t then
+				R.Trade:FireServer("ready", not t.Mine.Ready)
+			end
+		end,
+	})
+	T.ReadyLabel, T.ReadyGrad = readyLabel, readyGrad
+	button({
+		Size = UDim2.fromOffset(166, 50),
+		Position = UDim2.fromOffset(606, 410),
+		Text = "❌ Cancel",
+		Colors = COLORS.Red,
+		Radius = 14,
+		Parent = T.TradePage,
+		OnClick = function()
+			R.Trade:FireServer("cancel")
+		end,
+	})
+	T.Status = label({ Text = "", Size = UDim2.new(1, 0, 0, 28), Position = UDim2.fromOffset(0, 470), TextColor3 = Color3.fromRGB(255, 240, 180), Parent = T.TradePage })
+
+	local function renderList()
+		clear(T.List)
+		local others = 0
+		for _, other in ipairs(Players:GetPlayers()) do
+			if other ~= player then
+				others += 1
+				local friend = T.Friends[other.UserId]
+				if friend == nil then
+					T.Friends[other.UserId] = false
+					task.spawn(function()
+						local ok, result = pcall(function()
+							return player:IsFriendsWith(other.UserId)
+						end)
+						T.Friends[other.UserId] = ok and result == true
+						if ok and result == true and openName == "Trade" and not T.State then
+							T.RenderList()
+						end
+					end)
+				end
+				row(T.List, (if friend then "👥 " else "🙂 ") .. other.DisplayName, WHITE, if friend then 1 else 2, "🤝 Trade", COLORS.Cyan, function()
+					R.Trade:FireServer("request", other.UserId)
+				end)
+			end
+		end
+		T.Empty.Visible = others == 0
+	end
+	T.RenderList = renderList
+
+	local function render()
+		local t = T.State
+		T.ListPage.Visible = t == nil
+		T.TradePage.Visible = t ~= nil
+		if not t then
+			renderList()
+			return
+		end
+		T.Header.Text = "🤝 Trading with " .. t.PartnerName
+		clear(T.GiveList)
+		clear(T.GetList)
+		clear(T.MineList)
+		local offered = {}
+		for k, entry in ipairs(t.Mine.Pets) do
+			offered[entry.Index] = entry.Count
+			local text, color = petText(entry.Index, entry.Count)
+			row(T.GiveList, text, color, k, "➖", COLORS.Red, function()
+				R.Trade:FireServer("pet", entry.Index, -1)
+			end)
+		end
+		local gold = Color3.fromRGB(255, 220, 90)
+		local gray = Color3.fromRGB(170, 175, 195)
+		if t.Mine.Coins > 0 then
+			row(T.GiveList, "💰 " .. Format(t.Mine.Coins) .. " coins", gold, 0)
+		elseif #t.Mine.Pets == 0 then
+			row(T.GiveList, "Nothing yet. Add pets or coins!", gray, 0)
+		end
+		for k, entry in ipairs(t.Theirs.Pets) do
+			local text, color = petText(entry.Index, entry.Count)
+			row(T.GetList, text, color, k)
+		end
+		if t.Theirs.Coins > 0 then
+			row(T.GetList, "💰 " .. Format(t.Theirs.Coins) .. " coins", gold, 0)
+		elseif #t.Theirs.Pets == 0 then
+			row(T.GetList, t.PartnerName .. " hasn't added anything yet.", gray, 0)
+		end
+		-- the pets you can still add (best ones first)
+		local mine = {}
+		for index, count in pairs(ownedPets) do
+			local left = count - (offered[index] or 0)
+			if left > 0 and Shared.GetPet(index) then
+				table.insert(mine, { Index = index, Count = left })
+			end
+		end
+		table.sort(mine, function(a, b)
+			return Shared.GetPet(a.Index).Bonus > Shared.GetPet(b.Index).Bonus
+		end)
+		for k, entry in ipairs(mine) do
+			local text, color = petText(entry.Index, entry.Count)
+			row(T.MineList, text, color, k, "➕", COLORS.Green, function()
+				R.Trade:FireServer("pet", entry.Index, 1)
+			end)
+		end
+		if #mine == 0 then
+			row(T.MineList, "No more pets to add.", gray, 0)
+		end
+		T.ReadyLabel.Text = if t.Mine.Ready then "✅ READY!" else "☑️ READY"
+		setColors(T.ReadyGrad, if t.Mine.Ready then COLORS.Green else COLORS.Gray)
+		if t.Counting then
+			T.Status.Text = "⏳ Both are ready! Trading in a moment..."
+		elseif t.Theirs.Ready then
+			T.Status.Text = "✅ " .. t.PartnerName .. " is ready. Press READY too!"
+		elseif t.Mine.Ready then
+			T.Status.Text = "⏳ Waiting for " .. t.PartnerName .. " to press READY..."
+		else
+			T.Status.Text = "Add pets or coins, then press READY. (Changing anything un-readies you both.)"
+		end
+	end
+	window.OnOpen = render
+
+	-- the little "do you want to trade?" box at the top of the screen
+	T.Popup = new("Frame", {
+		Name = "TradeRequest",
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 96),
+		Size = UDim2.fromOffset(470, 124),
+		BackgroundColor3 = DARK,
+		Visible = false,
+		ZIndex = 6,
+		Parent = gui,
+	})
+	autoScale(T.Popup)
+	round(T.Popup, 18)
+	outline(T.Popup, 4)
+	T.PopupText = label({ Text = "", Size = UDim2.new(1, -24, 0, 40), Position = UDim2.fromOffset(12, 10), ZIndex = 6, Parent = T.Popup })
+	local function respond(accept: boolean)
+		local from = T.PopupFrom
+		T.PopupFrom = nil
+		T.Popup.Visible = false
+		if from then
+			R.Trade:FireServer("respond", from, accept)
+		end
+	end
+	button({
+		Size = UDim2.fromOffset(210, 52),
+		Position = UDim2.new(0.5, -6, 1, -12),
+		AnchorPoint = Vector2.new(1, 1),
+		Text = "✅ Yes, trade!",
+		Colors = COLORS.Green,
+		Radius = 14,
+		Parent = T.Popup,
+		OnClick = function()
+			respond(true)
+		end,
+	})
+	button({
+		Size = UDim2.fromOffset(210, 52),
+		Position = UDim2.new(0.5, 6, 1, -12),
+		AnchorPoint = Vector2.new(0, 1),
+		Text = "❌ No thanks",
+		Colors = COLORS.Red,
+		Radius = 14,
+		Parent = T.Popup,
+		OnClick = function()
+			respond(false)
+		end,
+	})
+
+	R.Trade.OnClientEvent:Connect(function(kind, a, b)
+		if kind == "request" and type(a) == "number" and type(b) == "string" then
+			T.PopupFrom = a
+			T.PopupText.Text = "🤝 " .. b .. " wants to trade with you!"
+			T.Popup.Visible = true
+			chime(3, 1.4)
+			task.delay(Settings.TradeRequestTime, function()
+				if T.PopupFrom == a then
+					T.PopupFrom = nil
+					T.Popup.Visible = false
+				end
+			end)
+		elseif kind == "update" and type(a) == "table" then
+			local wasTrading = T.State ~= nil
+			T.State = a
+			if not wasTrading then
+				showBanner("🤝 TRADING WITH " .. string.upper(a.PartnerName) .. "!", Color3.fromRGB(130, 230, 255))
+				playSound("Click", 1.2, 0.5)
+			end
+			if openName ~= "Trade" then
+				openWindow("Trade", true)
+			end
+			render()
+		elseif kind == "closed" then
+			T.State = nil
+			if a == "done" then
+				showBanner("🤝 TRADE COMPLETE!", Color3.fromRGB(130, 255, 160))
+				celebrate(8, 1.1)
+				if openName == "Trade" then
+					closeWindow()
+				end
+			else
+				toast("🤝 " .. tostring(a), "info")
+				if openName == "Trade" then
+					render()
+				end
+			end
+		end
+	end)
+
+	-- your pets changed (after hatching, or the trade): show the new list
+	R.Sync.OnClientEvent:Connect(function()
+		task.defer(function()
+			if openName == "Trade" then
+				render()
+			end
+		end)
+	end)
+	Players.PlayerAdded:Connect(function()
+		if openName == "Trade" and not T.State then
+			renderList()
+		end
+	end)
+	Players.PlayerRemoving:Connect(function()
+		task.defer(function()
+			if openName == "Trade" and not T.State then
+				renderList()
+			end
+		end)
+	end)
+
+	-- a TRADE button with the other menu buttons
+	menuGrid.Size = UDim2.fromOffset(250, 198)
+	hud.Size = UDim2.fromOffset(250, hud.Size.Y.Offset + 70)
+	menuButton(5, "🤝", "Trade", COLORS.Cyan, "Trade")
+end
 
 --------------------------------------------------------------------------------
 -- FUN EXTRAS: 🎡 LUCKY WHEEL, 🦘 BOUNCE PADS, 🎁 TREASURE CHESTS, 🌠 METEORS

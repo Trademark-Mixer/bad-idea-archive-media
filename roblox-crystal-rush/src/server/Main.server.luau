@@ -41,7 +41,7 @@ do
 	end
 	local folder = Instance.new("Folder")
 	folder.Name = "Remotes"
-	for _, name in ipairs({ "Mine", "Buy", "Rebirth", "Teleport", "Sync", "Notify", "Effect", "OpenMenu", "EnterDimension", "GoSell", "Claim", "Dig", "Hatch", "GadgetToggle", "Swing", "Spin" }) do
+	for _, name in ipairs({ "Mine", "Buy", "Rebirth", "Teleport", "Sync", "Notify", "Effect", "OpenMenu", "EnterDimension", "GoSell", "Claim", "Dig", "Hatch", "GadgetToggle", "Swing", "Spin", "Trade" }) do
 		local remote = Instance.new("RemoteEvent")
 		remote.Name = name
 		remote.Parent = folder
@@ -525,7 +525,9 @@ local function setupTerrain()
 		[Enum.Material.Salt] = Color3.fromRGB(80, 76, 92),
 		[Enum.Material.Cobblestone] = Color3.fromRGB(128, 124, 118),
 		[Enum.Material.Pavement] = Color3.fromRGB(150, 146, 140),
-		[Enum.Material.Sand] = Color3.fromRGB(205, 186, 145),
+		[Enum.Material.Sand] = Color3.fromRGB(215, 190, 140),
+		[Enum.Material.Sandstone] = Color3.fromRGB(196, 158, 112),
+		[Enum.Material.Limestone] = Color3.fromRGB(228, 220, 198),
 	}
 	for material, color in pairs(colors) do
 		Terrain:SetMaterialColor(material, color)
@@ -590,13 +592,13 @@ local function setupTerrain()
 	end
 
 	-- Bumpy, natural ground inside the zones (never right at the entrance)
-	local bumpMaterials = { Enum.Material.Grass, Enum.Material.Slate, Enum.Material.Basalt, Enum.Material.Snow, Enum.Material.Salt }
+	local bumpMaterials = { Enum.Material.Grass, Enum.Material.Slate, Enum.Material.Basalt, Enum.Material.Snow, Enum.Material.Salt, Enum.Material.LeafyGrass, Enum.Material.Sand, Enum.Material.Limestone }
 	for i = 1, #Shared.Zones do
 		local zs, ze = Shared.ZoneStart(i), Shared.ZoneEnd(i)
 		for _ = 1, 14 do
 			local radius = rng:NextNumber(14, 24)
 			local x, bz = rng:NextNumber(-62, 62), rng:NextNumber(ze + 12, zs - 40)
-			Terrain:FillBall(Vector3.new(x, -radius + rng:NextNumber(1.5, 4), bz), radius, bumpMaterials[i])
+			Terrain:FillBall(Vector3.new(x, -radius + rng:NextNumber(1.5, 4), bz), radius, bumpMaterials[i] or Shared.Zones[i].Ground)
 		end
 	end
 
@@ -1192,6 +1194,79 @@ function Decor.Cactus(pos: Vector3, scale: number)
 		rod(pos + Vector3.new(0, armY, 0), elbow, 1.1 * scale, { Name = "Arm", Color = green, Material = Enum.Material.Grass, Parent = m })
 		rod(elbow, elbow + Vector3.new(0, 2.6 * scale, 0), 1.1 * scale, { Name = "ArmUp", Color = green, Material = Enum.Material.Grass, Parent = m })
 	end
+end
+
+-- Broken sandstone columns (Ancient Desert)
+function Decor.Ruin(pos: Vector3, scale: number)
+	local m = model("Ruin")
+	local stone = Color3.fromRGB(205, 175, 125)
+	for _ = 1, rng:NextInteger(2, 3) do
+		local h = rng:NextNumber(4, 12) * scale
+		local spot = pos + Vector3.new(rng:NextNumber(-4, 4), 0, rng:NextNumber(-4, 4)) * scale
+		P({ Name = "ColumnBase", Size = Vector3.new(3, 0.8, 3) * scale, CFrame = CFrame.new(spot + Vector3.new(0, 0.4 * scale, 0)), Color = stone:Lerp(Color3.fromRGB(120, 100, 75), 0.2), Material = Enum.Material.Sandstone, Parent = m })
+		P({ Name = "Column", Shape = Enum.PartType.Cylinder, Size = Vector3.new(h, 2.2 * scale, 2.2 * scale), CFrame = CFrame.new(spot + Vector3.new(0, h / 2 + 0.8 * scale, 0)) * CFrame.Angles(0, 0, rad(90)), Color = stone, Material = Enum.Material.Sandstone, Parent = m })
+	end
+	P({
+		Name = "Fallen",
+		Size = Vector3.new(5, 2, 2.4) * scale,
+		CFrame = CFrame.new(pos + Vector3.new(rng:NextNumber(-3, 3), 0.9 * scale, rng:NextNumber(-3, 3))) * CFrame.Angles(0, rng:NextNumber(0, math.pi), rng:NextNumber(-0.2, 0.2)),
+		Color = stone,
+		Material = Enum.Material.Sandstone,
+		Parent = m,
+	})
+end
+
+-- A big stepped pyramid with a golden tip (Ancient Desert)
+function Decor.Pyramid(pos: Vector3, size: number)
+	local m = model("Pyramid")
+	local layers = 8
+	local step = size / layers * 0.85
+	for k = 0, layers - 1 do
+		local w = size * (1 - k / layers)
+		P({
+			Name = "Layer",
+			Size = Vector3.new(w, step, w),
+			CFrame = CFrame.new(pos + Vector3.new(0, (k + 0.5) * step, 0)),
+			Color = Color3.fromRGB(215, 180, 120):Lerp(Color3.fromRGB(185, 145, 92), k / layers),
+			Material = Enum.Material.Sandstone,
+			Parent = m,
+		})
+	end
+	local tip = P({
+		Name = "GoldTip",
+		Size = Vector3.new(size / layers, step, size / layers) * 0.9,
+		CFrame = CFrame.new(pos + Vector3.new(0, (layers + 0.45) * step, 0)),
+		Color = Color3.fromRGB(240, 190, 60),
+		Material = Enum.Material.Metal,
+		Reflectance = 0.3,
+		Parent = m,
+	})
+	light(tip, Color3.fromRGB(255, 210, 120), 20, 1)
+	P({ Name = "Door", Size = Vector3.new(0.6, step * 1.6, size * 0.12), CFrame = CFrame.new(pos + Vector3.new(size / 2 + 0.1, step * 0.8, 0)), Color = Color3.fromRGB(40, 30, 25), Parent = m })
+end
+
+-- A castle tower with a golden roof and a flag (Golden Kingdom)
+function Decor.Tower(pos: Vector3, scale: number)
+	local m = model("Tower")
+	local h = rng:NextNumber(18, 26) * scale
+	local r = 3.2 * scale
+	local stone = Color3.fromRGB(225, 215, 195)
+	local gold = Color3.fromRGB(230, 180, 50)
+	P({ Name = "Tower", Shape = Enum.PartType.Cylinder, Size = Vector3.new(h, r * 2, r * 2), CFrame = CFrame.new(pos + Vector3.new(0, h / 2, 0)) * CFrame.Angles(0, 0, rad(90)), Color = stone, Material = Enum.Material.Limestone, Parent = m })
+	for k = 0, 7 do
+		local a = k / 8 * math.pi * 2
+		P({ Name = "Merlon", Size = Vector3.new(1.2, 1.4, 1.2) * scale, CFrame = CFrame.new(pos + Vector3.new(math.cos(a) * r * 0.85, h + 0.7 * scale, math.sin(a) * r * 0.85)), Color = stone, Material = Enum.Material.Limestone, Parent = m })
+	end
+	for k = 0, 4 do
+		local ring = r * (1 - k / 5) * 0.9
+		P({ Name = "Roof", Shape = Enum.PartType.Cylinder, Size = Vector3.new(1.1 * scale, ring * 2, ring * 2), CFrame = CFrame.new(pos + Vector3.new(0, h + (1.6 + k * 1.05) * scale, 0)) * CFrame.Angles(0, 0, rad(90)), Color = gold, Material = Enum.Material.Metal, Reflectance = 0.2, Parent = m })
+	end
+	for _, y in ipairs({ 0.45, 0.75 }) do
+		P({ Name = "Window", Size = Vector3.new(0.4, 1.8, 1) * scale, CFrame = CFrame.new(pos + Vector3.new(r - 0.1, h * y, 0)), Color = Color3.fromRGB(60, 45, 35), Parent = m })
+	end
+	local top = pos + Vector3.new(0, h + 7 * scale, 0)
+	rod(top - Vector3.new(0, 2 * scale, 0), top + Vector3.new(0, 3 * scale, 0), 0.18, { Name = "FlagPole", Color = Color3.fromRGB(70, 60, 50), Material = Enum.Material.Metal, Parent = m })
+	P({ Name = "Flag", Size = Vector3.new(0.1, 1.5, 2.4) * scale, CFrame = CFrame.new(top + Vector3.new(0, 2.2 * scale, 1.25 * scale)), Color = Color3.fromRGB(200, 30, 60), Material = Enum.Material.Fabric, CanCollide = false, Parent = m })
 end
 
 function Decor.Cloud(pos: Vector3, scale: number)
@@ -2405,7 +2480,86 @@ local function buildZone(i: number)
 			Speed = NumberRange.new(0, 0.3),
 			Spread = Vector2.new(180, 180),
 		})
-		-- The end of the world, with a portal to the dimensions
+	elseif i == 6 then -- Mushroom Forest
+		local caps = { Color3.fromRGB(200, 60, 70), Color3.fromRGB(190, 80, 200), Color3.fromRGB(60, 170, 170), Color3.fromRGB(235, 150, 60) }
+		for _ = 1, 18 do
+			Decor.Mushroom(onGround(edgeSpot(i)), rng:NextNumber(1.6, 2.8), caps[rng:NextInteger(1, #caps)])
+		end
+		for _ = 1, 8 do
+			local pos = decorAt(4)
+			if pos then
+				Decor.Mushroom(pos, rng:NextNumber(0.6, 1), caps[rng:NextInteger(1, #caps)])
+			end
+		end
+		for _ = 1, 6 do
+			Decor.Tree(onGround(edgeSpot(i)), rng:NextNumber(1, 1.4))
+		end
+		-- glowing spores floating around
+		local spores = P({ Name = "Spores", Size = Vector3.new(160, 1, Layout.ZoneLength - 10), CFrame = CFrame.new(0, 12, mid), Transparency = 1, CanCollide = false })
+		particles(spores, {
+			Color = Color3.fromRGB(190, 255, 150),
+			Size = 0.25,
+			Rate = 35,
+			Lifetime = NumberRange.new(5, 8),
+			Speed = NumberRange.new(0.2, 0.8),
+			Spread = Vector2.new(180, 180),
+		})
+	elseif i == 7 then -- Ancient Desert
+		Decor.Pyramid(Vector3.new(-64, 0, mid + 10), 34)
+		reserve(i, Vector3.new(-64, 0, mid + 10), 24)
+		Decor.Pyramid(Vector3.new(-60, 0, mid - 55), 22) -- (the boss arena is on the other side)
+		reserve(i, Vector3.new(-60, 0, mid - 55), 16)
+		for _ = 1, 16 do
+			Decor.Cactus(onGround(edgeSpot(i)), rng:NextNumber(0.9, 1.4))
+		end
+		for _ = 1, 5 do
+			local pos = decorAt(8)
+			if pos then
+				Decor.Ruin(pos, rng:NextNumber(0.8, 1.2))
+			end
+		end
+		for _ = 1, 10 do
+			Decor.Rock(onGround(edgeSpot(i)), rng:NextNumber(1, 2), zone.RockColor, Enum.Material.Sandstone)
+		end
+		-- blowing sand
+		local sand = P({ Name = "BlowingSand", Size = Vector3.new(170, 1, Layout.ZoneLength), CFrame = CFrame.new(0, 6, mid), Transparency = 1, CanCollide = false })
+		particles(sand, {
+			Color = Color3.fromRGB(230, 205, 160),
+			LightEmission = 0,
+			Size = 0.35,
+			Rate = 45,
+			Lifetime = NumberRange.new(3, 5),
+			Speed = NumberRange.new(8, 12),
+			Spread = Vector2.new(10, 10),
+			Direction = Enum.NormalId.Right,
+			Transparency = 0.4,
+		})
+	elseif i == 8 then -- Golden Kingdom
+		for _ = 1, 10 do
+			Decor.Tower(onGround(edgeSpot(i)), rng:NextNumber(0.9, 1.3))
+		end
+		for _ = 1, 10 do
+			Decor.Spire(onGround(edgeSpot(i)), rng:NextNumber(0.8, 1.3), zone.CrystalColors[rng:NextInteger(1, 3)])
+		end
+		for _ = 1, 10 do
+			local pos = freeSpot(i, 2)
+			if pos then
+				Decor.Flowers(onGround(pos))
+			end
+		end
+		local glitter = P({ Name = "GoldGlitter", Size = Vector3.new(160, 1, Layout.ZoneLength - 10), CFrame = CFrame.new(0, 18, mid), Transparency = 1, CanCollide = false })
+		particles(glitter, {
+			Color = Color3.fromRGB(255, 215, 110),
+			Size = 0.25,
+			Rate = 30,
+			Lifetime = NumberRange.new(3, 6),
+			Speed = NumberRange.new(0.2, 0.6),
+			Spread = Vector2.new(180, 180),
+		})
+	end
+
+	-- The end of the world, with a portal to the dimensions
+	if i == #Shared.Zones then
 		local finale = buildArch(ze + 8, zone, MapFolder, "🏆 YOU MADE IT!", "Step in the portal to visit the dimensions")
 		finale.Name = "FinalArch"
 		reserve(i, Vector3.new(-24, 0, ze + 8), 6)
@@ -2828,6 +2982,7 @@ type PlayerData = {
 	GemBoostUntil: number, -- 2x gems until this time (os.time)
 	ChestsFound: number,
 	MeteorsBroken: number,
+	Trades: number, -- how many trades you finished
 }
 
 local store: DataStore? = nil
@@ -2891,6 +3046,7 @@ local function defaultData(): PlayerData
 		GemBoostUntil = 0,
 		ChestsFound = 0,
 		MeteorsBroken = 0,
+		Trades = 0,
 	}
 end
 
@@ -3581,17 +3737,19 @@ local function digOut(spot: DigSpot, player: Player, data: PlayerData)
 	sync(player)
 	-- a real hole in the ground (it fills up again later)
 	local restore: (() -> ())? = nil
-	if spot.OnTerrain then
+	if spot.OnTerrain and Fun.HoleFree(pos) then
 		local region = Region3.new(pos - Vector3.new(4, 5, 4), pos + Vector3.new(4, 3, 4)):ExpandToGrid(4)
 		local ok, materials, occupancies = pcall(function()
 			return Terrain:ReadVoxels(region, 4)
 		end)
 		if ok then
 			Terrain:FillBall(pos - Vector3.new(0, 0.8, 0), 2.6, Enum.Material.Air)
+			Fun.Holes[pos] = true
 			restore = function()
 				pcall(function()
 					Terrain:WriteVoxels(region, 4, materials, occupancies)
 				end)
+				Fun.Holes[pos] = nil
 			end
 		end
 	end
@@ -3617,9 +3775,106 @@ local function digOut(spot: DigSpot, player: Player, data: PlayerData)
 	end)
 end
 
+-- Holes in the terrain that are still open (they can't overlap, or they would fill up wrong)
+Fun.Holes = {} :: { [Vector3]: boolean }
+function Fun.HoleFree(pos: Vector3): boolean
+	local count = 0
+	for other in pairs(Fun.Holes) do
+		count += 1
+		if (other - pos).Magnitude < 10 then
+			return false
+		end
+	end
+	return count < 40
+end
+
+-- Digging anywhere with the shovel: a few gems every time, and sometimes a lucky find
+local lastGroundDig: { [Player]: number } = {}
+function Fun.DigGround(player: Player, data: PlayerData, pos: Vector3)
+	local char = player.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	if not (char and root and root:IsA("BasePart") and hum and hum.Health > 0) or not char:FindFirstChild("Shovel") then
+		return
+	end
+	if pos ~= pos or (root.Position - pos).Magnitude > Settings.GroundDigRange then
+		return -- too far away (or not a real position)
+	end
+	local now = os.clock()
+	if now - (lastGroundDig[player] or 0) < Settings.GroundDigCooldown * 0.8 then
+		return
+	end
+	local here = player:GetAttribute("Dimension")
+	local gemsHere
+	if type(here) == "number" then
+		gemsHere = Shared.GetDimension(here).Gems
+	else
+		local zone = math.max(1, Shared.ZoneAt(pos.Z))
+		if zone > data.Zone then
+			return
+		end
+		gemsHere = Shared.Zones[zone].Gems
+	end
+	local capacity = Shared.BestBackpack(data).Capacity
+	if data.Gems >= capacity then
+		Remotes.Effect:FireClient(player, "full")
+		return
+	end
+	lastGroundDig[player] = now
+	local boost = if data.GemBoostUntil > os.time() then 2 else 1
+	local gems = math.max(1, math.floor(gemsHere * Settings.GroundDigGems * Shared.GemMultiplier(data.Pets) * gadgetStats(data).Gems * boost))
+	local added = math.min(gems, capacity - data.Gems)
+	data.Gems += added
+	data.TotalGems += added
+	-- sometimes you find something special
+	local found: string? = nil
+	local roll = rng:NextNumber()
+	if roll < Settings.DigFindEgg then
+		data.FreeEggs += 1
+		found = "🥚 a FREE EGG"
+	elseif roll < Settings.DigFindEgg + Settings.DigFindShard then
+		data.Shards += 1
+		found = "💠 a Boss Shard"
+	elseif roll < Settings.DigFindEgg + Settings.DigFindShard + Settings.DigFindCoins then
+		local coins = Shared.RewardCoins(data, 8)
+		data.Coins += coins
+		found = "a bag of 💰 " .. Format(coins) .. " coins"
+	end
+	Remotes.Effect:FireClient(player, "digground", pos, added, found)
+	if found then
+		notify(player, "🪣 You dug up " .. found .. "!", "gold")
+	end
+	addXP(player, data, 1)
+	-- a little hole in the ground that fills up again
+	if type(here) ~= "number" and Fun.HoleFree(pos) then
+		local region = Region3.new(pos - Vector3.new(4, 4, 4), pos + Vector3.new(4, 4, 4)):ExpandToGrid(4)
+		local ok, materials, occupancies = pcall(function()
+			return Terrain:ReadVoxels(region, 4)
+		end)
+		if ok then
+			Fun.Holes[pos] = true
+			Terrain:FillBall(pos - Vector3.new(0, 0.5, 0), 1.6, Enum.Material.Air)
+			task.delay(Settings.GroundHoleTime, function()
+				pcall(function()
+					Terrain:WriteVoxels(region, 4, materials, occupancies)
+				end)
+				Fun.Holes[pos] = nil
+			end)
+		end
+	end
+	sync(player)
+end
+Players.PlayerRemoving:Connect(function(player)
+	lastGroundDig[player] = nil
+end)
+
 local lastDig: { [Player]: number } = {}
 Remotes.Dig.OnServerEvent:Connect(function(player, target)
 	local data = Data[player]
+	if data and typeof(target) == "Vector3" then
+		Fun.DigGround(player, data, target)
+		return
+	end
 	if not data or typeof(target) ~= "Instance" then
 		return
 	end
@@ -5471,6 +5726,228 @@ do
 		end
 		Remotes.Effect:FireClient(player, "wheel", index, text)
 		sync(player)
+	end)
+end
+
+--------------------------------------------------------------------------------
+-- 🤝 TRADING (swap pets and coins with your friends)
+--   1. ask someone to trade   2. they say yes   3. both put pets and coins in
+--   4. both press READY       5. after a short countdown everything swaps
+--------------------------------------------------------------------------------
+do
+	type Offer = { Pets: { [number]: number }, Coins: number, Ready: boolean }
+	type Trade = { A: Player, B: Player, Offers: { [Player]: Offer }, Token: number, Counting: boolean, Done: boolean }
+	local trades: { [Player]: Trade } = {}
+	local requests: { [Player]: { [Player]: number } } = {} -- requests[to][from] = when it was sent
+	local lastRequest: { [Player]: number } = {}
+
+	local function partnerOf(trade: Trade, player: Player): Player
+		return if trade.A == player then trade.B else trade.A
+	end
+
+	-- What a player's screen needs to show about one side of the trade
+	local function offerInfo(offer: Offer)
+		local pets = {}
+		for index, count in pairs(offer.Pets) do
+			if count > 0 then
+				table.insert(pets, { Index = index, Count = count })
+			end
+		end
+		table.sort(pets, function(a, b)
+			return a.Index < b.Index
+		end)
+		return { Pets = pets, Coins = offer.Coins, Ready = offer.Ready }
+	end
+
+	local function sendTrade(trade: Trade)
+		for _, p in ipairs({ trade.A, trade.B }) do
+			local partner = partnerOf(trade, p)
+			Remotes.Trade:FireClient(p, "update", {
+				Partner = partner.UserId,
+				PartnerName = partner.DisplayName,
+				Mine = offerInfo(trade.Offers[p]),
+				Theirs = offerInfo(trade.Offers[partner]),
+				Counting = trade.Counting,
+				Countdown = Settings.TradeCountdown,
+			})
+		end
+	end
+
+	local function closeTrade(trade: Trade, reason: string)
+		trade.Done = true
+		trade.Token += 1
+		for _, p in ipairs({ trade.A, trade.B }) do
+			if trades[p] == trade then
+				trades[p] = nil
+			end
+			if p.Parent then
+				Remotes.Trade:FireClient(p, "closed", reason)
+			end
+		end
+	end
+
+	-- Something changed: nobody is ready anymore
+	local function unready(trade: Trade)
+		trade.Token += 1
+		trade.Counting = false
+		for _, offer in pairs(trade.Offers) do
+			offer.Ready = false
+		end
+	end
+
+	-- Swap everything (checked again first, in case something changed)
+	local function finishTrade(trade: Trade)
+		local a, b = trade.A, trade.B
+		if not (Data[a] and Data[b] and a.Parent and b.Parent) then
+			closeTrade(trade, "Someone left, so the trade stopped.")
+			return
+		end
+		for _, p in ipairs({ a, b }) do
+			local data, offer = Data[p], trade.Offers[p]
+			if offer.Coins > data.Coins then
+				closeTrade(trade, p.DisplayName .. " doesn't have enough coins anymore.")
+				return
+			end
+			for index, count in pairs(offer.Pets) do
+				if (data.Pets[index] or 0) < count then
+					closeTrade(trade, p.DisplayName .. " doesn't have all those pets anymore.")
+					return
+				end
+			end
+		end
+		local function give(from: Player, to: Player)
+			local fromData, toData, offer = Data[from], Data[to], trade.Offers[from]
+			fromData.Coins -= offer.Coins
+			toData.Coins += offer.Coins
+			for index, count in pairs(offer.Pets) do
+				local left = (fromData.Pets[index] or 0) - count
+				fromData.Pets[index] = if left > 0 then left else nil
+				toData.Pets[index] = (toData.Pets[index] or 0) + count
+			end
+		end
+		give(a, b)
+		give(b, a)
+		closeTrade(trade, "done")
+		for _, p in ipairs({ a, b }) do
+			Data[p].Trades += 1
+			refreshPets(p)
+			sync(p)
+			notify(p, "🤝 Trade with " .. partnerOf(trade, p).DisplayName .. " is done!", "good")
+			task.spawn(saveData, p) -- save right away
+		end
+	end
+
+	local function newOffer(): Offer
+		return { Pets = {}, Coins = 0, Ready = false }
+	end
+
+	Remotes.Trade.OnServerEvent:Connect(function(player, action, a, b)
+		local data = Data[player]
+		if not data or type(action) ~= "string" then
+			return
+		end
+		local trade = trades[player]
+		if action == "request" then
+			local target = if type(a) == "number" then Players:GetPlayerByUserId(a) else nil
+			if not target or target == player or not Data[target] then
+				return
+			end
+			if os.clock() - (lastRequest[player] or -math.huge) < 2 then
+				return
+			end
+			lastRequest[player] = os.clock()
+			if trade or trades[target] then
+				notify(player, "🤝 " .. target.DisplayName .. " is busy trading right now.", "info")
+				return
+			end
+			if Settings.TradeFriendsOnly then
+				local ok, friends = pcall(function()
+					return player:IsFriendsWith(target.UserId)
+				end)
+				if not (ok and friends) then
+					notify(player, "🤝 You can only trade with your friends.", "bad")
+					return
+				end
+			end
+			requests[target] = requests[target] or {}
+			requests[target][player] = os.clock()
+			Remotes.Trade:FireClient(target, "request", player.UserId, player.DisplayName)
+			notify(player, "🤝 Trade request sent to " .. target.DisplayName .. "!", "info")
+		elseif action == "respond" then
+			local from = if type(a) == "number" then Players:GetPlayerByUserId(a) else nil
+			local pending = requests[player]
+			local sentAt = if from and pending then pending[from] else nil
+			if not (from and pending and sentAt) then
+				return
+			end
+			pending[from] = nil
+			if os.clock() - sentAt > Settings.TradeRequestTime then
+				notify(player, "🤝 That trade request ran out. Ask again!", "info")
+				return
+			end
+			if b ~= true then
+				notify(from, "🤝 " .. player.DisplayName .. " said no thanks.", "info")
+				return
+			end
+			if trade or trades[from] or not Data[from] then
+				notify(player, "🤝 " .. from.DisplayName .. " is busy right now.", "info")
+				return
+			end
+			local started: Trade = { A = from, B = player, Offers = { [from] = newOffer(), [player] = newOffer() }, Token = 0, Counting = false, Done = false }
+			trades[from] = started
+			trades[player] = started
+			sendTrade(started)
+		elseif trade and not trade.Done then
+			local offer = trade.Offers[player]
+			if action == "pet" then
+				if type(a) ~= "number" or (b ~= 1 and b ~= -1) then
+					return
+				end
+				local current = offer.Pets[a] or 0
+				local count = math.clamp(current + b, 0, data.Pets[a] or 0)
+				if count == current then
+					return
+				end
+				offer.Pets[a] = if count > 0 then count else nil
+				unready(trade)
+				sendTrade(trade)
+			elseif action == "coins" then
+				if type(a) ~= "number" or a ~= a then
+					return
+				end
+				offer.Coins = math.clamp(math.floor(a), 0, data.Coins)
+				unready(trade)
+				sendTrade(trade)
+			elseif action == "ready" then
+				offer.Ready = a == true
+				local partner = trade.Offers[partnerOf(trade, player)]
+				trade.Token += 1
+				trade.Counting = offer.Ready and partner.Ready
+				sendTrade(trade)
+				if trade.Counting then
+					local token = trade.Token
+					task.delay(Settings.TradeCountdown, function()
+						if trade.Token == token and not trade.Done then
+							finishTrade(trade)
+						end
+					end)
+				end
+			elseif action == "cancel" then
+				closeTrade(trade, player.DisplayName .. " stopped the trade.")
+			end
+		end
+	end)
+
+	Players.PlayerRemoving:Connect(function(player)
+		local trade = trades[player]
+		if trade then
+			closeTrade(trade, player.DisplayName .. " left the game.")
+		end
+		requests[player] = nil
+		lastRequest[player] = nil
+		for _, list in pairs(requests) do
+			list[player] = nil
+		end
 	end)
 end
 
